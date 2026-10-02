@@ -1,0 +1,3 @@
+# Gmail query used by `python3 scripts/gmail.py sync` without arguments.
+# Syntax: https://support.google.com/mail/answer/7190
+query = "-in:spam -in:trash -category:promotions newer_than:1y"

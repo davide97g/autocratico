@@ -1,0 +1,219 @@
+import * as React from "react"
+import { CheckIcon, ExternalLinkIcon, FolderOpenIcon, Undo2Icon } from "lucide-react"
+import { cn } from "cn"
+
+import { Sensitive } from "@/components/privacy"
+import { SeverityIcon, StatusBadge, StatusLegend } from "@/components/status"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+import { Switch } from "@/components/ui/switch"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { useI18n } from "@/i18n"
+import type { Data, Occurrence } from "@/lib/api"
+import { areaIcon, areaName, capitalize, parseDate } from "@/lib/format"
+import { level, STYLE } from "@/lib/status"
+
+const ALL = "*"
+
+export function Deadlines({
+  data,
+  search,
+  onDone,
+  onOpenCase,
+}: {
+  data: Data
+  search: string
+  onDone: (o: Occurrence, done: boolean) => void
+  onOpenCase: (slug: string) => void
+}) {
+  const { t, fmt } = useI18n()
+  const [filter, setFilter] = React.useState(ALL)
+  const [showDone, setShowDone] = React.useState(false)
+  const { agenda, incomplete } = data
+  const areas = [...new Set([...agenda, ...incomplete].map((o) => o.area))]
+  const q = search.trim().toLowerCase()
+
+  const items = agenda.filter(
+    (o) =>
+      (filter === ALL || o.area === filter) &&
+      (showDone || !o.done_on) &&
+      (!q || `${o.title} ${o.notes}`.toLowerCase().includes(q))
+  )
+  const months = new Map<string, Occurrence[]>()
+  for (const o of items) {
+    const k = o.date.slice(0, 7)
+    months.set(k, [...(months.get(k) ?? []), o])
+  }
+  const missing = incomplete.filter(
+    (o) => (filter === ALL || o.area === filter) && (!q || o.title.toLowerCase().includes(q))
+  )
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <ToggleGroup
+          value={[filter]}
+          onValueChange={(v) => v[0] && setFilter(v[0])}
+          className="flex-wrap rounded-lg bg-card p-1"
+          aria-label={t.deadlines.filter}
+        >
+          <ToggleGroupItem value={ALL} className="rounded-md px-4">
+            {t.deadlines.all}
+          </ToggleGroupItem>
+          {areas.map((a) => (
+            <ToggleGroupItem key={a} value={a} className="rounded-md px-4">
+              {areaName(t, a)}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        <StatusLegend className="ml-auto" />
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Switch checked={showDone} onCheckedChange={setShowDone} />
+          {t.deadlines.showDone}
+        </label>
+      </div>
+
+      {items.length === 0 && (
+        <Card className="rounded-xl">
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>{t.deadlines.emptyTitle}</EmptyTitle>
+              <EmptyDescription>{t.deadlines.emptyDescription}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </Card>
+      )}
+
+      <div className="grid gap-6 @4xl:grid-cols-2">
+        {[...months.entries()].map(([key, list]) => (
+          <Card key={key} className="rounded-xl">
+            <CardHeader>
+              <CardTitle className="text-xl font-medium tracking-tight">
+                {capitalize(fmt.monthYear.format(parseDate(`${key}-01`)))}
+              </CardTitle>
+              <CardDescription>{t.deadlines.count(list.length)}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col">
+              {list.map((o) => (
+                <Row key={o.key} o={o} onDone={onDone} onOpenCase={onOpenCase} />
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {missing.length > 0 && (
+        <Card className="rounded-xl">
+          <CardHeader>
+            <CardTitle className="text-xl font-medium tracking-tight">{t.deadlines.missing}</CardTitle>
+            <CardDescription>
+              {t.deadlines.missingBefore}
+              <code className="font-mono">deadlines.toml</code>
+              {t.deadlines.missingAfter}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2 @2xl:grid-cols-2 @4xl:grid-cols-3">
+            {missing.map((m) => {
+              const Icon = areaIcon(m.area)
+              return (
+                <div key={m.id} className="flex items-center gap-3 rounded-lg p-2 ring-1 ring-border">
+                  <span className="flex size-8 items-center justify-center rounded-md bg-muted">
+                    <Icon className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm">{m.title}</span>
+                  <SeverityIcon value={m.severity} />
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function Row({
+  o,
+  onDone,
+  onOpenCase,
+}: {
+  o: Occurrence
+  onDone: (o: Occurrence, done: boolean) => void
+  onOpenCase: (slug: string) => void
+}) {
+  const { t, fmt } = useI18n()
+  const d = parseDate(o.date)
+  const done = Boolean(o.done_on)
+  const l = level(o)
+
+  return (
+    <div className={cn("flex items-center gap-4 border-b py-3 last:border-b-0", done && "opacity-55")}>
+      <div
+        className={cn(
+          "flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md leading-none",
+          l === "planned" ? "bg-primary text-primary-foreground" : STYLE[l].solid
+        )}
+      >
+        <span className="font-mono text-base font-medium">
+          <Sensitive when={o.sensitive}>{d.getDate()}</Sensitive>
+        </span>
+        <span className="text-[0.6rem] uppercase opacity-70">{fmt.weekday.format(d)}</span>
+      </div>
+
+      <div className="min-w-0 flex-1 py-1">
+        <div className="truncate text-sm font-medium">{o.title}</div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+          <span>{areaName(t, o.area)}</span>
+          <SeverityIcon value={o.severity} />
+          {o.amount != null && <Sensitive>{fmt.euro.format(o.amount)}</Sensitive>}
+          {o.notes && <span className="line-clamp-1 max-w-md">{o.notes}</span>}
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        {o.case && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="rounded-lg"
+            onClick={() => onOpenCase(o.case!)}
+            aria-label={t.deadlines.openCase}
+          >
+            <FolderOpenIcon />
+          </Button>
+        )}
+        {o.source && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="rounded-lg"
+            render={<a href={o.source} target="_blank" rel="noreferrer" aria-label={t.deadlines.source} />}
+            nativeButton={false}
+          >
+            <ExternalLinkIcon />
+          </Button>
+        )}
+        {done ? (
+          <>
+            <Badge variant="secondary" className={STYLE.done.soft}>
+              <CheckIcon data-icon="inline-start" />
+              {t.deadlines.doneOn(fmt.short.format(parseDate(o.done_on!)))}
+            </Badge>
+            <Button variant="ghost" size="icon-sm" className="rounded-lg" onClick={() => onDone(o, false)} aria-label={t.deadlines.undo}>
+              <Undo2Icon />
+            </Button>
+          </>
+        ) : (
+          <>
+            <StatusBadge level={l} days={o.days} />
+            <Button size="sm" className="rounded-lg" onClick={() => onDone(o, true)}>
+              {t.deadlines.markDone}
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

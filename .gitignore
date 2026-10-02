@@ -1,0 +1,7 @@
+# Personal data: stays on this computer only.
+/data/
+CLAUDE.local.md
+.claude/settings.local.json
+
+__pycache__/
+.DS_Store

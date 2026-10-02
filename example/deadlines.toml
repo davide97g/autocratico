@@ -1,0 +1,142 @@
+# Deadlines (EXAMPLE, made-up data): source of truth for the web app, the .ics export and upcoming.py.
+#
+# Fields:
+#   id            unique, kebab-case
+#   title         short
+#   area          tax | home | vehicles | documents | health | social-security | bank | family | business
+#   date          first occurrence (YYYY-MM-DD) or "TODO" when unknown
+#   repeat        "none" | "yearly" | "monthly" | "every N years" | "every N months"
+#   severity      high (payment or deadline with penalties) | medium (default) | low (reminder)
+#   remind_days   calendar reminders, days before
+#   amount        optional, euro (hidden in privacy mode)
+#   sensitive     true when the date reveals personal data (e.g. a birthday)
+#   case          optional, folder in cases/
+#   notes, source optional (source: path relative to the data folder, e.g. archive/...)
+#
+# Recurring dates are indicative: holidays and weekends can shift the actual deadline.
+# "Done" state of single occurrences lives in state.json (written by the web app).
+
+# --- Tax -----------------------------------------------------------------
+
+[[deadline]]
+id = "730"
+title = "Submit the pre-filled 730 tax return"
+area = "tax"
+severity = "high"
+date = 2026-09-30
+repeat = "yearly"
+remind_days = [30, 7]
+notes = "On the Agenzia delle Entrate website or through a CAF."
+
+[[deadline]]
+id = "second-irpef-advance"
+title = "Second IRPEF advance payment"
+area = "tax"
+severity = "high"
+date = 2026-11-30
+repeat = "yearly"
+remind_days = [14, 3]
+amount = 320.00
+notes = "Only if the 730 requires it: withheld from the November payslip."
+
+# --- Home ----------------------------------------------------------------
+
+[[deadline]]
+id = "imu-first"
+title = "IMU property tax, first instalment"
+area = "home"
+severity = "high"
+date = 2026-06-16
+repeat = "yearly"
+remind_days = [14, 3]
+notes = "Example: second home. A main residence outside categories A/1, A/8, A/9 is exempt."
+
+[[deadline]]
+id = "imu-balance"
+title = "IMU property tax, balance"
+area = "home"
+severity = "high"
+date = 2026-12-16
+repeat = "yearly"
+remind_days = [14, 3]
+
+[[deadline]]
+id = "condo-fee"
+title = "Condominium fee"
+area = "home"
+severity = "medium"
+date = 2026-10-15
+repeat = "every 3 months"
+amount = 180.00
+
+[[deadline]]
+id = "boiler-service"
+title = "Boiler service"
+area = "home"
+severity = "medium"
+date = 2026-10-31
+repeat = "yearly"
+remind_days = [30]
+
+[[deadline]]
+id = "tari"
+title = "TARI waste tax"
+area = "home"
+severity = "medium"
+date = "TODO"
+notes = "Dates depend on the municipality: copy them from the payment notice."
+
+# --- Vehicles ------------------------------------------------------------
+
+[[deadline]]
+id = "car-insurance"
+title = "Renew car insurance"
+area = "vehicles"
+severity = "high"
+date = 2027-02-10
+repeat = "yearly"
+remind_days = [30, 7]
+notes = "15 days of grace after expiry; no automatic renewal."
+
+[[deadline]]
+id = "car-inspection"
+title = "Car inspection (revisione)"
+area = "vehicles"
+severity = "high"
+date = 2027-03-31
+repeat = "every 2 years"
+remind_days = [30]
+
+[[deadline]]
+id = "winter-tyres"
+title = "Fit winter tyres"
+area = "vehicles"
+severity = "low"
+date = 2026-11-15
+repeat = "yearly"
+
+# --- Documents -----------------------------------------------------------
+
+[[deadline]]
+id = "book-identity-card"
+title = "Book the electronic identity card"
+area = "documents"
+severity = "high"
+date = 2026-10-20
+case = "2026-identity-card"
+
+[[deadline]]
+id = "birthday"
+title = "Birthday (identity card expiry)"
+area = "documents"
+severity = "low"
+date = 2027-04-12
+repeat = "yearly"
+sensitive = true
+
+[[deadline]]
+id = "passport"
+title = "Passport expiry"
+area = "documents"
+severity = "medium"
+date = "TODO"

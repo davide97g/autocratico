@@ -1,0 +1,24 @@
+# Profile (EXAMPLE, made-up data). In the web app every value is hidden in privacy mode.
+# Never store passwords, PINs, PUKs or access codes here.
+# "TODO" = still to fill in. Sections and keys are free-form; only person.name is read by the code.
+
+[person]
+name = "Maria Rossi"
+birth_date = 1990-04-12
+municipality = "Example town (XX)"
+
+[work]
+type = "employee"
+employer = "TODO"
+
+[[property]]
+name = "Apartment"
+municipality = "Example town (XX)"
+cadastral_category = "A/2"
+main_residence = true
+
+[[vehicle]]
+type = "car"
+model = "TODO"
+plate = "AA000AA"
+registration_date = 2019-03-31
