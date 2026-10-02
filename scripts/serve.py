@@ -7,6 +7,7 @@ import json
 import sys
 from datetime import date
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlsplit
 
 from chat import converse
 from store import (
@@ -30,6 +31,19 @@ TYPES = {
     ".png": "image/png",
     ".ico": "image/x-icon",
 }
+# Only pages served from this machine may talk to the API. Checking Host blocks DNS rebinding
+# (a website whose domain resolves to 127.0.0.1); checking Origin blocks cross-site requests
+# from other tabs, which could otherwise read the data or start a chat.
+LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+def _local(value: str | None) -> bool:
+    if not value:
+        return False
+    try:
+        return urlsplit(value if "//" in value else f"//{value}").hostname in LOCAL_HOSTS
+    except ValueError:
+        return False
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -44,7 +58,16 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, code: int, payload) -> None:
         self._send(code, json.dumps(payload, ensure_ascii=False).encode("utf-8"), "application/json")
 
+    def _allowed(self) -> bool:
+        origin = self.headers.get("Origin")
+        if _local(self.headers.get("Host")) and (origin is None or _local(origin)):
+            return True
+        self._send(403, b"forbidden", "text/plain")
+        return False
+
     def do_GET(self) -> None:
+        if not self._allowed():
+            return
         path = self.path.split("?", 1)[0]
         if path == "/api/data":
             try:
@@ -73,11 +96,24 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, file.read_bytes(), TYPES.get(file.suffix, "application/octet-stream"))
 
     def do_POST(self) -> None:
+        if not self._allowed():
+            return
         if self.path not in ("/api/done", "/api/chat"):
             self._send(404, b"not found", "text/plain")
             return
-        length = int(self.headers.get("Content-Length", 0))
-        request = json.loads(self.rfile.read(length) or b"{}")
+        # A JSON content type cannot be sent cross-site without a CORS preflight, which this server never grants.
+        if self.headers.get_content_type() != "application/json":
+            self._json(415, {"error": "expected application/json"})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            request = json.loads(self.rfile.read(length) or b"{}")
+        except ValueError:
+            self._json(400, {"error": "invalid JSON"})
+            return
+        if not isinstance(request, dict):
+            self._json(400, {"error": "invalid JSON"})
+            return
         if self.path == "/api/chat":
             self._chat(request)
             return

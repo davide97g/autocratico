@@ -16,12 +16,16 @@ from pathlib import Path
 
 from store import DATA_DIR, ROOT
 
+# Pages Claude may open to check a rule. The data folder may hold emails written by strangers:
+# keeping WebFetch to public bodies means a malicious text cannot make Claude send data elsewhere.
+# `*.x` needs Claude Code 2.1.172 or later; other domains are denied without asking.
+DOMAINS = ["gov.it", "inps.it", "normattiva.it", "gazzettaufficiale.it", "europa.eu", "aci.it"]
 TOOLS = [
     "Read",
     "Glob",
     "Grep",
     "WebSearch",
-    "WebFetch",
+    *(f"WebFetch(domain:{d})" for domain in DOMAINS for d in (domain, f"*.{domain}")),
     "Bash(python3 scripts/upcoming.py:*)",
 ]
 # `//` marks an absolute path in Claude Code permission rules.

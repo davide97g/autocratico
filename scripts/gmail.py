@@ -261,8 +261,17 @@ def _slug(s: str) -> str:
     return re.sub(r"[\s_-]+", "-", s).strip("-")[:50] or "no-subject"
 
 
-def _file_name(name: str) -> str:
-    return re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", name).strip() or "attachment"
+def _file_name(name: str, taken: list[str]) -> str:
+    """Safe, unique file name for an attachment (the name comes from the sender)."""
+    name = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", name).strip().lstrip(".")[:150] or "attachment"
+    if name == "message.md" or name in taken:
+        stem, dot, ext = name.rpartition(".")
+        stem, ext = (stem, f".{ext}") if dot else (name, "")
+        n = 2
+        while f"{stem}-{n}{ext}" in taken:
+            n += 1
+        name = f"{stem}-{n}{ext}"
+    return name
 
 
 def search(query: str, limit: int = 50) -> None:
@@ -294,7 +303,7 @@ def sync(query: str, limit: int = 5000) -> None:
             body = p.get("body", {})
             if p.get("filename") and body.get("attachmentId"):
                 data = _get(f"{API}/messages/{i}/attachments/{body['attachmentId']}")["data"]
-                name = _file_name(p["filename"])
+                name = _file_name(p["filename"], attachments)
                 (folder / name).write_bytes(_b64(data))
                 attachments.append(name)
             elif p.get("mimeType") == "text/plain" and body.get("data") and text is None:
