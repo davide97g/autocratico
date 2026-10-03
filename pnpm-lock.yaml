@@ -55,6 +55,28 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@24.19.0)(vite@8.3.2(@types/node@24.19.0)(jiti@2.7.0)(terser@5.51.2))
 
+  apps/site:
+    dependencies:
+      '@fontsource-variable/geist':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource-variable/geist-mono':
+        specifier: ^5.3.0
+        version: 5.3.0
+      lucide:
+        specifier: ^1
+        version: 1.50.0
+    devDependencies:
+      '@types/node':
+        specifier: ^24
+        version: 24.19.0
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+      vite:
+        specifier: ^8
+        version: 8.3.2(@types/node@24.19.0)(jiti@2.7.0)(terser@5.51.2)
+
   apps/web:
     dependencies:
       '@autocratico/core':
@@ -3076,6 +3098,9 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  lucide@1.50.0:
+    resolution: {integrity: sha512-9ba3cwifVinKmcmGM+ChiuauzClzxxMxQKDv5hRskbwwlC9wcUpT2QygAfKrehBLbGnbAA0wC1Tc1dDSrwzNJg==}
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -7250,6 +7275,8 @@ snapshots:
       react: 19.3.0
     optionalDependencies:
       '@types/react': 19.3.0
+
+  lucide@1.50.0: {}
 
   magic-string@0.30.21:
     dependencies:

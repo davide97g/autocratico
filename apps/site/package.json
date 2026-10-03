@@ -1,0 +1,23 @@
+{
+  "name": "@autocratico/site",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Public landing page with an interactive demo. Static HTML, no personal data.",
+  "scripts": {
+    "dev": "vite --port 5190",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --port 5191"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "lucide": "^1"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "~6.0.2",
+    "vite": "^8"
+  }
+}

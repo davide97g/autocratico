@@ -83,3 +83,11 @@ Open the site, enter the code. From then on, create codes for other devices in *
 ## Without Cloudflare Access
 
 `CF_ACCESS=off` lets the server start with paired devices only (e.g. behind Tailscale Serve). Then every request still needs a device token, but nothing filters traffic before it reaches the server.
+
+## Landing page
+
+`apps/site` is a separate, public compose app: `deploy/compose.site.yml` (nginx, static files, no data, no secrets) on `127.0.0.1:8791`.
+
+1. Dokploy: compose app from GitHub `main`, compose path `deploy/compose.site.yml`, no environment needed. `SITE_URL` is a build argument in `deploy/site.Dockerfile` (canonical link, Open Graph, sitemap).
+2. Cloudflare: tunnel public hostname `get-autocratico.<domain>` → `http://localhost:8791`, proxied CNAME. No Access application: the page is meant to be public.
+3. Check on the box: `curl -s http://127.0.0.1:8791/healthz` → `ok`.

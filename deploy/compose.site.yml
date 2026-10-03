@@ -1,0 +1,19 @@
+# Autocratico landing page on the homelab (Dokploy compose app). Public: no Cloudflare Access.
+# The Cloudflare tunnel on the host points get-autocratico.<domain> at http://localhost:8791.
+services:
+  site:
+    build:
+      context: ..
+      dockerfile: deploy/site.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8791:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 64m

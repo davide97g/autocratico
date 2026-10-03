@@ -1,0 +1,28 @@
+# Autocratico
+
+> Autocratico is a free, open-source (MIT) personal register for Italian bureaucracy: deadlines, payments, checks and cases kept in plain-text files, shown in an installable web app, filed by an always-on agent (headless Claude Code) and announced by a Telegram bot. The interface is in Italian and English.
+
+Site: %SITE_URL%
+Source code: %REPO_URL%
+
+## What it does
+- Calendar of deadlines by area (home, vehicles, documents, tax), coloured by severity and days left: planned (grey), coming up (amber), urgent (orange), overdue (red), done (green).
+- Thresholds: high severity is urgent within 30 days and coming up within 90; medium 14 and 45; low 7 and 21.
+- Recurring deadlines (yearly, monthly, every N years), e.g. IMU, TARI, car tax (bollo auto), car inspection, ID card renewal.
+- One inbox for everything: Gmail (several accounts), forwarded PEC, photos (HEIC included), PDFs, Telegram messages and voice notes, WhatsApp chat exports, the iOS/macOS share sheet.
+- The agent files each item within about a minute: it extracts dates and amounts, updates deadlines.toml, opens or updates a case, and records a git commit that can be undone.
+- Flags possible phishing that impersonates public bodies (Agenzia delle Entrate, INPS, municipalities) and never opens links.
+- Telegram reminders with a Done button; personal data is always redacted in Telegram.
+- Privacy mode ("Omissis", key P) hides names, amounts and document numbers for screenshots.
+- .ics export for any calendar app.
+
+## What it never does
+- It never pays, signs, or writes to public bodies on the user's behalf. It prepares amounts, dates and references; the user acts.
+
+## Data and privacy
+- Data lives in a folder of plain-text files (TOML, Markdown, JSON) on the user's computer or home server. No database, no third-party cloud.
+- The agent reads document text through the user's own Claude account. Voice notes are transcribed on the user's server.
+
+## Install
+git clone %REPO_URL%.git && cd autocratico && ./setup.sh --start
+Requirements: Node.js 24, pnpm, Python 3.11; Claude Code for the chat and the agent. Opens on http://127.0.0.1:8790 with a made-up example register.

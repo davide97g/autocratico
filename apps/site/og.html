@@ -1,0 +1,96 @@
+<!doctype html>
+<!--
+  Source of public/og.png (1200x630). Not part of the build.
+  Regenerate: pnpm dev, open http://localhost:5190/og.html at 1200x630 and screenshot it to public/og.png.
+-->
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>og</title>
+    <style>
+      @import "@fontsource-variable/geist";
+      @import "@fontsource-variable/geist-mono";
+      html,
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background: #e7e7e7;
+        font-family: "Geist Variable", sans-serif;
+        color: #0f0f0f;
+      }
+      .wrap {
+        position: relative;
+        height: 100%;
+        padding: 64px 72px;
+        box-sizing: border-box;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 700;
+        font-size: 26px;
+        letter-spacing: -0.02em;
+      }
+      h1 {
+        margin: 92px 0 0;
+        font-size: 80px;
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+        font-weight: 900;
+      }
+      h1 span {
+        display: block;
+        color: #666;
+      }
+      p {
+        margin: 28px 0 0;
+        font-size: 26px;
+        color: #4a4a4a;
+        max-width: 560px;
+        line-height: 1.35;
+      }
+      .shot {
+        position: absolute;
+        right: -300px;
+        top: 120px;
+        width: 620px;
+        padding: 8px;
+        border-radius: 26px;
+        background: #fdfdfd;
+        box-shadow: 0 30px 70px -30px rgb(40 40 40 / 0.5);
+        transform: rotate(-4deg);
+      }
+      .shot img {
+        display: block;
+        width: 100%;
+        border-radius: 18px;
+      }
+      .stamp {
+        position: absolute;
+        right: 60px;
+        bottom: 60px;
+        padding: 4px 14px;
+        border: 5px solid #dc2627;
+        border-radius: 10px;
+        color: #dc2627;
+        font-weight: 900;
+        font-size: 46px;
+        text-transform: uppercase;
+        transform: rotate(-9deg);
+        background: rgb(231 231 231 / 0.85);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="brand"><img src="/icon.svg" width="40" height="40" alt="" /> Autocratico</div>
+      <h1>Nessuno ti avvisa.<span>Autocratico sì.</span></h1>
+      <p>Scadenze, tasse e pratiche italiane in un registro privato.</p>
+      <div class="shot"><img src="/shots/desktop-overview.webp" alt="" /></div>
+      <span class="stamp">Scaduto</span>
+    </div>
+  </body>
+</html>
