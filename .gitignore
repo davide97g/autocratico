@@ -9,3 +9,6 @@ dist/
 .turbo/
 __pycache__/
 .DS_Store
+
+# Trailer renders, stems, model weights (apps/video)
+/var/

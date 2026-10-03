@@ -1,6 +1,8 @@
 packages:
   - apps/*
   - packages/*
+  # the trailer is a bun project of its own (apps/video/README.md)
+  - '!apps/video'
 
 allowBuilds:
   esbuild: true

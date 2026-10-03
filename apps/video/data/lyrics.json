@@ -1,0 +1,1300 @@
+{
+  "lines": [
+    {
+      "i": 0,
+      "text": "Raccomandata!",
+      "start": 0.11,
+      "end": 1.731,
+      "words": [
+        {
+          "w": "Raccomandata!",
+          "start": 0.11,
+          "end": 1.731,
+          "conf": 0.91
+        }
+      ]
+    },
+    {
+      "i": 1,
+      "text": "PEC!",
+      "start": 4.04,
+      "end": 4.54,
+      "words": [
+        {
+          "w": "PEC!",
+          "start": 4.04,
+          "end": 4.54,
+          "conf": 0.69
+        }
+      ]
+    },
+    {
+      "i": 2,
+      "text": "F24!",
+      "start": 5.268,
+      "end": 6.53,
+      "words": [
+        {
+          "w": "F24!",
+          "start": 5.268,
+          "end": 6.53,
+          "conf": 0.72,
+          "syl": [
+            [
+              5.268,
+              5.478
+            ],
+            [
+              5.478,
+              6.53
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "i": 3,
+      "text": "Scadenza!",
+      "start": 7.234,
+      "end": 10.72,
+      "words": [
+        {
+          "w": "Scadenza!",
+          "start": 7.234,
+          "end": 10.72,
+          "conf": 0.88
+        }
+      ]
+    },
+    {
+      "i": 4,
+      "text": "La burocrazia è per i vecchi: gerontocrazia",
+      "start": 10.72,
+      "end": 12.836,
+      "words": [
+        {
+          "w": "La",
+          "start": 10.72,
+          "end": 10.86,
+          "conf": 0.92
+        },
+        {
+          "w": "burocrazia",
+          "start": 10.86,
+          "end": 11.6,
+          "conf": 0.85
+        },
+        {
+          "w": "è",
+          "start": 11.6,
+          "end": 11.63,
+          "conf": 0.73
+        },
+        {
+          "w": "per",
+          "start": 11.63,
+          "end": 11.84,
+          "conf": 0.95
+        },
+        {
+          "w": "i",
+          "start": 11.84,
+          "end": 11.9,
+          "conf": 1.0
+        },
+        {
+          "w": "vecchi:",
+          "start": 11.9,
+          "end": 12.092,
+          "conf": 1.0
+        },
+        {
+          "w": "gerontocrazia",
+          "start": 12.092,
+          "end": 12.836,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 5,
+      "text": "sei portali, sei password, e nessuno che ti avvisa",
+      "start": 12.836,
+      "end": 15.166,
+      "words": [
+        {
+          "w": "sei",
+          "start": 12.836,
+          "end": 13.12,
+          "conf": 0.85
+        },
+        {
+          "w": "portali,",
+          "start": 13.12,
+          "end": 13.529,
+          "conf": 0.92
+        },
+        {
+          "w": "sei",
+          "start": 13.529,
+          "end": 13.7,
+          "conf": 0.92
+        },
+        {
+          "w": "password,",
+          "start": 13.7,
+          "end": 14.028,
+          "conf": 0.92
+        },
+        {
+          "w": "e",
+          "start": 14.028,
+          "end": 14.18,
+          "conf": 0.92
+        },
+        {
+          "w": "nessuno",
+          "start": 14.18,
+          "end": 14.62,
+          "conf": 1.0
+        },
+        {
+          "w": "che",
+          "start": 14.62,
+          "end": 14.74,
+          "conf": 1.0
+        },
+        {
+          "w": "ti",
+          "start": 14.74,
+          "end": 14.84,
+          "conf": 1.0
+        },
+        {
+          "w": "avvisa",
+          "start": 14.84,
+          "end": 15.166,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 6,
+      "text": "IMU, TARI, bollo, la PEC finita nello spam",
+      "start": 15.166,
+      "end": 17.72,
+      "words": [
+        {
+          "w": "IMU,",
+          "start": 15.166,
+          "end": 15.52,
+          "conf": 0.92
+        },
+        {
+          "w": "TARI,",
+          "start": 15.52,
+          "end": 15.729,
+          "conf": 0.92
+        },
+        {
+          "w": "bollo,",
+          "start": 15.729,
+          "end": 16.14,
+          "conf": 1.0
+        },
+        {
+          "w": "la",
+          "start": 16.14,
+          "end": 16.28,
+          "conf": 1.0
+        },
+        {
+          "w": "PEC",
+          "start": 16.28,
+          "end": 16.532,
+          "conf": 1.0
+        },
+        {
+          "w": "finita",
+          "start": 16.532,
+          "end": 16.931,
+          "conf": 1.0
+        },
+        {
+          "w": "nello",
+          "start": 16.931,
+          "end": 17.216,
+          "conf": 1.0
+        },
+        {
+          "w": "spam",
+          "start": 17.216,
+          "end": 17.72,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 7,
+      "text": "evado e nemmeno lo so, poi la cartella: bam!",
+      "start": 17.72,
+      "end": 20.36,
+      "words": [
+        {
+          "w": "evado",
+          "start": 17.72,
+          "end": 18.0,
+          "conf": 0.9
+        },
+        {
+          "w": "e",
+          "start": 18.0,
+          "end": 18.03,
+          "conf": 0.85
+        },
+        {
+          "w": "nemmeno",
+          "start": 18.03,
+          "end": 18.38,
+          "conf": 0.89
+        },
+        {
+          "w": "lo",
+          "start": 18.38,
+          "end": 18.478,
+          "conf": 1.0
+        },
+        {
+          "w": "so,",
+          "start": 18.478,
+          "end": 18.603,
+          "conf": 1.0
+        },
+        {
+          "w": "poi",
+          "start": 18.603,
+          "end": 18.86,
+          "conf": 0.84
+        },
+        {
+          "w": "la",
+          "start": 18.86,
+          "end": 18.98,
+          "conf": 1.0
+        },
+        {
+          "w": "cartella:",
+          "start": 18.98,
+          "end": 19.585,
+          "conf": 1.0
+        },
+        {
+          "w": "bam!",
+          "start": 19.76,
+          "end": 20.36,
+          "conf": 0.82
+        }
+      ]
+    },
+    {
+      "i": 8,
+      "text": "Busta verde sullo zerbino, già lo so com'è",
+      "start": 20.36,
+      "end": 22.743,
+      "words": [
+        {
+          "w": "Busta",
+          "start": 20.36,
+          "end": 20.8,
+          "conf": 0.85
+        },
+        {
+          "w": "verde",
+          "start": 20.8,
+          "end": 21.062,
+          "conf": 0.85
+        },
+        {
+          "w": "sullo",
+          "start": 21.062,
+          "end": 21.376,
+          "conf": 1.0
+        },
+        {
+          "w": "zerbino,",
+          "start": 21.376,
+          "end": 21.86,
+          "conf": 1.0
+        },
+        {
+          "w": "già",
+          "start": 21.86,
+          "end": 21.955,
+          "conf": 0.99
+        },
+        {
+          "w": "lo",
+          "start": 21.955,
+          "end": 22.125,
+          "conf": 1.0
+        },
+        {
+          "w": "so",
+          "start": 22.125,
+          "end": 22.344,
+          "conf": 1.0
+        },
+        {
+          "w": "com'è",
+          "start": 22.344,
+          "end": 22.743,
+          "conf": 0.89
+        }
+      ]
+    },
+    {
+      "i": 9,
+      "text": "fila, timbro, numerino: «Torni martedì alle tre»",
+      "start": 22.743,
+      "end": 25.283,
+      "words": [
+        {
+          "w": "fila,",
+          "start": 22.743,
+          "end": 23.06,
+          "conf": 1.0
+        },
+        {
+          "w": "timbro,",
+          "start": 23.06,
+          "end": 23.282,
+          "conf": 0.99
+        },
+        {
+          "w": "numerino:",
+          "start": 23.282,
+          "end": 23.881,
+          "conf": 0.89
+        },
+        {
+          "w": "«Torni",
+          "start": 23.881,
+          "end": 24.24,
+          "conf": 1.0
+        },
+        {
+          "w": "martedì",
+          "start": 24.24,
+          "end": 24.614,
+          "conf": 0.98
+        },
+        {
+          "w": "alle",
+          "start": 24.614,
+          "end": 24.88,
+          "conf": 1.0
+        },
+        {
+          "w": "tre»",
+          "start": 24.88,
+          "end": 25.283,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 10,
+      "text": "scadenze sparse in mille posti",
+      "start": 25.283,
+      "end": 27.16,
+      "words": [
+        {
+          "w": "scadenze",
+          "start": 25.283,
+          "end": 25.717,
+          "conf": 1.0
+        },
+        {
+          "w": "sparse",
+          "start": 25.717,
+          "end": 26.02,
+          "conf": 0.86
+        },
+        {
+          "w": "in",
+          "start": 26.02,
+          "end": 26.08,
+          "conf": 0.75
+        },
+        {
+          "w": "mille",
+          "start": 26.08,
+          "end": 26.38,
+          "conf": 0.96
+        },
+        {
+          "w": "posti",
+          "start": 26.38,
+          "end": 27.16,
+          "conf": 0.95
+        }
+      ]
+    },
+    {
+      "i": 11,
+      "text": "te le ricordano solo quando arrivano i costi",
+      "start": 27.16,
+      "end": 29.68,
+      "words": [
+        {
+          "w": "te",
+          "start": 27.16,
+          "end": 27.32,
+          "conf": 0.83
+        },
+        {
+          "w": "le",
+          "start": 27.32,
+          "end": 27.46,
+          "conf": 0.95
+        },
+        {
+          "w": "ricordano",
+          "start": 27.46,
+          "end": 28.006,
+          "conf": 0.99
+        },
+        {
+          "w": "solo",
+          "start": 28.006,
+          "end": 28.34,
+          "conf": 1.0
+        },
+        {
+          "w": "quando",
+          "start": 28.34,
+          "end": 28.58,
+          "conf": 1.0
+        },
+        {
+          "w": "arrivano",
+          "start": 28.58,
+          "end": 29.02,
+          "conf": 0.95
+        },
+        {
+          "w": "i",
+          "start": 29.02,
+          "end": 29.08,
+          "conf": 0.86
+        },
+        {
+          "w": "costi",
+          "start": 29.08,
+          "end": 29.68,
+          "conf": 0.9
+        }
+      ]
+    },
+    {
+      "i": 12,
+      "text": "La multa come obiettivo dello Stato?",
+      "start": 29.68,
+      "end": 32.12,
+      "words": [
+        {
+          "w": "La",
+          "start": 29.68,
+          "end": 29.86,
+          "conf": 0.99
+        },
+        {
+          "w": "multa",
+          "start": 29.86,
+          "end": 30.087,
+          "conf": 0.96
+        },
+        {
+          "w": "come",
+          "start": 30.087,
+          "end": 30.4,
+          "conf": 0.99
+        },
+        {
+          "w": "obiettivo",
+          "start": 30.4,
+          "end": 30.92,
+          "conf": 1.0
+        },
+        {
+          "w": "dello",
+          "start": 30.92,
+          "end": 31.149,
+          "conf": 1.0
+        },
+        {
+          "w": "Stato?",
+          "start": 31.149,
+          "end": 32.12,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 13,
+      "text": "Follia!",
+      "start": 32.12,
+      "end": 32.72,
+      "words": [
+        {
+          "w": "Follia!",
+          "start": 32.12,
+          "end": 32.72,
+          "conf": 0.68
+        }
+      ]
+    },
+    {
+      "i": 14,
+      "text": "Credere che 'sto casino faccia bene a qualcuno?",
+      "start": 32.72,
+      "end": 35.16,
+      "words": [
+        {
+          "w": "Credere",
+          "start": 32.72,
+          "end": 33.16,
+          "conf": 0.92
+        },
+        {
+          "w": "che",
+          "start": 33.16,
+          "end": 33.259,
+          "conf": 0.92
+        },
+        {
+          "w": "'sto",
+          "start": 33.259,
+          "end": 33.384,
+          "conf": 1.0
+        },
+        {
+          "w": "casino",
+          "start": 33.384,
+          "end": 33.92,
+          "conf": 1.0
+        },
+        {
+          "w": "faccia",
+          "start": 33.92,
+          "end": 34.137,
+          "conf": 1.0
+        },
+        {
+          "w": "bene",
+          "start": 34.137,
+          "end": 34.46,
+          "conf": 1.0
+        },
+        {
+          "w": "a",
+          "start": 34.46,
+          "end": 34.54,
+          "conf": 1.0
+        },
+        {
+          "w": "qualcuno?",
+          "start": 34.54,
+          "end": 35.16,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 15,
+      "text": "Carte perse, «ripassi domani»?",
+      "start": 35.16,
+      "end": 36.966,
+      "words": [
+        {
+          "w": "Carte",
+          "start": 35.16,
+          "end": 35.365,
+          "conf": 1.0
+        },
+        {
+          "w": "perse,",
+          "start": 35.365,
+          "end": 35.849,
+          "conf": 1.0
+        },
+        {
+          "w": "«ripassi",
+          "start": 35.849,
+          "end": 36.417,
+          "conf": 1.0
+        },
+        {
+          "w": "domani»?",
+          "start": 36.417,
+          "end": 36.966,
+          "conf": 0.99
+        }
+      ]
+    },
+    {
+      "i": 16,
+      "text": "Follia!",
+      "start": 36.966,
+      "end": 37.54,
+      "words": [
+        {
+          "w": "Follia!",
+          "start": 36.966,
+          "end": 37.54,
+          "conf": 0.58
+        }
+      ]
+    },
+    {
+      "i": 17,
+      "text": "Le scadenze devono essere visibili! Centralizzate!",
+      "start": 37.54,
+      "end": 41.256,
+      "words": [
+        {
+          "w": "Le",
+          "start": 37.54,
+          "end": 37.64,
+          "conf": 1.0
+        },
+        {
+          "w": "scadenze",
+          "start": 37.64,
+          "end": 38.113,
+          "conf": 1.0
+        },
+        {
+          "w": "devono",
+          "start": 38.113,
+          "end": 38.54,
+          "conf": 1.0
+        },
+        {
+          "w": "essere",
+          "start": 38.54,
+          "end": 38.92,
+          "conf": 0.92
+        },
+        {
+          "w": "visibili!",
+          "start": 38.92,
+          "end": 39.8,
+          "conf": 1.0
+        },
+        {
+          "w": "Centralizzate!",
+          "start": 39.8,
+          "end": 41.256,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 18,
+      "text": "Il futuro è automatico, autocratico!",
+      "start": 41.735,
+      "end": 44.244,
+      "words": [
+        {
+          "w": "Il",
+          "start": 41.735,
+          "end": 41.88,
+          "conf": 0.78
+        },
+        {
+          "w": "futuro",
+          "start": 41.88,
+          "end": 42.38,
+          "conf": 0.86
+        },
+        {
+          "w": "è",
+          "start": 42.38,
+          "end": 42.44,
+          "conf": 0.83
+        },
+        {
+          "w": "automatico,",
+          "start": 42.44,
+          "end": 43.207,
+          "conf": 0.92
+        },
+        {
+          "w": "autocratico!",
+          "start": 43.62,
+          "end": 44.244,
+          "conf": 0.92
+        }
+      ]
+    },
+    {
+      "i": 19,
+      "text": "Pratico, rapido, autocratico!",
+      "start": 44.244,
+      "end": 46.88,
+      "words": [
+        {
+          "w": "Pratico,",
+          "start": 44.244,
+          "end": 45.1,
+          "conf": 0.71
+        },
+        {
+          "w": "rapido,",
+          "start": 45.1,
+          "end": 45.631,
+          "conf": 0.91
+        },
+        {
+          "w": "autocratico!",
+          "start": 45.99,
+          "end": 46.88,
+          "conf": 0.7
+        }
+      ]
+    },
+    {
+      "i": 20,
+      "text": "Mandagli tutto, lui legge e archivia",
+      "start": 46.88,
+      "end": 49.32,
+      "words": [
+        {
+          "w": "Mandagli",
+          "start": 46.88,
+          "end": 47.38,
+          "conf": 0.63
+        },
+        {
+          "w": "tutto,",
+          "start": 47.38,
+          "end": 47.717,
+          "conf": 0.95
+        },
+        {
+          "w": "lui",
+          "start": 47.717,
+          "end": 48.0,
+          "conf": 0.86
+        },
+        {
+          "w": "legge",
+          "start": 48.0,
+          "end": 48.28,
+          "conf": 0.94
+        },
+        {
+          "w": "e",
+          "start": 48.28,
+          "end": 48.31,
+          "conf": 0.73
+        },
+        {
+          "w": "archivia",
+          "start": 48.31,
+          "end": 49.32,
+          "conf": 0.87
+        }
+      ]
+    },
+    {
+      "i": 21,
+      "text": "rosso se scade, ti avvisa, e via",
+      "start": 49.32,
+      "end": 51.48,
+      "words": [
+        {
+          "w": "rosso",
+          "start": 49.32,
+          "end": 49.567,
+          "conf": 0.76
+        },
+        {
+          "w": "se",
+          "start": 49.567,
+          "end": 49.697,
+          "conf": 1.0
+        },
+        {
+          "w": "scade,",
+          "start": 49.697,
+          "end": 50.126,
+          "conf": 1.0
+        },
+        {
+          "w": "ti",
+          "start": 50.126,
+          "end": 50.276,
+          "conf": 0.94
+        },
+        {
+          "w": "avvisa,",
+          "start": 50.276,
+          "end": 50.889,
+          "conf": 0.94
+        },
+        {
+          "w": "e",
+          "start": 50.889,
+          "end": 51.1,
+          "conf": 0.86
+        },
+        {
+          "w": "via",
+          "start": 51.1,
+          "end": 51.48,
+          "conf": 0.93
+        }
+      ]
+    },
+    {
+      "i": 22,
+      "text": "Il futuro è automatico, autocratico!",
+      "start": 51.48,
+      "end": 54.167,
+      "words": [
+        {
+          "w": "Il",
+          "start": 51.48,
+          "end": 51.58,
+          "conf": 0.96
+        },
+        {
+          "w": "futuro",
+          "start": 51.58,
+          "end": 52.04,
+          "conf": 1.0
+        },
+        {
+          "w": "è",
+          "start": 52.04,
+          "end": 52.08,
+          "conf": 0.83
+        },
+        {
+          "w": "automatico,",
+          "start": 52.08,
+          "end": 53.279,
+          "conf": 1.0
+        },
+        {
+          "w": "autocratico!",
+          "start": 53.279,
+          "end": 54.167,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 23,
+      "text": "In un attimo rivoluzioniamo",
+      "start": 54.277,
+      "end": 56.72,
+      "words": [
+        {
+          "w": "In",
+          "start": 54.277,
+          "end": 54.56,
+          "conf": 0.83
+        },
+        {
+          "w": "un",
+          "start": 54.56,
+          "end": 54.68,
+          "conf": 0.9
+        },
+        {
+          "w": "attimo",
+          "start": 54.68,
+          "end": 55.08,
+          "conf": 0.81
+        },
+        {
+          "w": "rivoluzioniamo",
+          "start": 55.08,
+          "end": 56.72,
+          "conf": 0.96
+        }
+      ]
+    },
+    {
+      "i": 24,
+      "text": "l'Italia lenta e pallosa",
+      "start": 56.72,
+      "end": 60.52,
+      "words": [
+        {
+          "w": "l'Italia",
+          "start": 56.72,
+          "end": 57.18,
+          "conf": 0.81
+        },
+        {
+          "w": "lenta",
+          "start": 57.18,
+          "end": 58.0,
+          "conf": 0.92
+        },
+        {
+          "w": "e",
+          "start": 58.0,
+          "end": 58.06,
+          "conf": 0.59
+        },
+        {
+          "w": "pallosa",
+          "start": 58.06,
+          "end": 60.52,
+          "conf": 0.93
+        }
+      ]
+    },
+    {
+      "i": 25,
+      "text": "Autocratico!",
+      "start": 60.52,
+      "end": 61.445,
+      "words": [
+        {
+          "w": "Autocratico!",
+          "start": 60.52,
+          "end": 61.445,
+          "conf": 0.81
+        }
+      ]
+    },
+    {
+      "i": 26,
+      "text": "Inoltro, scatto, un vocale, in un minuto è archiviato",
+      "start": 61.445,
+      "end": 64.399,
+      "words": [
+        {
+          "w": "Inoltro,",
+          "start": 61.445,
+          "end": 62.273,
+          "conf": 0.8
+        },
+        {
+          "w": "scatto,",
+          "start": 62.273,
+          "end": 62.553,
+          "conf": 1.0
+        },
+        {
+          "w": "un",
+          "start": 62.553,
+          "end": 62.78,
+          "conf": 1.0
+        },
+        {
+          "w": "vocale,",
+          "start": 62.78,
+          "end": 63.2,
+          "conf": 1.0
+        },
+        {
+          "w": "in",
+          "start": 63.2,
+          "end": 63.3,
+          "conf": 1.0
+        },
+        {
+          "w": "un",
+          "start": 63.3,
+          "end": 63.4,
+          "conf": 0.95
+        },
+        {
+          "w": "minuto",
+          "start": 63.4,
+          "end": 63.72,
+          "conf": 1.0
+        },
+        {
+          "w": "è",
+          "start": 63.72,
+          "end": 63.88,
+          "conf": 0.87
+        },
+        {
+          "w": "archiviato",
+          "start": 63.88,
+          "end": 64.399,
+          "conf": 0.85
+        }
+      ]
+    },
+    {
+      "i": 27,
+      "text": "falso mittente, «paga subito»? Phishing, segnalato",
+      "start": 64.399,
+      "end": 66.773,
+      "words": [
+        {
+          "w": "falso",
+          "start": 64.399,
+          "end": 64.678,
+          "conf": 1.0
+        },
+        {
+          "w": "mittente,",
+          "start": 64.678,
+          "end": 65.08,
+          "conf": 0.87
+        },
+        {
+          "w": "«paga",
+          "start": 65.08,
+          "end": 65.297,
+          "conf": 1.0
+        },
+        {
+          "w": "subito»?",
+          "start": 65.297,
+          "end": 65.875,
+          "conf": 1.0
+        },
+        {
+          "w": "Phishing,",
+          "start": 65.875,
+          "end": 66.145,
+          "conf": 1.0
+        },
+        {
+          "w": "segnalato",
+          "start": 66.145,
+          "end": 66.773,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 28,
+      "text": "Telegram alle otto e mezza: «tra tre giorni», Fatto!",
+      "start": 66.773,
+      "end": 69.008,
+      "words": [
+        {
+          "w": "Telegram",
+          "start": 66.773,
+          "end": 67.34,
+          "conf": 1.0
+        },
+        {
+          "w": "alle",
+          "start": 67.34,
+          "end": 67.5,
+          "conf": 0.92
+        },
+        {
+          "w": "otto",
+          "start": 67.5,
+          "end": 67.636,
+          "conf": 0.92
+        },
+        {
+          "w": "e",
+          "start": 67.636,
+          "end": 67.74,
+          "conf": 0.9
+        },
+        {
+          "w": "mezza:",
+          "start": 67.74,
+          "end": 67.985,
+          "conf": 1.0
+        },
+        {
+          "w": "«tra",
+          "start": 67.985,
+          "end": 68.18,
+          "conf": 0.98
+        },
+        {
+          "w": "tre",
+          "start": 68.18,
+          "end": 68.34,
+          "conf": 0.98
+        },
+        {
+          "w": "giorni»,",
+          "start": 68.34,
+          "end": 68.614,
+          "conf": 1.0
+        },
+        {
+          "w": "Fatto!",
+          "start": 68.614,
+          "end": 69.008,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 29,
+      "text": "non paga mai per me: è un registro, non un ricatto",
+      "start": 69.008,
+      "end": 71.882,
+      "words": [
+        {
+          "w": "non",
+          "start": 69.008,
+          "end": 69.26,
+          "conf": 1.0
+        },
+        {
+          "w": "paga",
+          "start": 69.26,
+          "end": 69.472,
+          "conf": 1.0
+        },
+        {
+          "w": "mai",
+          "start": 69.472,
+          "end": 69.7,
+          "conf": 1.0
+        },
+        {
+          "w": "per",
+          "start": 69.7,
+          "end": 69.88,
+          "conf": 1.0
+        },
+        {
+          "w": "me:",
+          "start": 69.88,
+          "end": 69.98,
+          "conf": 1.0
+        },
+        {
+          "w": "è",
+          "start": 69.98,
+          "end": 70.1,
+          "conf": 0.63
+        },
+        {
+          "w": "un",
+          "start": 70.1,
+          "end": 70.18,
+          "conf": 0.97
+        },
+        {
+          "w": "registro,",
+          "start": 70.18,
+          "end": 70.54,
+          "conf": 1.0
+        },
+        {
+          "w": "non",
+          "start": 70.54,
+          "end": 70.82,
+          "conf": 1.0
+        },
+        {
+          "w": "un",
+          "start": 70.82,
+          "end": 70.92,
+          "conf": 1.0
+        },
+        {
+          "w": "ricatto",
+          "start": 70.92,
+          "end": 71.882,
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "i": 30,
+      "text": "futuro autocratico",
+      "start": 72.256,
+      "end": 74.02,
+      "words": [
+        {
+          "w": "futuro",
+          "start": 72.256,
+          "end": 73.204,
+          "conf": 0.53
+        },
+        {
+          "w": "autocratico",
+          "start": 73.204,
+          "end": 74.02,
+          "conf": 0.58
+        }
+      ]
+    },
+    {
+      "i": 31,
+      "text": "futuro autocratico",
+      "start": 74.02,
+      "end": 76.721,
+      "words": [
+        {
+          "w": "futuro",
+          "start": 74.02,
+          "end": 75.64,
+          "conf": 0.47
+        },
+        {
+          "w": "autocratico",
+          "start": 75.64,
+          "end": 76.721,
+          "conf": 0.62
+        }
+      ]
+    },
+    {
+      "i": 32,
+      "text": "Il futuro è automatico.",
+      "start": 80.382,
+      "end": 82.842,
+      "words": [
+        {
+          "w": "Il",
+          "start": 80.382,
+          "end": 80.527,
+          "conf": 0.54
+        },
+        {
+          "w": "futuro",
+          "start": 80.527,
+          "end": 81.02,
+          "conf": 0.74
+        },
+        {
+          "w": "è",
+          "start": 81.02,
+          "end": 81.08,
+          "conf": 0.73
+        },
+        {
+          "w": "automatico.",
+          "start": 81.08,
+          "end": 82.842,
+          "conf": 0.77
+        }
+      ]
+    }
+  ],
+  "extras": [
+    {
+      "start": 76.85,
+      "end": 78.51,
+      "desc": "unlisted vocal (backing vocal / ad-lib / breath)"
+    }
+  ],
+  "notes": "Timeline = gapless mp3 decode (same as data/audio.json); Demucs ran on that decode, so the stems need no shift. Method: (1) CTC emissions (20 ms frames) of the Demucs vocal stem from torchaudio MMS_FA (multilingual) and wav2vec2-large-lv60k-960h, each on the mono sum and on the left and right channels, fused as a probability mixture; (2) one global constrained Viterbi forced alignment of every line with a garbage 'star' token between lines; the Italian lyric is aligned with accents stripped and a few phonetic spellings (pron.py: F24, password, phishing); (3) signal refinement per unit on the vocal stem (rest onset, spectral flux onset, fricative start; ends at the next word when legato, else where the voice drops 15 dB); (4) cross-check against mlx-whisper large-v3-turbo (language it) word timestamps and the individual models/channels. Where Suno sang something other than the written lyric the source follows the singing: one 'Follia!' instead of two after 'qualcuno?', and the ad-lib 'futuro autocratico' twice after the break. conf: 0.35 + agreement of the independent alignments (<=60 ms) + CTC posterior + Whisper agreement. 'syl' = start/end of each spelled part."
+}

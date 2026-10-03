@@ -1,0 +1,2073 @@
+[
+ {
+  "file": "earth/epic-europe-africa-orig.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "photo",
+  "desc": "Full Earth disc from DSCOVR/EPIC (1.5 million km): Europe, Mediterranean and Africa, Italy upper centre, real clouds",
+  "use": "open / italia: the orbit shot before the zoom",
+  "credit": "NASA Earth Observatory — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Africa_and_Europe_from_a_Million_Miles_Away_(19931748669).jpg"
+ },
+ {
+  "file": "earth/epic-europe-africa-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "photo-grey",
+  "desc": "Full Earth disc from DSCOVR/EPIC (1.5 million km): Europe, Mediterranean and Africa, Italy upper centre, real clouds",
+  "use": "open / italia: the orbit shot before the zoom",
+  "credit": "NASA Earth Observatory — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Africa_and_Europe_from_a_Million_Miles_Away_(19931748669).jpg"
+ },
+ {
+  "file": "earth/black-marble-europe-orig.jpg",
+  "w": 3840,
+  "h": 3840,
+  "kind": "photo",
+  "desc": "NASA Black Marble night-lights globe: Europe, Africa, Middle East; Italy lit at upper left",
+  "use": "italia: night version of the orbit",
+  "credit": "NASA Earth Observatory — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Black_Marble_-_Africa,_Europe,_and_the_Middle_East_(8247962102).jpg"
+ },
+ {
+  "file": "earth/black-marble-europe-grey.jpg",
+  "w": 3840,
+  "h": 3840,
+  "kind": "photo-grey",
+  "desc": "NASA Black Marble night-lights globe: Europe, Africa, Middle East; Italy lit at upper left",
+  "use": "italia: night version of the orbit",
+  "credit": "NASA Earth Observatory — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Black_Marble_-_Africa,_Europe,_and_the_Middle_East_(8247962102).jpg"
+ },
+ {
+  "file": "earth/iss-italy-night-a-orig.jpg",
+  "w": 3840,
+  "h": 2556,
+  "kind": "photo",
+  "desc": "ISS-47 photo: Italy at night from orbit, oblique with the limb and blue atmosphere, whole boot and Sicily",
+  "use": "italia / open: night orbit establishing shot",
+  "credit": "NASA — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:ISS-47_Italy_night_view.jpg"
+ },
+ {
+  "file": "earth/iss-italy-night-a-grey.jpg",
+  "w": 3840,
+  "h": 2556,
+  "kind": "photo-grey",
+  "desc": "ISS-47 photo: Italy at night from orbit, oblique with the limb and blue atmosphere, whole boot and Sicily",
+  "use": "italia / open: night orbit establishing shot",
+  "credit": "NASA — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:ISS-47_Italy_night_view.jpg"
+ },
+ {
+  "file": "earth/iss-italy-night-b-orig.jpg",
+  "w": 3840,
+  "h": 2555,
+  "kind": "photo",
+  "desc": "ISS-40 photo: central and southern Italy and Sicily at night, oblique, black sky",
+  "use": "italia",
+  "credit": "NASA — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:ISS-40_Night_View_of_Italy_(1).jpg"
+ },
+ {
+  "file": "earth/iss-italy-night-b-grey.jpg",
+  "w": 3840,
+  "h": 2555,
+  "kind": "photo-grey",
+  "desc": "ISS-40 photo: central and southern Italy and Sicily at night, oblique, black sky",
+  "use": "italia",
+  "credit": "NASA — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:ISS-40_Night_View_of_Italy_(1).jpg"
+ },
+ {
+  "file": "earth/modis-italy-orig.jpg",
+  "w": 1597,
+  "h": 1309,
+  "kind": "photo",
+  "desc": "Terra MODIS true-colour image: all of Italy, Alps to Sicily, clear sky",
+  "use": "italia: daytime map plate",
+  "credit": "MODIS Land Rapid Response Team, NASA GSFC — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Late_Summer_in_Italy_(MODIS_2025-09-21).jpg"
+ },
+ {
+  "file": "earth/modis-italy-grey.jpg",
+  "w": 1597,
+  "h": 1309,
+  "kind": "photo-grey",
+  "desc": "Terra MODIS true-colour image: all of Italy, Alps to Sicily, clear sky",
+  "use": "italia: daytime map plate",
+  "credit": "MODIS Land Rapid Response Team, NASA GSFC — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Late_Summer_in_Italy_(MODIS_2025-09-21).jpg"
+ },
+ {
+  "file": "earth/rome-aerial-termini-orig.jpg",
+  "w": 3264,
+  "h": 2448,
+  "kind": "photo",
+  "desc": "Oblique aerial photo of central Rome from a plane, Termini station lower left, the Esquilino/Castro Pretorio grid; the Palazzo delle Finanze area is in frame (not individually identified)",
+  "use": "zoom: last real-photo step between the satellite levels and the facade",
+  "credit": "seier+seier — CC BY 2.0 — Wikimedia Commons",
+  "license": "CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Roma_dall%27alto_giugno_2005.jpg"
+ },
+ {
+  "file": "earth/rome-aerial-termini-grey.jpg",
+  "w": 3264,
+  "h": 2448,
+  "kind": "photo-grey",
+  "desc": "Oblique aerial photo of central Rome from a plane, Termini station lower left, the Esquilino/Castro Pretorio grid; the Palazzo delle Finanze area is in frame (not individually identified)",
+  "use": "zoom: last real-photo step between the satellite levels and the facade",
+  "credit": "seier+seier — CC BY 2.0 — Wikimedia Commons",
+  "license": "CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Roma_dall%27alto_giugno_2005.jpg"
+ },
+ {
+  "file": "palazzo-finanze-front-orig.jpg",
+  "w": 4000,
+  "h": 3000,
+  "kind": "photo",
+  "desc": "Palazzo delle Finanze (Ministero dell’Economia e delle Finanze), Via XX Settembre, Rome: frontal facade, blue sky, parked cars",
+  "use": "zoom: final close-up; pile/follia: the monument of bureaucracy",
+  "credit": "Nicholas Frisardi — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Palazzo_delle_Finanze_-_panoramio.jpg"
+ },
+ {
+  "file": "palazzo-finanze-front-grey.jpg",
+  "w": 4000,
+  "h": 3000,
+  "kind": "photo-grey",
+  "desc": "Palazzo delle Finanze (Ministero dell’Economia e delle Finanze), Via XX Settembre, Rome: frontal facade, blue sky, parked cars",
+  "use": "zoom: final close-up; pile/follia: the monument of bureaucracy",
+  "credit": "Nicholas Frisardi — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Palazzo_delle_Finanze_-_panoramio.jpg"
+ },
+ {
+  "file": "palazzo-finanze-front-cut.png",
+  "w": 1600,
+  "h": 976,
+  "kind": "cutout",
+  "desc": "Palazzo delle Finanze (Ministero dell’Economia e delle Finanze), Via XX Settembre, Rome: frontal facade, blue sky, parked cars",
+  "use": "zoom: final close-up; pile/follia: the monument of bureaucracy",
+  "credit": "Nicholas Frisardi — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Palazzo_delle_Finanze_-_panoramio.jpg"
+ },
+ {
+  "file": "palazzo-finanze-front-cut-grey.png",
+  "w": 2048,
+  "h": 1249,
+  "kind": "cutout-grey",
+  "desc": "Palazzo delle Finanze (Ministero dell’Economia e delle Finanze), Via XX Settembre, Rome: frontal facade, blue sky, parked cars",
+  "use": "zoom: final close-up; pile/follia: the monument of bureaucracy",
+  "credit": "Nicholas Frisardi — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Palazzo_delle_Finanze_-_panoramio.jpg"
+ },
+ {
+  "file": "palazzo-finanze-front-b-orig.jpg",
+  "w": 3072,
+  "h": 1728,
+  "kind": "photo",
+  "desc": "Palazzo delle Finanze, Rome: frontal facade, wider, entrance canopy, street in foreground",
+  "use": "zoom final / follia",
+  "credit": "Ricardalovesmonuments — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Palazzo_delle_Finanze_(Rome).jpg"
+ },
+ {
+  "file": "palazzo-finanze-front-b-grey.jpg",
+  "w": 3072,
+  "h": 1728,
+  "kind": "photo-grey",
+  "desc": "Palazzo delle Finanze, Rome: frontal facade, wider, entrance canopy, street in foreground",
+  "use": "zoom final / follia",
+  "credit": "Ricardalovesmonuments — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Palazzo_delle_Finanze_(Rome).jpg"
+ },
+ {
+  "file": "palazzo-finanze-1890-orig.jpg",
+  "w": 2673,
+  "h": 2029,
+  "kind": "photo",
+  "desc": "Palazzo delle Finanze, Rome, period photo-engraving from “Roma italiana, 1870-1895”",
+  "use": "pile: gerontocrazia (the old state)",
+  "credit": "Emma Perodi — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Ministero_delle_Finanze_-_Roma_italiana,_1870-1895_(page_285_crop).jpg"
+ },
+ {
+  "file": "palazzo-finanze-1890-grey.jpg",
+  "w": 2673,
+  "h": 2029,
+  "kind": "photo-grey",
+  "desc": "Palazzo delle Finanze, Rome, period photo-engraving from “Roma italiana, 1870-1895”",
+  "use": "pile: gerontocrazia (the old state)",
+  "credit": "Emma Perodi — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Ministero_delle_Finanze_-_Roma_italiana,_1870-1895_(page_285_crop).jpg"
+ },
+ {
+  "file": "palazzo-finanze-cortile-orig.jpg",
+  "w": 1600,
+  "h": 1200,
+  "kind": "photo",
+  "desc": "Courtyard of the Palazzo delle Finanze, Rome",
+  "use": "pile / follia background",
+  "credit": "Groucho85 — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Ministero_dell%27Economia_e_delle_Finanze.jpg"
+ },
+ {
+  "file": "palazzo-finanze-cortile-grey.jpg",
+  "w": 1600,
+  "h": 1200,
+  "kind": "photo-grey",
+  "desc": "Courtyard of the Palazzo delle Finanze, Rome",
+  "use": "pile / follia background",
+  "credit": "Groucho85 — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Ministero_dell%27Economia_e_delle_Finanze.jpg"
+ },
+ {
+  "file": "via-xx-settembre-orig.jpg",
+  "w": 3072,
+  "h": 2048,
+  "kind": "photo",
+  "desc": "Via XX Settembre, Rome, from Piazza San Bernardo toward the ministries",
+  "use": "zoom: street-level arrival",
+  "credit": "Szilas — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Via_XX_Settembre_from_Piazza_San_Bernardo.jpg"
+ },
+ {
+  "file": "via-xx-settembre-grey.jpg",
+  "w": 3072,
+  "h": 2048,
+  "kind": "photo-grey",
+  "desc": "Via XX Settembre, Rome, from Piazza San Bernardo toward the ministries",
+  "use": "zoom: street-level arrival",
+  "credit": "Szilas — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Via_XX_Settembre_from_Piazza_San_Bernardo.jpg"
+ },
+ {
+  "file": "agenzia-entrate-milano-orig.jpg",
+  "w": 3072,
+  "h": 2245,
+  "kind": "photo",
+  "desc": "Agenzia delle Entrate building, Milan (corner of Via Manin / Via Tarchetti): monumental 1930s block",
+  "use": "pile: “sei portali” / cartella; follia",
+  "credit": "Kaitu — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Milano_Palazzo_Agenzia_delle_entrate,_angolo_Manin_-_Via_Iginio_Ugo_Tarchetti.jpg"
+ },
+ {
+  "file": "agenzia-entrate-milano-grey.jpg",
+  "w": 3072,
+  "h": 2245,
+  "kind": "photo-grey",
+  "desc": "Agenzia delle Entrate building, Milan (corner of Via Manin / Via Tarchetti): monumental 1930s block",
+  "use": "pile: “sei portali” / cartella; follia",
+  "credit": "Kaitu — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Milano_Palazzo_Agenzia_delle_entrate,_angolo_Manin_-_Via_Iginio_Ugo_Tarchetti.jpg"
+ },
+ {
+  "file": "agenzia-entrate-milano-cut.png",
+  "w": 1600,
+  "h": 1104,
+  "kind": "cutout",
+  "desc": "Agenzia delle Entrate building, Milan (corner of Via Manin / Via Tarchetti): monumental 1930s block",
+  "use": "pile: “sei portali” / cartella; follia",
+  "credit": "Kaitu — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Milano_Palazzo_Agenzia_delle_entrate,_angolo_Manin_-_Via_Iginio_Ugo_Tarchetti.jpg"
+ },
+ {
+  "file": "agenzia-entrate-milano-cut-grey.png",
+  "w": 2048,
+  "h": 1413,
+  "kind": "cutout-grey",
+  "desc": "Agenzia delle Entrate building, Milan (corner of Via Manin / Via Tarchetti): monumental 1930s block",
+  "use": "pile: “sei portali” / cartella; follia",
+  "credit": "Kaitu — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Milano_Palazzo_Agenzia_delle_entrate,_angolo_Manin_-_Via_Iginio_Ugo_Tarchetti.jpg"
+ },
+ {
+  "file": "agenzia-entrate-aosta-orig.jpg",
+  "w": 3072,
+  "h": 1834,
+  "kind": "photo",
+  "desc": "Agenzia delle Entrate office, Aosta: entrance with the bilingual building sign “Agenzia delle Entrate / Agence des impôts”, flags, parked cars",
+  "use": "pile: cartella esattoriale beat; queue",
+  "credit": "Tenam2 — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Agence_des_%C3%AEmpots_rue_Trottechien-Aoste.JPG"
+ },
+ {
+  "file": "agenzia-entrate-aosta-grey.jpg",
+  "w": 3072,
+  "h": 1834,
+  "kind": "photo-grey",
+  "desc": "Agenzia delle Entrate office, Aosta: entrance with the bilingual building sign “Agenzia delle Entrate / Agence des impôts”, flags, parked cars",
+  "use": "pile: cartella esattoriale beat; queue",
+  "credit": "Tenam2 — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Agence_des_%C3%AEmpots_rue_Trottechien-Aoste.JPG"
+ },
+ {
+  "file": "posta-piazza-bologna-orig.jpg",
+  "w": 2679,
+  "h": 972,
+  "kind": "photo",
+  "desc": "Post office of Piazza Bologna, Rome (Ridolfi, 1930s rationalist curved facade), wide panorama",
+  "use": "queue: “fila” establishing shot",
+  "credit": "Blackcat — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Piazza_Bologna_ufficio_postale.jpg"
+ },
+ {
+  "file": "posta-piazza-bologna-grey.jpg",
+  "w": 2679,
+  "h": 972,
+  "kind": "photo-grey",
+  "desc": "Post office of Piazza Bologna, Rome (Ridolfi, 1930s rationalist curved facade), wide panorama",
+  "use": "queue: “fila” establishing shot",
+  "credit": "Blackcat — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Piazza_Bologna_ufficio_postale.jpg"
+ },
+ {
+  "file": "posta-piazza-bologna-cut.png",
+  "w": 1600,
+  "h": 441,
+  "kind": "cutout",
+  "desc": "Post office of Piazza Bologna, Rome (Ridolfi, 1930s rationalist curved facade), wide panorama",
+  "use": "queue: “fila” establishing shot",
+  "credit": "Blackcat — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Piazza_Bologna_ufficio_postale.jpg"
+ },
+ {
+  "file": "posta-piazza-bologna-cut-grey.png",
+  "w": 2048,
+  "h": 564,
+  "kind": "cutout-grey",
+  "desc": "Post office of Piazza Bologna, Rome (Ridolfi, 1930s rationalist curved facade), wide panorama",
+  "use": "queue: “fila” establishing shot",
+  "credit": "Blackcat — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Piazza_Bologna_ufficio_postale.jpg"
+ },
+ {
+  "file": "posta-ostia-storica-orig.jpg",
+  "w": 1400,
+  "h": 877,
+  "kind": "photo",
+  "desc": "Historic photo of the Ostia post office (rationalist, 1930s), sepia",
+  "use": "queue / pile: old-state texture",
+  "credit": "unknown author (uploaded by Indeciso42 at it.wikipedia) — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:UFFICIOPOSTAOSTIA.jpg"
+ },
+ {
+  "file": "posta-ostia-storica-grey.jpg",
+  "w": 1400,
+  "h": 877,
+  "kind": "photo-grey",
+  "desc": "Historic photo of the Ostia post office (rationalist, 1930s), sepia",
+  "use": "queue / pile: old-state texture",
+  "credit": "unknown author (uploaded by Indeciso42 at it.wikipedia) — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:UFFICIOPOSTAOSTIA.jpg"
+ },
+ {
+  "file": "archivio-pescia-orig.jpg",
+  "w": 3072,
+  "h": 2150,
+  "kind": "photo",
+  "desc": "State Archive of Pescia: wooden shelves with iron grilles full of old paper bundles (faldoni)",
+  "use": "pile: gerontocrazia; follia: paper wall",
+  "credit": "Sailko — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Archivio_di_stato_di_pescia_(sezione_di_pt),_interno,_scaffali_con_faldoni_01.jpg"
+ },
+ {
+  "file": "archivio-pescia-grey.jpg",
+  "w": 3072,
+  "h": 2150,
+  "kind": "photo-grey",
+  "desc": "State Archive of Pescia: wooden shelves with iron grilles full of old paper bundles (faldoni)",
+  "use": "pile: gerontocrazia; follia: paper wall",
+  "credit": "Sailko — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Archivio_di_stato_di_pescia_(sezione_di_pt),_interno,_scaffali_con_faldoni_01.jpg"
+ },
+ {
+  "file": "archivio-palermo-registri-orig.jpg",
+  "w": 3061,
+  "h": 2296,
+  "kind": "photo",
+  "desc": "Historic Municipal Archive of Palermo: shelves of bound registers, spines peeling",
+  "use": "pile: ledger/protocol register (gerontocrazia)",
+  "credit": "Alessandro Vitali — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Libri_Archivio_Storico_Comunale_di_Palermo,_dettaglio.jpg"
+ },
+ {
+  "file": "archivio-palermo-registri-grey.jpg",
+  "w": 3061,
+  "h": 2296,
+  "kind": "photo-grey",
+  "desc": "Historic Municipal Archive of Palermo: shelves of bound registers, spines peeling",
+  "use": "pile: ledger/protocol register (gerontocrazia)",
+  "credit": "Alessandro Vitali — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Libri_Archivio_Storico_Comunale_di_Palermo,_dettaglio.jpg"
+ },
+ {
+  "file": "archivio-palermo-sala-orig.jpg",
+  "w": 3072,
+  "h": 2048,
+  "kind": "photo",
+  "desc": "Historic Municipal Archive of Palermo: long hall, floor-to-ceiling shelves of registers, chequered floor, display cases",
+  "use": "pile / follia / italia (“l’Italia lenta”, slow push-in)",
+  "credit": "EnricoRubicondo — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Aula_Archivio_Storico_Comunale_di_Palermo_1.tif"
+ },
+ {
+  "file": "archivio-palermo-sala-grey.jpg",
+  "w": 3072,
+  "h": 2048,
+  "kind": "photo-grey",
+  "desc": "Historic Municipal Archive of Palermo: long hall, floor-to-ceiling shelves of registers, chequered floor, display cases",
+  "use": "pile / follia / italia (“l’Italia lenta”, slow push-in)",
+  "credit": "EnricoRubicondo — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Aula_Archivio_Storico_Comunale_di_Palermo_1.tif"
+ },
+ {
+  "file": "archivio-serravalle-orig.jpg",
+  "w": 1920,
+  "h": 2560,
+  "kind": "photo",
+  "desc": "Municipal archive of Serravalle Pistoiese: narrow aisle between metal shelves of archive boxes and binders",
+  "use": "queue: “scadenze sparse in mille posti”",
+  "credit": "Alexmar983 — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:2018-09-08_Interno_Archivio_Storico_Comunale_(Serravalle_Pistoiese)_01.jpg"
+ },
+ {
+  "file": "archivio-serravalle-grey.jpg",
+  "w": 1920,
+  "h": 2560,
+  "kind": "photo-grey",
+  "desc": "Municipal archive of Serravalle Pistoiese: narrow aisle between metal shelves of archive boxes and binders",
+  "use": "queue: “scadenze sparse in mille posti”",
+  "credit": "Alexmar983 — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:2018-09-08_Interno_Archivio_Storico_Comunale_(Serravalle_Pistoiese)_01.jpg"
+ },
+ {
+  "file": "ufficio-monti-1963-orig.jpg",
+  "w": 1280,
+  "h": 930,
+  "kind": "photo",
+  "desc": "Paolo Monti, Milan 1963: office interior with wall unit of binders, wooden cabinets (B/W)",
+  "use": "pile / italia: old Italian office",
+  "credit": "Paolo Monti — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Paolo_Monti_-_Servizio_fotografico_(Milano,_1963)_-_BEIC_6343392.jpg"
+ },
+ {
+  "file": "ufficio-monti-1963-grey.jpg",
+  "w": 1280,
+  "h": 930,
+  "kind": "photo-grey",
+  "desc": "Paolo Monti, Milan 1963: office interior with wall unit of binders, wooden cabinets (B/W)",
+  "use": "pile / italia: old Italian office",
+  "credit": "Paolo Monti — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Paolo_Monti_-_Servizio_fotografico_(Milano,_1963)_-_BEIC_6343392.jpg"
+ },
+ {
+  "file": "ufficio-monti-corridoio-orig.jpg",
+  "w": 1103,
+  "h": 1280,
+  "kind": "photo",
+  "desc": "Paolo Monti: office corridor with glass partitions (B/W)",
+  "use": "queue / italia",
+  "credit": "Paolo Monti — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Paolo_Monti_-_Servizio_fotografico_-_BEIC_6355465.jpg"
+ },
+ {
+  "file": "ufficio-monti-corridoio-grey.jpg",
+  "w": 1103,
+  "h": 1280,
+  "kind": "photo-grey",
+  "desc": "Paolo Monti: office corridor with glass partitions (B/W)",
+  "use": "queue / italia",
+  "credit": "Paolo Monti — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Paolo_Monti_-_Servizio_fotografico_-_BEIC_6355465.jpg"
+ },
+ {
+  "file": "zerbino-orig.jpg",
+  "w": 3072,
+  "h": 2048,
+  "kind": "photo",
+  "desc": "Coir doormat seen from above, cracked down the middle, on terracotta tiles",
+  "use": "queue: “busta verde sullo zerbino” (top shot; draw the green envelope on it)",
+  "credit": "Javier Perez Montes — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Broken_doormat_1.jpg"
+ },
+ {
+  "file": "zerbino-grey.jpg",
+  "w": 3072,
+  "h": 2048,
+  "kind": "photo-grey",
+  "desc": "Coir doormat seen from above, cracked down the middle, on terracotta tiles",
+  "use": "queue: “busta verde sullo zerbino” (top shot; draw the green envelope on it)",
+  "credit": "Javier Perez Montes — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Broken_doormat_1.jpg"
+ },
+ {
+  "file": "zerbino-cut.png",
+  "w": 1600,
+  "h": 876,
+  "kind": "cutout",
+  "desc": "Coir doormat seen from above, cracked down the middle, on terracotta tiles",
+  "use": "queue: “busta verde sullo zerbino” (top shot; draw the green envelope on it)",
+  "credit": "Javier Perez Montes — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Broken_doormat_1.jpg"
+ },
+ {
+  "file": "zerbino-cut-grey.png",
+  "w": 2048,
+  "h": 1121,
+  "kind": "cutout-grey",
+  "desc": "Coir doormat seen from above, cracked down the middle, on terracotta tiles",
+  "use": "queue: “busta verde sullo zerbino” (top shot; draw the green envelope on it)",
+  "credit": "Javier Perez Montes — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Broken_doormat_1.jpg"
+ },
+ {
+  "file": "fila-napoli-1973-orig.jpg",
+  "w": 603,
+  "h": 806,
+  "kind": "photo",
+  "desc": "Crowd queueing in a Naples street, 1973, seen from above (B/W, small)",
+  "use": "queue: “fila”",
+  "credit": "unknown author — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Persone_in_fila_per_la_vaccinazione_(Napoli,_1973).png"
+ },
+ {
+  "file": "fila-napoli-1973-grey.jpg",
+  "w": 603,
+  "h": 806,
+  "kind": "photo-grey",
+  "desc": "Crowd queueing in a Naples street, 1973, seen from above (B/W, small)",
+  "use": "queue: “fila”",
+  "credit": "unknown author — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Persone_in_fila_per_la_vaccinazione_(Napoli,_1973).png"
+ },
+ {
+  "file": "faldoni-scaffale-orig.jpg",
+  "w": 3072,
+  "h": 2304,
+  "kind": "photo",
+  "desc": "Shelf of lever-arch files (handwritten German labels)",
+  "use": "queue / follia: paper wall texture (labels are German, keep small or blurred)",
+  "credit": "Mattes — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Aktenordner,_stehend.jpg"
+ },
+ {
+  "file": "faldoni-scaffale-grey.jpg",
+  "w": 3072,
+  "h": 2304,
+  "kind": "photo-grey",
+  "desc": "Shelf of lever-arch files (handwritten German labels)",
+  "use": "queue / follia: paper wall texture (labels are German, keep small or blurred)",
+  "credit": "Mattes — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Aktenordner,_stehend.jpg"
+ },
+ {
+  "file": "eliminacode-orig.jpg",
+  "w": 3072,
+  "h": 2048,
+  "kind": "photo",
+  "desc": "Red Turn-O-Matic queue-ticket dispenser on a wall, ticket coming out",
+  "use": "queue: “numerino” (ticket machine)",
+  "credit": "W.carter — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Turn-O-Matic_ticket_machine_in_Brastad_Bageri.jpg"
+ },
+ {
+  "file": "eliminacode-grey.jpg",
+  "w": 3072,
+  "h": 2048,
+  "kind": "photo-grey",
+  "desc": "Red Turn-O-Matic queue-ticket dispenser on a wall, ticket coming out",
+  "use": "queue: “numerino” (ticket machine)",
+  "credit": "W.carter — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Turn-O-Matic_ticket_machine_in_Brastad_Bageri.jpg"
+ },
+ {
+  "file": "eliminacode-cut.png",
+  "w": 1600,
+  "h": 1188,
+  "kind": "cutout",
+  "desc": "Red Turn-O-Matic queue-ticket dispenser on a wall, ticket coming out",
+  "use": "queue: “numerino” (ticket machine)",
+  "credit": "W.carter — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Turn-O-Matic_ticket_machine_in_Brastad_Bageri.jpg"
+ },
+ {
+  "file": "eliminacode-cut-grey.png",
+  "w": 2048,
+  "h": 1520,
+  "kind": "cutout-grey",
+  "desc": "Red Turn-O-Matic queue-ticket dispenser on a wall, ticket coming out",
+  "use": "queue: “numerino” (ticket machine)",
+  "credit": "W.carter — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Turn-O-Matic_ticket_machine_in_Brastad_Bageri.jpg"
+ },
+ {
+  "file": "eliminacode-m90-orig.jpg",
+  "w": 1593,
+  "h": 1584,
+  "kind": "photo",
+  "desc": "Turn-O-Matic M90 ticket dispenser (red/grey) on pegboard",
+  "use": "queue: “numerino”",
+  "credit": "Holger.Ellgaard — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Turn_o_matic_M90.jpg"
+ },
+ {
+  "file": "eliminacode-m90-grey.jpg",
+  "w": 1593,
+  "h": 1584,
+  "kind": "photo-grey",
+  "desc": "Turn-O-Matic M90 ticket dispenser (red/grey) on pegboard",
+  "use": "queue: “numerino”",
+  "credit": "Holger.Ellgaard — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Turn_o_matic_M90.jpg"
+ },
+ {
+  "file": "eliminacode-m90-cut.png",
+  "w": 1184,
+  "h": 1486,
+  "kind": "cutout",
+  "desc": "Turn-O-Matic M90 ticket dispenser (red/grey) on pegboard",
+  "use": "queue: “numerino”",
+  "credit": "Holger.Ellgaard — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Turn_o_matic_M90.jpg"
+ },
+ {
+  "file": "eliminacode-m90-cut-grey.png",
+  "w": 1184,
+  "h": 1486,
+  "kind": "cutout-grey",
+  "desc": "Turn-O-Matic M90 ticket dispenser (red/grey) on pegboard",
+  "use": "queue: “numerino”",
+  "credit": "Holger.Ellgaard — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Turn_o_matic_M90.jpg"
+ },
+ {
+  "file": "timbri-carosello-orig.jpg",
+  "w": 1600,
+  "h": 1200,
+  "kind": "photo",
+  "desc": "Rotating rack of wooden rubber stamps (German postal labels on the stamps)",
+  "use": "open / pile: stamp hits",
+  "credit": "Carl Steinbeisser — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Stempelkarussel.JPG"
+ },
+ {
+  "file": "timbri-carosello-grey.jpg",
+  "w": 1600,
+  "h": 1200,
+  "kind": "photo-grey",
+  "desc": "Rotating rack of wooden rubber stamps (German postal labels on the stamps)",
+  "use": "open / pile: stamp hits",
+  "credit": "Carl Steinbeisser — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Stempelkarussel.JPG"
+ },
+ {
+  "file": "timbri-carosello-cut.png",
+  "w": 1042,
+  "h": 819,
+  "kind": "cutout",
+  "desc": "Rotating rack of wooden rubber stamps (German postal labels on the stamps)",
+  "use": "open / pile: stamp hits",
+  "credit": "Carl Steinbeisser — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Stempelkarussel.JPG"
+ },
+ {
+  "file": "timbri-carosello-cut-grey.png",
+  "w": 1042,
+  "h": 819,
+  "kind": "cutout-grey",
+  "desc": "Rotating rack of wooden rubber stamps (German postal labels on the stamps)",
+  "use": "open / pile: stamp hits",
+  "credit": "Carl Steinbeisser — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Stempelkarussel.JPG"
+ },
+ {
+  "file": "timbro-datario-orig.jpg",
+  "w": 1024,
+  "h": 768,
+  "kind": "photo",
+  "desc": "Self-inking date stamp (“AUG 17 2029”), seen from above",
+  "use": "queue: “timbro”",
+  "credit": "RandomKatze — CC0 — Wikimedia Commons",
+  "license": "CC0",
+  "source": "https://commons.wikimedia.org/wiki/File:Date_ink_stamp.jpg"
+ },
+ {
+  "file": "timbro-datario-grey.jpg",
+  "w": 1024,
+  "h": 768,
+  "kind": "photo-grey",
+  "desc": "Self-inking date stamp (“AUG 17 2029”), seen from above",
+  "use": "queue: “timbro”",
+  "credit": "RandomKatze — CC0 — Wikimedia Commons",
+  "license": "CC0",
+  "source": "https://commons.wikimedia.org/wiki/File:Date_ink_stamp.jpg"
+ },
+ {
+  "file": "timbro-datario-cut.png",
+  "w": 438,
+  "h": 501,
+  "kind": "cutout",
+  "desc": "Self-inking date stamp (“AUG 17 2029”), seen from above",
+  "use": "queue: “timbro”",
+  "credit": "RandomKatze — CC0 — Wikimedia Commons",
+  "license": "CC0",
+  "source": "https://commons.wikimedia.org/wiki/File:Date_ink_stamp.jpg"
+ },
+ {
+  "file": "timbro-datario-cut-grey.png",
+  "w": 438,
+  "h": 501,
+  "kind": "cutout-grey",
+  "desc": "Self-inking date stamp (“AUG 17 2029”), seen from above",
+  "use": "queue: “timbro”",
+  "credit": "RandomKatze — CC0 — Wikimedia Commons",
+  "license": "CC0",
+  "source": "https://commons.wikimedia.org/wiki/File:Date_ink_stamp.jpg"
+ },
+ {
+  "file": "timbro-numeratore-orig.jpg",
+  "w": 3072,
+  "h": 2304,
+  "kind": "photo",
+  "desc": "Numbering stamp with rotating bands on an ink pad",
+  "use": "queue: “timbro” / protocol numbers",
+  "credit": "Dvortygirl — CC BY 4.0 — Wikimedia Commons",
+  "license": "CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Rubber_stamp_IMG_20190427_113849721_HDR.jpg"
+ },
+ {
+  "file": "timbro-numeratore-grey.jpg",
+  "w": 3072,
+  "h": 2304,
+  "kind": "photo-grey",
+  "desc": "Numbering stamp with rotating bands on an ink pad",
+  "use": "queue: “timbro” / protocol numbers",
+  "credit": "Dvortygirl — CC BY 4.0 — Wikimedia Commons",
+  "license": "CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Rubber_stamp_IMG_20190427_113849721_HDR.jpg"
+ },
+ {
+  "file": "timbro-numeratore-cut.png",
+  "w": 1600,
+  "h": 1466,
+  "kind": "cutout",
+  "desc": "Numbering stamp with rotating bands on an ink pad",
+  "use": "queue: “timbro” / protocol numbers",
+  "credit": "Dvortygirl — CC BY 4.0 — Wikimedia Commons",
+  "license": "CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Rubber_stamp_IMG_20190427_113849721_HDR.jpg"
+ },
+ {
+  "file": "timbro-numeratore-cut-grey.png",
+  "w": 2048,
+  "h": 1877,
+  "kind": "cutout-grey",
+  "desc": "Numbering stamp with rotating bands on an ink pad",
+  "use": "queue: “timbro” / protocol numbers",
+  "credit": "Dvortygirl — CC BY 4.0 — Wikimedia Commons",
+  "license": "CC BY 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Rubber_stamp_IMG_20190427_113849721_HDR.jpg"
+ },
+ {
+  "file": "marca-da-bollo-orig.jpg",
+  "w": 498,
+  "h": 590,
+  "kind": "photo",
+  "desc": "Italian revenue stamp “Marca da bollo, centesimi uno” (19th century, Kingdom of Italy)",
+  "use": "pile: IMU/TARI/bollo beat",
+  "credit": "MHM55 — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Marca_da_bollo-centesimi_uno-r.jpg"
+ },
+ {
+  "file": "marca-da-bollo-grey.jpg",
+  "w": 498,
+  "h": 590,
+  "kind": "photo-grey",
+  "desc": "Italian revenue stamp “Marca da bollo, centesimi uno” (19th century, Kingdom of Italy)",
+  "use": "pile: IMU/TARI/bollo beat",
+  "credit": "MHM55 — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Marca_da_bollo-centesimi_uno-r.jpg"
+ },
+ {
+  "file": "marca-da-bollo-cut.png",
+  "w": 430,
+  "h": 523,
+  "kind": "cutout",
+  "desc": "Italian revenue stamp “Marca da bollo, centesimi uno” (19th century, Kingdom of Italy)",
+  "use": "pile: IMU/TARI/bollo beat",
+  "credit": "MHM55 — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Marca_da_bollo-centesimi_uno-r.jpg"
+ },
+ {
+  "file": "marca-da-bollo-cut-grey.png",
+  "w": 430,
+  "h": 523,
+  "kind": "cutout-grey",
+  "desc": "Italian revenue stamp “Marca da bollo, centesimi uno” (19th century, Kingdom of Italy)",
+  "use": "pile: IMU/TARI/bollo beat",
+  "credit": "MHM55 — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Marca_da_bollo-centesimi_uno-r.jpg"
+ },
+ {
+  "file": "marca-da-bollo-blocco-orig.jpg",
+  "w": 971,
+  "h": 1177,
+  "kind": "photo",
+  "desc": "Block of four “Marca da bollo centesimi uno” revenue stamps",
+  "use": "pile: bollo beat",
+  "credit": "MHM55 — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Marca_da_bollo-centesimi_uno-blocco_di_4-r.jpg"
+ },
+ {
+  "file": "marca-da-bollo-blocco-grey.jpg",
+  "w": 971,
+  "h": 1177,
+  "kind": "photo-grey",
+  "desc": "Block of four “Marca da bollo centesimi uno” revenue stamps",
+  "use": "pile: bollo beat",
+  "credit": "MHM55 — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Marca_da_bollo-centesimi_uno-blocco_di_4-r.jpg"
+ },
+ {
+  "file": "marca-da-bollo-blocco-cut.png",
+  "w": 913,
+  "h": 1130,
+  "kind": "cutout",
+  "desc": "Block of four “Marca da bollo centesimi uno” revenue stamps",
+  "use": "pile: bollo beat",
+  "credit": "MHM55 — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Marca_da_bollo-centesimi_uno-blocco_di_4-r.jpg"
+ },
+ {
+  "file": "marca-da-bollo-blocco-cut-grey.png",
+  "w": 913,
+  "h": 1130,
+  "kind": "cutout-grey",
+  "desc": "Block of four “Marca da bollo centesimi uno” revenue stamps",
+  "use": "pile: bollo beat",
+  "credit": "MHM55 — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Marca_da_bollo-centesimi_uno-blocco_di_4-r.jpg"
+ },
+ {
+  "file": "macchina-da-scrivere-orig.jpg",
+  "w": 2373,
+  "h": 1654,
+  "kind": "photo",
+  "desc": "Olivetti Lettera 22 typewriter, three-quarter view (MoMA)",
+  "use": "pile: gerontocrazia; follia",
+  "credit": "David Orban — CC BY 2.0 — Wikimedia Commons",
+  "license": "CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Olivetti_Lettera_22_at_the_MOMA.jpg"
+ },
+ {
+  "file": "macchina-da-scrivere-grey.jpg",
+  "w": 2373,
+  "h": 1654,
+  "kind": "photo-grey",
+  "desc": "Olivetti Lettera 22 typewriter, three-quarter view (MoMA)",
+  "use": "pile: gerontocrazia; follia",
+  "credit": "David Orban — CC BY 2.0 — Wikimedia Commons",
+  "license": "CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Olivetti_Lettera_22_at_the_MOMA.jpg"
+ },
+ {
+  "file": "macchina-da-scrivere-cut.png",
+  "w": 1600,
+  "h": 1261,
+  "kind": "cutout",
+  "desc": "Olivetti Lettera 22 typewriter, three-quarter view (MoMA)",
+  "use": "pile: gerontocrazia; follia",
+  "credit": "David Orban — CC BY 2.0 — Wikimedia Commons",
+  "license": "CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Olivetti_Lettera_22_at_the_MOMA.jpg"
+ },
+ {
+  "file": "macchina-da-scrivere-cut-grey.png",
+  "w": 1804,
+  "h": 1422,
+  "kind": "cutout-grey",
+  "desc": "Olivetti Lettera 22 typewriter, three-quarter view (MoMA)",
+  "use": "pile: gerontocrazia; follia",
+  "credit": "David Orban — CC BY 2.0 — Wikimedia Commons",
+  "license": "CC BY 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Olivetti_Lettera_22_at_the_MOMA.jpg"
+ },
+ {
+  "file": "macchina-da-scrivere-b-orig.jpg",
+  "w": 1542,
+  "h": 1514,
+  "kind": "photo",
+  "desc": "Olivetti Lettera 22 typewriter, frontal view",
+  "use": "pile / typed lyric line",
+  "credit": "Matrobriva — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Lettera_22_2.JPG"
+ },
+ {
+  "file": "macchina-da-scrivere-b-grey.jpg",
+  "w": 1542,
+  "h": 1514,
+  "kind": "photo-grey",
+  "desc": "Olivetti Lettera 22 typewriter, frontal view",
+  "use": "pile / typed lyric line",
+  "credit": "Matrobriva — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Lettera_22_2.JPG"
+ },
+ {
+  "file": "macchina-da-scrivere-b-cut.png",
+  "w": 1434,
+  "h": 1423,
+  "kind": "cutout",
+  "desc": "Olivetti Lettera 22 typewriter, frontal view",
+  "use": "pile / typed lyric line",
+  "credit": "Matrobriva — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Lettera_22_2.JPG"
+ },
+ {
+  "file": "macchina-da-scrivere-b-cut-grey.png",
+  "w": 1434,
+  "h": 1423,
+  "kind": "cutout-grey",
+  "desc": "Olivetti Lettera 22 typewriter, frontal view",
+  "use": "pile / typed lyric line",
+  "credit": "Matrobriva — Public domain — Wikimedia Commons",
+  "license": "Public domain",
+  "source": "https://commons.wikimedia.org/wiki/File:Lettera_22_2.JPG"
+ },
+ {
+  "file": "libro-mastro-orig.jpg",
+  "w": 2308,
+  "h": 2804,
+  "kind": "photo",
+  "desc": "Libro mastro (ledger) of 1561, Modena: leather binding with straps",
+  "use": "pile: “gerontocrazia” ledger",
+  "credit": "GJo — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Modena_-_Libro_Mastro_(1561).jpg"
+ },
+ {
+  "file": "libro-mastro-grey.jpg",
+  "w": 2308,
+  "h": 2804,
+  "kind": "photo-grey",
+  "desc": "Libro mastro (ledger) of 1561, Modena: leather binding with straps",
+  "use": "pile: “gerontocrazia” ledger",
+  "credit": "GJo — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Modena_-_Libro_Mastro_(1561).jpg"
+ },
+ {
+  "file": "libro-mastro-cut.png",
+  "w": 1309,
+  "h": 1600,
+  "kind": "cutout",
+  "desc": "Libro mastro (ledger) of 1561, Modena: leather binding with straps",
+  "use": "pile: “gerontocrazia” ledger",
+  "credit": "GJo — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Modena_-_Libro_Mastro_(1561).jpg"
+ },
+ {
+  "file": "libro-mastro-cut-grey.png",
+  "w": 1676,
+  "h": 2048,
+  "kind": "cutout-grey",
+  "desc": "Libro mastro (ledger) of 1561, Modena: leather binding with straps",
+  "use": "pile: “gerontocrazia” ledger",
+  "credit": "GJo — CC BY-SA 3.0 — Wikimedia Commons",
+  "license": "CC BY-SA 3.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Modena_-_Libro_Mastro_(1561).jpg"
+ },
+ {
+  "file": "pila-pratiche-orig.jpg",
+  "w": 2592,
+  "h": 1944,
+  "kind": "photo",
+  "desc": "Close-up of a thick stack of paper sheets and forms",
+  "use": "follia: paper wall texture",
+  "credit": "Niklas Bildhauer — CC BY-SA 2.0 — Wikimedia Commons",
+  "license": "CC BY-SA 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:FileStack.jpg"
+ },
+ {
+  "file": "pila-pratiche-grey.jpg",
+  "w": 2592,
+  "h": 1944,
+  "kind": "photo-grey",
+  "desc": "Close-up of a thick stack of paper sheets and forms",
+  "use": "follia: paper wall texture",
+  "credit": "Niklas Bildhauer — CC BY-SA 2.0 — Wikimedia Commons",
+  "license": "CC BY-SA 2.0",
+  "source": "https://commons.wikimedia.org/wiki/File:FileStack.jpg"
+ },
+ {
+  "file": "pila-pratiche-b-orig.jpg",
+  "w": 990,
+  "h": 1929,
+  "kind": "photo",
+  "desc": "Tall stack of paper files in a museum (Versicherungsmuseum)",
+  "use": "follia / italia: paper tower",
+  "credit": "CTHOE — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Aktenstapel-Versicherungsmuseum-CTH.JPG"
+ },
+ {
+  "file": "pila-pratiche-b-grey.jpg",
+  "w": 990,
+  "h": 1929,
+  "kind": "photo-grey",
+  "desc": "Tall stack of paper files in a museum (Versicherungsmuseum)",
+  "use": "follia / italia: paper tower",
+  "credit": "CTHOE — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Aktenstapel-Versicherungsmuseum-CTH.JPG"
+ },
+ {
+  "file": "pila-pratiche-b-cut.png",
+  "w": 370,
+  "h": 1557,
+  "kind": "cutout",
+  "desc": "Tall stack of paper files in a museum (Versicherungsmuseum)",
+  "use": "follia / italia: paper tower",
+  "credit": "CTHOE — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Aktenstapel-Versicherungsmuseum-CTH.JPG"
+ },
+ {
+  "file": "pila-pratiche-b-cut-grey.png",
+  "w": 370,
+  "h": 1557,
+  "kind": "cutout-grey",
+  "desc": "Tall stack of paper files in a museum (Versicherungsmuseum)",
+  "use": "follia / italia: paper tower",
+  "credit": "CTHOE — CC BY-SA 4.0 — Wikimedia Commons",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:Aktenstapel-Versicherungsmuseum-CTH.JPG"
+ },
+ {
+  "file": "earth/zoom-z03.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 3.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 3.0,
+   "texture_zoom": 3,
+   "m_per_px_center": 14563.1758,
+   "camera_altitude_m": 25829540.3,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 358.3
+  }
+ },
+ {
+  "file": "earth/zoom-z03.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 3.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 3.0,
+   "texture_zoom": 3,
+   "m_per_px_center": 14563.1758,
+   "camera_altitude_m": 25829540.3,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 358.3
+  }
+ },
+ {
+  "file": "earth/zoom-z03.5.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 3.5",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 3.5,
+   "texture_zoom": 4,
+   "m_per_px_center": 10297.7204,
+   "camera_altitude_m": 18264243.1,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 475.3
+  }
+ },
+ {
+  "file": "earth/zoom-z03.5-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 3.5",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 3.5,
+   "texture_zoom": 4,
+   "m_per_px_center": 10297.7204,
+   "camera_altitude_m": 18264243.1,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 475.3
+  }
+ },
+ {
+  "file": "earth/zoom-z04.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 4.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 4.0,
+   "texture_zoom": 4,
+   "m_per_px_center": 7281.5879,
+   "camera_altitude_m": 12914770.2,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 621.3
+  }
+ },
+ {
+  "file": "earth/zoom-z04.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 4.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 4.0,
+   "texture_zoom": 4,
+   "m_per_px_center": 7281.5879,
+   "camera_altitude_m": 12914770.2,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 621.3
+  }
+ },
+ {
+  "file": "earth/zoom-z04.5.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 4.5",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 4.5,
+   "texture_zoom": 5,
+   "m_per_px_center": 5148.8602,
+   "camera_altitude_m": 9132121.6,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 800.1
+  }
+ },
+ {
+  "file": "earth/zoom-z04.5-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 4.5",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 4.5,
+   "texture_zoom": 5,
+   "m_per_px_center": 5148.8602,
+   "camera_altitude_m": 9132121.6,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 800.1
+  }
+ },
+ {
+  "file": "earth/zoom-z05.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 5.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 5.0,
+   "texture_zoom": 5,
+   "m_per_px_center": 3640.794,
+   "camera_altitude_m": 6457385.1,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 1015.6
+  }
+ },
+ {
+  "file": "earth/zoom-z05.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 5.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 5.0,
+   "texture_zoom": 5,
+   "m_per_px_center": 3640.794,
+   "camera_altitude_m": 6457385.1,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 1015.6
+  }
+ },
+ {
+  "file": "earth/zoom-z05.5.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 5.5",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 5.5,
+   "texture_zoom": 6,
+   "m_per_px_center": 2574.4301,
+   "camera_altitude_m": 4566060.8,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 1272.0
+  }
+ },
+ {
+  "file": "earth/zoom-z05.5-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 5.5",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 5.5,
+   "texture_zoom": 6,
+   "m_per_px_center": 2574.4301,
+   "camera_altitude_m": 4566060.8,
+   "fov_deg": 60,
+   "earth_disc_radius_px": 1272.0
+  }
+ },
+ {
+  "file": "earth/zoom-z06.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 6.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 6.0,
+   "texture_zoom": 6,
+   "m_per_px_center": 1820.397,
+   "camera_altitude_m": 3228692.5,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z06.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 6.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 6.0,
+   "texture_zoom": 6,
+   "m_per_px_center": 1820.397,
+   "camera_altitude_m": 3228692.5,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z06.5.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 6.5",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 6.5,
+   "texture_zoom": 7,
+   "m_per_px_center": 1287.215,
+   "camera_altitude_m": 2283030.4,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z06.5-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 6.5",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 6.5,
+   "texture_zoom": 7,
+   "m_per_px_center": 1287.215,
+   "camera_altitude_m": 2283030.4,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z07.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 7.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 7.0,
+   "texture_zoom": 7,
+   "m_per_px_center": 910.1985,
+   "camera_altitude_m": 1614346.3,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z07.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 7.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 7.0,
+   "texture_zoom": 7,
+   "m_per_px_center": 910.1985,
+   "camera_altitude_m": 1614346.3,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z08.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 8.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 8.0,
+   "texture_zoom": 8,
+   "m_per_px_center": 455.0992,
+   "camera_altitude_m": 807173.1,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z08.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 8.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 8.0,
+   "texture_zoom": 8,
+   "m_per_px_center": 455.0992,
+   "camera_altitude_m": 807173.1,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z09.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 9.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 9.0,
+   "texture_zoom": 9,
+   "m_per_px_center": 227.5496,
+   "camera_altitude_m": 403586.6,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z09.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 9.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 9.0,
+   "texture_zoom": 9,
+   "m_per_px_center": 227.5496,
+   "camera_altitude_m": 403586.6,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z10.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 10.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 10.0,
+   "texture_zoom": 10,
+   "m_per_px_center": 113.7748,
+   "camera_altitude_m": 201793.3,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z10.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 10.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 10.0,
+   "texture_zoom": 10,
+   "m_per_px_center": 113.7748,
+   "camera_altitude_m": 201793.3,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z11.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 11.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 11.0,
+   "texture_zoom": 11,
+   "m_per_px_center": 56.8874,
+   "camera_altitude_m": 100896.6,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z11.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 11.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 11.0,
+   "texture_zoom": 11,
+   "m_per_px_center": 56.8874,
+   "camera_altitude_m": 100896.6,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z12.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 12.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 12.0,
+   "texture_zoom": 12,
+   "m_per_px_center": 28.4437,
+   "camera_altitude_m": 50448.3,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z12.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 12.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 12.0,
+   "texture_zoom": 12,
+   "m_per_px_center": 28.4437,
+   "camera_altitude_m": 50448.3,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z13.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 13.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 13.0,
+   "texture_zoom": 13,
+   "m_per_px_center": 14.2219,
+   "camera_altitude_m": 25224.2,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z13.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 13.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 13.0,
+   "texture_zoom": 13,
+   "m_per_px_center": 14.2219,
+   "camera_altitude_m": 25224.2,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z14.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 14.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 14.0,
+   "texture_zoom": 14,
+   "m_per_px_center": 7.1109,
+   "camera_altitude_m": 12612.1,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z14.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 14.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 14.0,
+   "texture_zoom": 14,
+   "m_per_px_center": 7.1109,
+   "camera_altitude_m": 12612.1,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z15.0.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 15.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 15.0,
+   "texture_zoom": 14,
+   "m_per_px_center": 3.5555,
+   "camera_altitude_m": 6306.0,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "earth/zoom-z15.0-grey.jpg",
+  "w": 2048,
+  "h": 2048,
+  "kind": "zoom-grey",
+  "desc": "Vertical camera over the Palazzo delle Finanze, Rome; Sentinel-2 cloudless 2016 rendered as a perspective view, zoom level 15.0",
+  "use": "zoom: orbit-to-Rome continuous zoom",
+  "credit": "Sentinel-2 cloudless 2016 by EOX IT Services GmbH (contains modified Copernicus Sentinel data 2016) — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://s2maps.eu",
+  "geo": {
+   "center_lat": 41.906237,
+   "center_lon": 12.497572,
+   "center_px": [
+    1024,
+    1024
+   ],
+   "zoom": 15.0,
+   "texture_zoom": 14,
+   "m_per_px_center": 3.5555,
+   "camera_altitude_m": 6306.0,
+   "fov_deg": 60,
+   "earth_disc_radius_px": null
+  }
+ },
+ {
+  "file": "geo/italia-regioni.geojson",
+  "w": null,
+  "h": null,
+  "kind": "geojson",
+  "desc": "20 Italian regions, ISTAT 2025 generalised boundaries, simplified (~400 m), lon/lat 4 decimals; props cod_reg, name",
+  "use": "italia / queue (“scadenze sparse in mille posti”)",
+  "credit": "ISTAT — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip (licence: https://www.istat.it/note-legali/)"
+ },
+ {
+  "file": "geo/italia-comuni.geojson",
+  "w": null,
+  "h": null,
+  "kind": "geojson",
+  "desc": "All 7,896 Italian comuni (1 Jan 2025) boundaries, simplified (~350 m), lon/lat 3 decimals; props id (ISTAT code), name, reg",
+  "use": "italia / queue (“scadenze sparse in mille posti”)",
+  "credit": "ISTAT — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip (licence: https://www.istat.it/note-legali/)"
+ },
+ {
+  "file": "geo/italia-comuni-centroidi.json",
+  "w": null,
+  "h": null,
+  "kind": "json",
+  "desc": "7,896 comuni as rows [istat_code, name, cod_reg, lon, lat, area_km2] — for the “7.896 comuni, 7.896 sportelli” dot visual",
+  "use": "italia / queue (“scadenze sparse in mille posti”)",
+  "credit": "ISTAT — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip (licence: https://www.istat.it/note-legali/)"
+ },
+ {
+  "file": "geo/italia-comuni-punti-svg.json",
+  "w": null,
+  "h": null,
+  "kind": "json",
+  "desc": "Same 7,896 comuni centroids pre-projected into the italia-*.svg viewBox (0 0 1000 1305.9), same order",
+  "use": "italia / queue (“scadenze sparse in mille posti”)",
+  "credit": "ISTAT — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip (licence: https://www.istat.it/note-legali/)"
+ },
+ {
+  "file": "geo/italia-regioni.svg",
+  "w": null,
+  "h": null,
+  "kind": "svg",
+  "desc": "Regions as stroked paths (id reg-NN, data-name), Web Mercator, viewBox 0 0 1000 1305.9",
+  "use": "italia / queue (“scadenze sparse in mille posti”)",
+  "credit": "ISTAT — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip (licence: https://www.istat.it/note-legali/)"
+ },
+ {
+  "file": "geo/italia-outline.svg",
+  "w": null,
+  "h": null,
+  "kind": "svg",
+  "desc": "Italy silhouette, one filled path (#0A0A0A), same viewBox/projection as italia-regioni.svg",
+  "use": "italia / queue (“scadenze sparse in mille posti”)",
+  "credit": "ISTAT — CC BY 4.0",
+  "license": "CC BY 4.0",
+  "source": "https://www.istat.it/storage/cartografia/confini_amministrativi/generalizzati/2025/Limiti01012025_g.zip (licence: https://www.istat.it/note-legali/)"
+ },
+ {
+  "file": "geo/svg-projection.json",
+  "w": null,
+  "h": null,
+  "kind": "json",
+  "desc": "Projection constants for the SVGs (x=(lonRad−X0)·k, y=(Y1−ln tan(π/4+latRad/2))·k) to place any lon/lat on them",
+  "use": "italia / queue (“scadenze sparse in mille posti”)",
+  "credit": "—",
+  "license": "—",
+  "source": "https://www.naturalearthdata.com"
+ },
+ {
+  "file": "geo/italia-outline-ne.geojson",
+  "w": null,
+  "h": null,
+  "kind": "geojson",
+  "desc": "Italy outline (admin-0) from Natural Earth 10m, simplified",
+  "use": "italia / queue (“scadenze sparse in mille posti”)",
+  "credit": "Natural Earth — public domain",
+  "license": "public domain",
+  "source": "https://www.naturalearthdata.com"
+ },
+ {
+  "file": "geo/europa-context-ne.geojson",
+  "w": null,
+  "h": null,
+  "kind": "geojson",
+  "desc": "Countries clipped to 12°W–32°E, 33–60°N (Natural Earth 50m), for context around Italy; props iso, name",
+  "use": "italia / queue (“scadenze sparse in mille posti”)",
+  "credit": "Natural Earth — public domain",
+  "license": "public domain",
+  "source": "https://www.naturalearthdata.com"
+ }
+]

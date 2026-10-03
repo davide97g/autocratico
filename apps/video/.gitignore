@@ -1,0 +1,7 @@
+# Python env for the analysis tools (uv sync recreates it)
+analysis/.venv/
+# Reference imagery stays local: CREDITS.md lists every file with its source link and licence,
+# manifest.json what each one is. See README.md "Reference imagery".
+public/ref/*
+!public/ref/CREDITS.md
+!public/ref/manifest.json
