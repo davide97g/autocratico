@@ -1,0 +1,43 @@
+# Autocratico on the homelab (Dokploy compose app). See docs/deploy-homelab.md.
+# Secrets come from Dokploy's Environment tab (written as .env next to this file).
+services:
+  autocratico:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    environment:
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN, e.g. https://autocratico.example.com}
+      CF_ACCESS_TEAM: ${CF_ACCESS_TEAM:?set CF_ACCESS_TEAM (the <team>.cloudflareaccess.com name)}
+      CF_ACCESS_AUD: ${CF_ACCESS_AUD:?set CF_ACCESS_AUD (Application Audience tag)}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:?run `claude setup-token` and paste the token}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      AUTOCRATICO_LOCALE: ${AUTOCRATICO_LOCALE:-it}
+    # Only the Cloudflare tunnel (on the host) reaches the app: bound to loopback.
+    ports:
+      - "127.0.0.1:8790:8790"
+    volumes:
+      - ${AUTOCRATICO_DATA_DIR:?set AUTOCRATICO_DATA_DIR, e.g. /home/<user>/autocratico/data}:/data
+      - ${AUTOCRATICO_BACKUP_DIR:?set AUTOCRATICO_BACKUP_DIR, e.g. /home/<user>/backups/autocratico}:/backups
+      # Claude Code sessions (chat history resumes across restarts).
+      - autocratico_claude:/home/node/.claude
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/node/.cache
+      - /home/node/.npm
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8790/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  autocratico_claude:

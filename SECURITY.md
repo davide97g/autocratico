@@ -1,6 +1,6 @@
 # Security
 
-Autocratico runs only on your computer, but it handles sensitive personal data, so security reports are welcome.
+Autocratico runs on your own machines (a computer or a home server), but it handles sensitive personal data, so security reports are welcome.
 
 ## Reporting
 
@@ -10,7 +10,9 @@ Never attach real personal data, tokens or credentials to a report: use the `exa
 
 ## Scope
 
-- `scripts/serve.py`: anything that lets a website, another user or a remote host read the data or trigger the chat.
-- `scripts/chat.py`: ways for file contents (e.g. a downloaded email) to make the chat write files, run commands or send data outside the allowed domains.
-- `scripts/gmail.py`: OAuth handling, token storage, file names and content written from emails.
-- Anything that could put personal data into the repository (code, `example/`, build output).
+- `apps/server/src/auth.ts`: anything that lets a website, another user or a remote host read the data, trigger the chat or the agent, or pair a device without a valid code; bypasses of the Cloudflare Access check.
+- `apps/server/src/claude.ts` and `jobs.ts`: ways for file contents (an email, an upload, a WhatsApp export) to make the agent write outside the data folder, read secrets, run commands or send data outside the allowed domains.
+- `apps/server/src/telegram.ts`: messages from unpaired chats being served; personal data leaving unredacted.
+- `apps/server/src/inbox.ts`, `scripts/gmail.py`: file names, zip contents and attachments from strangers (path traversal, zip bombs, content served inline).
+- OAuth handling and token storage (`gmail.py`, `data/secrets/`).
+- Anything that could put personal data into the repository (code, `example/`, build output, Docker image).

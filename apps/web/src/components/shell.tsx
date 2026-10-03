@@ -1,0 +1,386 @@
+import * as React from "react"
+import {
+  BellIcon,
+  BookOpenIcon,
+  CalendarClockIcon,
+  CalendarIcon,
+  EyeIcon,
+  EyeOffIcon,
+  FolderOpenIcon,
+  HistoryIcon,
+  InboxIcon,
+  LayoutDashboardIcon,
+  type LucideIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+  SearchIcon,
+  SettingsIcon,
+  SparklesIcon,
+  UserRoundIcon,
+} from "lucide-react"
+import { cn } from "cn"
+
+import { Sensitive, usePrivacy } from "@/components/privacy"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { Switch } from "@/components/ui/switch"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { LOCALES, type Locale, useI18n } from "@/i18n"
+import { parseDate } from "@/lib/format"
+import { STYLE } from "@/lib/status"
+
+export type View = "overview" | "deadlines" | "cases" | "inbox" | "profile" | "catalog" | "activity" | "settings"
+
+export const VIEWS: { id: View; icon: LucideIcon; group: "agenda" | "archive" | "system" }[] = [
+  { id: "overview", icon: LayoutDashboardIcon, group: "agenda" },
+  { id: "deadlines", icon: CalendarClockIcon, group: "agenda" },
+  { id: "cases", icon: FolderOpenIcon, group: "agenda" },
+  { id: "inbox", icon: InboxIcon, group: "agenda" },
+  { id: "profile", icon: UserRoundIcon, group: "archive" },
+  { id: "catalog", icon: BookOpenIcon, group: "archive" },
+  { id: "activity", icon: HistoryIcon, group: "system" },
+  { id: "settings", icon: SettingsIcon, group: "system" },
+]
+
+export type Counts = Partial<Record<View, number>> & { urgent: number }
+
+function NavItem({
+  active,
+  compact,
+  name,
+  icon: Icon,
+  count,
+  alert,
+  onClick,
+}: {
+  active: boolean
+  compact: boolean
+  name: string
+  icon: LucideIcon
+  count?: number
+  alert?: boolean
+  onClick: () => void
+}) {
+  const button = (
+    <Button
+      variant={active ? "default" : "ghost"}
+      size="lg"
+      className={cn("relative h-10 shrink-0 gap-3 rounded-lg px-3", compact ? "lg:w-10 lg:justify-center lg:px-0" : "justify-start")}
+      aria-current={active ? "page" : undefined}
+      aria-label={compact ? name : undefined}
+      onClick={onClick}
+    />
+  )
+  const content = (
+    <>
+      <Icon data-icon="inline-start" />
+      <span className={cn(compact && "lg:sr-only")}>{name}</span>
+      {count != null && count > 0 && (
+        <span
+          className={cn(
+            "ml-auto rounded-sm px-1.5 py-0.5 font-mono text-[0.7rem] leading-none",
+            alert ? STYLE.urgent.solid : active ? "bg-primary-foreground/15" : "bg-muted text-muted-foreground",
+            compact && "lg:hidden"
+          )}
+        >
+          {count}
+        </span>
+      )}
+      {compact && alert && (
+        <span className={cn("absolute top-1.5 right-1.5 hidden size-2 rounded-full ring-2 ring-card lg:block", STYLE.urgent.dot)} />
+      )}
+    </>
+  )
+  if (!compact) return React.cloneElement(button, undefined, content)
+  return (
+    <Tooltip>
+      <TooltipTrigger render={button}>{content}</TooltipTrigger>
+      <TooltipContent side="right">
+        {name}
+        {count ? ` · ${count}` : ""}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function LanguageSwitch({ compact }: { compact: boolean }) {
+  const { locale, setLocale, t } = useI18n()
+  if (compact) {
+    const next = LOCALES.find((l) => l.id !== locale)!
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button variant="ghost" size="icon-sm" className="font-mono text-xs" onClick={() => setLocale(next.id)} aria-label={t.sidebar.language} />
+          }
+        >
+          {LOCALES.find((l) => l.id === locale)!.label}
+        </TooltipTrigger>
+        <TooltipContent side="right">{t.sidebar.language}</TooltipContent>
+      </Tooltip>
+    )
+  }
+  return (
+    <ToggleGroup
+      value={[locale]}
+      onValueChange={(v) => v[0] && setLocale(v[0] as Locale)}
+      className="rounded-md bg-muted p-0.5"
+      aria-label={t.sidebar.language}
+    >
+      {LOCALES.map((l) => (
+        <ToggleGroupItem key={l.id} value={l.id} size="sm" className="h-6 rounded-sm px-2 font-mono text-xs aria-pressed:bg-card">
+          {l.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  )
+}
+
+export function Sidebar({
+  view,
+  onView,
+  name,
+  counts,
+  compact,
+  onCompact,
+  chatOpen,
+  onChat,
+}: {
+  view: View
+  onView: (v: View) => void
+  name: string | null
+  counts: Counts
+  compact: boolean
+  onCompact: (v: boolean) => void
+  chatOpen: boolean
+  onChat: () => void
+}) {
+  const { enabled, setEnabled } = usePrivacy()
+  const { t } = useI18n()
+  const initials = name
+    ? name
+        .split(/\s+/)
+        .map((p) => p[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "?"
+  const groups = ["agenda", "archive", "system"] as const
+
+  return (
+    <aside
+      className={cn(
+        "flex min-w-0 flex-col gap-6 rounded-xl bg-card p-4 transition-[width] lg:sticky lg:top-6 lg:h-[calc(100svh-6rem)] lg:gap-7",
+        compact ? "lg:w-18 lg:items-center lg:px-3 lg:py-5" : "lg:w-60 lg:p-5"
+      )}
+    >
+      <div className={cn("flex items-center gap-3 px-1", compact && "lg:flex-col lg:px-0")}>
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary font-mono text-sm font-semibold text-primary-foreground">
+          A
+        </span>
+        <span className={cn("mr-auto text-sm font-semibold tracking-tight", compact && "lg:hidden")}>{t.app.name}</span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="hidden text-muted-foreground lg:inline-flex"
+                onClick={() => onCompact(!compact)}
+                aria-label={compact ? t.sidebar.expandLabel : t.sidebar.collapseLabel}
+              />
+            }
+          >
+            {compact ? <PanelLeftOpenIcon /> : <PanelLeftCloseIcon />}
+          </TooltipTrigger>
+          <TooltipContent side="right">{compact ? t.sidebar.expand : t.sidebar.collapse} (B)</TooltipContent>
+        </Tooltip>
+      </div>
+
+      <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:gap-6 lg:overflow-visible" aria-label={t.sidebar.sections}>
+        {groups.map((g) => (
+          <div key={g} className={cn("flex gap-1 lg:flex-col", compact && "lg:items-center")}>
+            <span className={cn("hidden px-3 pb-1.5 text-xs text-muted-foreground lg:block", compact && "lg:sr-only")}>
+              {t.sidebar.groups[g]}
+            </span>
+            {VIEWS.filter((v) => v.group === g).map((v) => (
+              <NavItem
+                key={v.id}
+                active={view === v.id}
+                compact={compact}
+                name={t.views[v.id]}
+                icon={v.icon}
+                count={counts[v.id]}
+                alert={v.id === "deadlines" && counts.urgent > 0}
+                onClick={() => onView(v.id)}
+              />
+            ))}
+          </div>
+        ))}
+      </nav>
+
+      <div className={cn("mt-auto hidden flex-col gap-4 lg:flex", compact && "lg:items-center")}>
+        {compact ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  size="icon-lg"
+                  variant={chatOpen ? "default" : "secondary"}
+                  className="size-10 rounded-lg"
+                  onClick={onChat}
+                  aria-pressed={chatOpen}
+                  aria-label={t.sidebar.askClaude}
+                />
+              }
+            >
+              <SparklesIcon />
+            </TooltipTrigger>
+            <TooltipContent side="right">{t.sidebar.askClaude} (C)</TooltipContent>
+          </Tooltip>
+        ) : (
+          <div className="relative flex flex-col gap-3 overflow-hidden rounded-lg bg-primary p-4 text-primary-foreground">
+            <span className="chrome-orb absolute -top-5 -right-5 size-16 opacity-80" aria-hidden />
+            <SparklesIcon className="size-4" />
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">{t.sidebar.askClaude}</span>
+              <span className="text-xs text-primary-foreground/60">{t.sidebar.askClaudeHint}</span>
+            </div>
+            <Button variant="secondary" size="sm" className="self-start" onClick={onChat} aria-pressed={chatOpen}>
+              {chatOpen ? t.sidebar.closeChat : t.sidebar.openChat}
+            </Button>
+          </div>
+        )}
+
+        <div className={cn("flex items-center gap-3 border-t pt-4", compact && "flex-col border-t-0 pt-0")}>
+          <Avatar className="size-9">
+            <AvatarFallback className="bg-primary text-primary-foreground">
+              <Sensitive>{initials}</Sensitive>
+            </AvatarFallback>
+          </Avatar>
+          {!compact && (
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <span className="truncate text-sm font-medium">
+                <Sensitive when={Boolean(name)}>{name ?? t.sidebar.profileMissing}</Sensitive>
+              </span>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Switch size="sm" checked={enabled} onCheckedChange={setEnabled} aria-label={t.sidebar.privacy} />
+                {t.sidebar.privacy}
+              </label>
+            </div>
+          )}
+          <LanguageSwitch compact={compact} />
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+export function TopBar({
+  title,
+  today,
+  search,
+  onSearch,
+  upcoming,
+  onBell,
+  chatOpen,
+  onChat,
+}: {
+  title: string
+  today: string | null
+  search: string
+  onSearch: (s: string) => void
+  upcoming: number
+  onBell: () => void
+  chatOpen: boolean
+  onChat: () => void
+}) {
+  const { enabled, setEnabled } = usePrivacy()
+  const { t, fmt } = useI18n()
+  const d = today ? parseDate(today) : null
+
+  return (
+    <header className="flex flex-wrap items-center gap-3 pt-1">
+      <h1 className="mr-auto text-3xl font-medium tracking-tight sm:text-4xl">{title}</h1>
+
+      {d && (
+        <div className="flex h-11 items-center gap-3 rounded-lg bg-card py-1 pr-4 pl-1">
+          <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <CalendarIcon className="size-4" />
+          </span>
+          <span className="flex flex-col text-xs leading-tight">
+            <span className="font-medium">{fmt.long.format(d)}</span>
+            <span className="text-muted-foreground capitalize">{fmt.weekdayLong.format(d)}</span>
+          </span>
+        </div>
+      )}
+
+      <InputGroup className="h-11 w-full rounded-lg border-transparent bg-card pl-1 sm:w-72">
+        <InputGroupAddon>
+          <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <SearchIcon className="size-4" />
+          </span>
+        </InputGroupAddon>
+        <InputGroupInput
+          placeholder={t.topbar.search}
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          aria-label={t.topbar.search}
+        />
+      </InputGroup>
+
+      <Tooltip>
+        <TooltipTrigger
+          render={<Button size="icon-lg" className="relative size-11 rounded-lg" onClick={onBell} aria-label={t.topbar.within30Label} />}
+        >
+          <BellIcon />
+          {upcoming > 0 && (
+            <Badge variant="secondary" className="absolute -top-1 -right-1">
+              {upcoming}
+            </Badge>
+          )}
+        </TooltipTrigger>
+        <TooltipContent>{t.topbar.within30(upcoming)}</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              size="icon-lg"
+              variant={enabled ? "default" : "outline"}
+              className={cn("size-11 rounded-lg", !enabled && "border-transparent bg-card")}
+              onClick={() => setEnabled(!enabled)}
+              aria-pressed={enabled}
+              aria-label={t.topbar.privacy}
+            />
+          }
+        >
+          {enabled ? <EyeOffIcon /> : <EyeIcon />}
+        </TooltipTrigger>
+        <TooltipContent>{enabled ? t.topbar.showData : t.topbar.hideData} (P)</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              size="icon-lg"
+              variant={chatOpen ? "default" : "outline"}
+              className={cn("size-11 rounded-lg", !chatOpen && "border-transparent bg-card")}
+              onClick={onChat}
+              aria-pressed={chatOpen}
+              aria-label={t.sidebar.askClaude}
+            />
+          }
+        >
+          <SparklesIcon />
+        </TooltipTrigger>
+        <TooltipContent>{t.sidebar.askClaude} (C)</TooltipContent>
+      </Tooltip>
+    </header>
+  )
+}

@@ -1,0 +1,25 @@
+{
+  "name": "autocratico",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.13.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\" --ignore-path .prettierignore",
+    "start": "node apps/server/src/main.ts",
+    "pair": "node apps/server/src/cli.ts pair"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "turbo": "^2.11.7"
+  }
+}

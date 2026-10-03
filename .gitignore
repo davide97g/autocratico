@@ -1,7 +1,10 @@
-# Personal data: stays on this computer only.
+# Personal data: never in the repository.
 /data/
 CLAUDE.local.md
 .claude/settings.local.json
 
+node_modules/
+dist/
+.turbo/
 __pycache__/
 .DS_Store

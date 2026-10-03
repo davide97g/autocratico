@@ -2,7 +2,7 @@
 # One-step setup: checks requirements, creates the data folder, builds the web app.
 #
 # Usage: ./setup.sh [--start]
-#   --start   launch the web app when done (http://127.0.0.1:8765)
+#   --start   launch the server when done (http://127.0.0.1:8790)
 #
 # The data folder is data/ (ignored by git) or the one in AUTOCRATICO_DATA.
 # Running it again is safe: existing data is never touched.
@@ -25,9 +25,9 @@ python3 -c 'import sys; sys.exit(sys.version_info < (3, 11))' ||
   fail "Python $(python3 -c 'import platform; print(platform.python_version())') found, 3.11 or later needed"
 ok "Python $(python3 -c 'import platform; print(platform.python_version())')"
 
-command -v node >/dev/null || fail "node not found: install Node.js 20.19 or later (https://nodejs.org)"
-node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 20 || (a === 20 && b >= 19) ? 0 : 1)' ||
-  fail "Node.js $(node -v) found, 20.19 or later needed"
+command -v node >/dev/null || fail "node not found: install Node.js 24 or later (https://nodejs.org)"
+node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 24 ? 0 : 1)' ||
+  fail "Node.js $(node -v) found, 24 or later needed (the server runs TypeScript directly)"
 ok "Node.js $(node -v)"
 
 command -v pnpm >/dev/null || fail "pnpm not found: install it with \`npm install -g pnpm\` (https://pnpm.io/installation)"
@@ -50,20 +50,21 @@ fi
 
 bold "Building the web app"
 log="$(mktemp)"
-if ! (cd app && pnpm install --frozen-lockfile && pnpm build) >"$log" 2>&1; then
+if ! (pnpm install --frozen-lockfile && pnpm --filter @autocratico/web build) >"$log" 2>&1; then
   cat "$log" >&2
   fail "build failed (output above)"
 fi
 rm -f "$log"
-ok "app/dist ready"
+ok "apps/web/dist ready"
 
 echo
 bold "Done."
-echo "  Start:     python3 scripts/serve.py      → http://127.0.0.1:8765"
-echo "  Dev mode:  cd app && pnpm dev            → http://localhost:5173"
+echo "  Start:     pnpm start                    → http://127.0.0.1:8790"
+echo "  Dev mode:  pnpm dev                      → http://localhost:5173"
+echo "  Online (homelab, Telegram, other devices): docs/deploy-homelab.md"
 echo "  Then replace the example data with yours, or ask Claude Code to do it."
 
 if [ "${1:-}" = "--start" ]; then
   echo
-  exec python3 scripts/serve.py
+  exec node apps/server/src/main.ts
 fi

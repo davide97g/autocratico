@@ -1,0 +1,12 @@
+{
+  "id": "5ample0c0ffee",
+  "source": "upload",
+  "status": "processed",
+  "received": "2026-09-28T09:12:00.000Z",
+  "title": "Boiler service receipt",
+  "from": "",
+  "account": "example",
+  "files": [],
+  "ref": "",
+  "outcome": "Example: receipt filed, next boiler service set in deadlines.toml."
+}

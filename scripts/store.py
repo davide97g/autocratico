@@ -217,3 +217,23 @@ def load_catalog() -> list[dict]:
         title = next((r[2:].strip() for r in md.splitlines() if r.startswith("# ")), f.stem)
         entries.append({"name": f.stem, "title": title, "md": md})
     return entries
+
+
+def dump(today: date) -> dict:
+    """Everything the web app shows, as JSON-ready data (used by the parity test with packages/core)."""
+    return {
+        "today": today.isoformat(),
+        "agenda": agenda(today),
+        "incomplete": incomplete(),
+        "cases": load_cases(),
+        "profile": load_profile(),
+        "catalog": load_catalog(),
+    }
+
+
+if __name__ == "__main__":
+    import sys
+
+    # python3 scripts/store.py [YYYY-MM-DD]: print the data as JSON
+    day = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else date.today()
+    print(json.dumps(dump(day), ensure_ascii=False, indent=2))

@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: pnpm install --frozen-lockfile
+      - run: python3 -m py_compile scripts/*.py
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Init produces a working data folder
+        run: |
+          export AUTOCRATICO_DATA="$RUNNER_TEMP/data"
+          python3 scripts/init.py
+          python3 scripts/upcoming.py 30
+          python3 scripts/ics.py
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -f deploy/Dockerfile -t autocratico .

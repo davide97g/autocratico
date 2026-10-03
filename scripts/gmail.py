@@ -1,16 +1,22 @@
-"""Download emails about your paperwork from Gmail into the data folder (read-only).
+"""Download emails about your paperwork from one or more Gmail accounts into the data folder (read-only).
 
 Usage:
-  python3 scripts/gmail.py login             authorize access (opens the browser)
-  python3 scripts/gmail.py search "QUERY"    list matching messages without downloading them
-  python3 scripts/gmail.py sync [QUERY]      download messages and attachments into data/archive/email/
-  python3 scripts/gmail.py logout            revoke the token and delete it
+  python3 scripts/gmail.py accounts                          list accounts and whether they are connected
+  python3 scripts/gmail.py login [--account NAME] [--manual] authorize access (--manual: no local browser)
+  python3 scripts/gmail.py search [--account NAME] "QUERY"   list matching messages without downloading them
+  python3 scripts/gmail.py sync [--account NAME | --all] [QUERY]
+                                                             download messages and attachments into data/archive/email/
+  python3 scripts/gmail.py logout [--account NAME]           revoke the token and delete it
 
-QUERY uses Gmail search syntax (e.g. 'label:paperwork newer_than:1y').
-Without QUERY, sync uses `query` from gmail.toml.
+Accounts are listed in gmail.toml as [[account]] tables (name, query); a top-level `query`
+is the account "default". QUERY uses Gmail search syntax (e.g. 'label:paperwork newer_than:1y');
+without it, sync uses the account's query.
+
+New messages from the last INBOX_DAYS days also get an item in data/inbox/, so that the
+autocratico server's agent files them (deadlines, cases).
 
 Requires data/secrets/credentials.json: an OAuth client of type "Desktop app" created on
-Google Cloud with the Gmail API enabled. The token is saved in data/secrets/token.json (0600).
+Google Cloud with the Gmail API enabled. Tokens are saved in data/secrets/gmail/<name>.json (0600).
 Setup: docs/gmail.md.
 """
 
@@ -38,10 +44,13 @@ from store import DATA_DIR
 
 SECRETS = DATA_DIR / "secrets"
 CREDENTIALS = SECRETS / "credentials.json"
-TOKEN = SECRETS / "token.json"
+TOKENS = SECRETS / "gmail"
+LEGACY_TOKEN = SECRETS / "token.json"  # single-account layout, moved to gmail/default.json on first use
 CONFIG = DATA_DIR / "gmail.toml"
 DESTINATION = DATA_DIR / "archive" / "email"
 INDEX = DESTINATION / "index.json"
+INBOX = DATA_DIR / "inbox"
+INBOX_DAYS = 14
 
 SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 API = "https://gmail.googleapis.com/gmail/v1/users/me"
@@ -49,6 +58,40 @@ API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
 class GmailError(Exception):
     pass
+
+
+# ---------- accounts ----------
+
+_NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
+TOKEN = TOKENS / "default.json"  # the account in use, set by _use()
+
+
+def accounts() -> dict[str, str]:
+    """Account name -> default query, from gmail.toml."""
+    found: dict[str, str] = {}
+    if CONFIG.exists():
+        with CONFIG.open("rb") as f:
+            config = tomllib.load(f)
+        if str(config.get("query", "")).strip():
+            found["default"] = config["query"].strip()
+        for a in config.get("account", []):
+            name = str(a.get("name", "")).strip()
+            if not _NAME.match(name):
+                raise GmailError(f"gmail.toml: invalid account name {name!r} (lowercase letters, digits, - and _)")
+            found[name] = str(a.get("query", "")).strip()
+    if LEGACY_TOKEN.exists():
+        found.setdefault("default", "")
+    return found
+
+
+def _use(name: str) -> None:
+    global TOKEN
+    if not _NAME.match(name):
+        raise GmailError(f"invalid account name {name!r} (lowercase letters, digits, - and _)")
+    TOKEN = TOKENS / f"{name}.json"
+    if name == "default" and LEGACY_TOKEN.exists() and not TOKEN.exists():
+        TOKENS.mkdir(mode=0o700, parents=True, exist_ok=True)
+        LEGACY_TOKEN.replace(TOKEN)
 
 
 # ---------- OAuth (desktop app, loopback + PKCE) ----------
@@ -75,12 +118,13 @@ def _post(url: str, fields: dict) -> dict:
 
 def _save_token(token: dict) -> None:
     SECRETS.mkdir(mode=0o700, exist_ok=True)
+    TOKENS.mkdir(mode=0o700, exist_ok=True)
     fd = os.open(TOKEN, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(token, f, indent=2)
 
 
-def login() -> None:
+def login(manual: bool = False) -> None:
     client = _client()
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
@@ -115,10 +159,20 @@ def login() -> None:
         }
     )
     print("Open this address and pick the account with your paperwork:\n" + url, flush=True)
-    webbrowser.open(url)
-    while "code" not in received and "error" not in received:
-        server.handle_request()
-    server.server_close()
+    if manual:
+        # Headless server: the browser runs elsewhere, so the redirect to 127.0.0.1 fails there.
+        # The address it tried to open still carries the code: paste it here.
+        server.server_close()
+        pasted = input("\nAfter allowing access the browser shows an error page: paste its full address here:\n> ").strip()
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(pasted).query)
+        received.update({k: v[0] for k, v in q.items()})
+        if not received:
+            raise GmailError("no code in the pasted address")
+    else:
+        webbrowser.open(url)
+        while "code" not in received and "error" not in received:
+            server.handle_request()
+        server.server_close()
 
     if "error" in received:
         raise GmailError(f"access denied: {received['error']}")
@@ -144,7 +198,7 @@ def login() -> None:
 
 def _access_token() -> str:
     if not TOKEN.exists():
-        raise GmailError("not connected: run `python3 scripts/gmail.py login` first")
+        raise GmailError(f"{TOKEN.stem}: not connected: run `python3 scripts/gmail.py login --account {TOKEN.stem}` first")
     token = json.loads(TOKEN.read_text())
     if time.time() < token.get("expires_at", 0):
         return token["access_token"]
@@ -286,7 +340,35 @@ def search(query: str, limit: int = 50) -> None:
     print(f"\n{len(ids)} messages.")
 
 
-def sync(query: str, limit: int = 5000) -> None:
+def _inbox_item(account: str, folder: str, h: dict, when: datetime, attachments: list[str]) -> None:
+    """Pointer item in data/inbox for the server's agent (same layout as apps/server/src/inbox.ts)."""
+    item_id = secrets.token_hex(8)
+    subject = h.get("subject", "") or "(no subject)"
+    name = f"{when:%Y-%m-%d}-email-{_slug(subject)[:40].rstrip('-') or 'untitled'}-{item_id[-6:]}"
+    path = INBOX / name
+    path.mkdir(parents=True, exist_ok=True)
+    item = {
+        "id": item_id,
+        "source": "email",
+        "status": "new",
+        "received": datetime.now().astimezone().isoformat(),
+        "title": subject[:200],
+        "from": h.get("from", ""),
+        "account": account,
+        "files": [],
+        "ref": f"archive/email/{folder}",
+        "outcome": "",
+    }
+    (path / "content.md").write_text(
+        f"Email in archive/email/{folder}/message.md" + (f" with attachments: {', '.join(attachments)}" if attachments else "") + "\n",
+        encoding="utf-8",
+    )
+    tmp = path / "item.json.tmp"
+    tmp.write_text(json.dumps(item, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    tmp.replace(path / "item.json")
+
+
+def sync(query: str, limit: int = 5000, account: str = "default") -> None:
     DESTINATION.mkdir(parents=True, exist_ok=True)
     index = json.loads(INDEX.read_text()) if INDEX.exists() else {}
     ids = [i for i in _list(query, limit) if i not in index]
@@ -320,6 +402,7 @@ def sync(query: str, limit: int = 5000) -> None:
         lines = [
             "---",
             f"id: {i}",
+            f"account: {account}",
             f"thread: {m['threadId']}",
             f"date: {sent}",
             f"from: {json.dumps(h.get('from', ''), ensure_ascii=False)}",
@@ -333,32 +416,68 @@ def sync(query: str, limit: int = 5000) -> None:
             "",
         ]
         (folder / "message.md").write_text("\n".join(lines), encoding="utf-8")
+        if (datetime.now() - when).days <= INBOX_DAYS:
+            _inbox_item(account, folder.name, h, when, attachments)
         index[i] = folder.name
         INDEX.write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"  {folder.relative_to(DATA_DIR)}  ({len(attachments)} attachments)")
 
 
-def _configured_query() -> str:
-    if CONFIG.exists():
-        with CONFIG.open("rb") as f:
-            q = tomllib.load(f).get("query", "").strip()
-        if q:
-            return q
-    raise GmailError("no query: pass it as an argument or set it in gmail.toml")
+def _query(account: str, given: str | None) -> str:
+    if given:
+        return given
+    q = accounts().get(account, "")
+    if q:
+        return q
+    raise GmailError(f"{account}: no query: pass it as an argument or set it in gmail.toml")
 
 
 def main() -> None:
     args = sys.argv[1:]
-    command = args[0] if args else ""
+    command = args.pop(0) if args else ""
+    account, every, manual = "default", False, False
+    rest: list[str] = []
+    while args:
+        a = args.pop(0)
+        if a == "--account" and args:
+            account = args.pop(0)
+        elif a == "--all":
+            every = True
+        elif a == "--manual":
+            manual = True
+        else:
+            rest.append(a)
     try:
-        if command == "login":
-            login()
+        if command == "accounts":
+            for name in accounts() or {"default": ""}:
+                _use(name)
+                print(f"{name:<16} {'connected' if TOKEN.exists() else 'not connected'}")
+        elif command == "login":
+            _use(account)
+            login(manual)
         elif command == "logout":
+            _use(account)
             logout()
-        elif command == "search" and len(args) > 1:
-            search(args[1])
+        elif command == "search" and rest:
+            _use(account)
+            search(rest[0])
         elif command == "sync":
-            sync(args[1] if len(args) > 1 else _configured_query())
+            names = list(accounts()) if every else [account]
+            failed = []
+            for name in names:
+                _use(name)
+                if every and not TOKEN.exists():
+                    continue  # listed but never connected
+                print(f"[{name}]", flush=True)
+                try:
+                    sync(_query(name, rest[0] if rest else None), account=name)
+                except GmailError as e:
+                    if not every:
+                        raise
+                    failed.append(name)
+                    print(f"error: {name}: {e}", file=sys.stderr)
+            if failed:
+                sys.exit(1)
         else:
             print(__doc__)
             sys.exit(2)
