@@ -150,6 +150,14 @@ export const Device = z.object({
 })
 export type Device = z.infer<typeof Device>
 
+/** One thing the agent did during a run: a tool call (`tool` set) or a piece of its own text. */
+export const JobStep = z.object({
+  at: z.string(),
+  tool: z.string().optional(),
+  text: z.string(),
+})
+export type JobStep = z.infer<typeof JobStep>
+
 export const JobRun = z.object({
   id: z.string(),
   job: z.string(),
@@ -157,8 +165,22 @@ export const JobRun = z.object({
   finished: z.string().nullable(),
   ok: z.boolean().nullable(),
   summary: z.string(),
+  /** Inbox items the run worked on (triage). */
+  items: z.array(z.object({ id: z.string(), title: z.string() })).optional(),
+  /** What the agent did (agent jobs only). */
+  steps: z.array(JobStep).optional(),
 })
 export type JobRun = z.infer<typeof JobRun>
+
+/** What the server is doing right now. */
+export const LiveJobs = z.object({
+  current: JobRun.nullable(),
+  /** Jobs waiting for the current one to finish (they run one at a time). */
+  waiting: z.array(z.string()),
+  /** Triage scheduled for new inbox items: when, and how many are waiting. */
+  triage: z.object({ at: z.string(), items: z.number().int() }).nullable(),
+})
+export type LiveJobs = z.infer<typeof LiveJobs>
 
 export const Commit = z.object({
   hash: z.string(),

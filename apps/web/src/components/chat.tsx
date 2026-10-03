@@ -1,6 +1,8 @@
 import * as React from "react"
 import {
   ArrowUpIcon,
+  FilePenIcon,
+  FilePlusIcon,
   FileTextIcon,
   GlobeIcon,
   type LucideIcon,
@@ -39,8 +41,10 @@ type Conversation = { chat: string | null; messages: Message[] }
 const STORAGE_KEY = "autocratico.chat"
 const EMPTY: Conversation = { chat: null, messages: [] }
 
-const TOOL_ICONS: Record<string, LucideIcon> = {
+export const TOOL_ICONS: Record<string, LucideIcon> = {
   Read: FileTextIcon,
+  Edit: FilePenIcon,
+  Write: FilePlusIcon,
   Glob: SearchIcon,
   Grep: SearchIcon,
   WebSearch: GlobeIcon,

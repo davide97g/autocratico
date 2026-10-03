@@ -8,7 +8,7 @@ import { appendFileSync, chmodSync, existsSync, mkdirSync, readdirSync, readFile
 import { basename, join } from "node:path"
 import { promisify } from "node:util"
 
-import { type InboxItem, type JobRun, reminders } from "@autocratico/core"
+import { type ChatEvent, type InboxItem, type JobRun, type JobStep, type LiveJobs, reminders } from "@autocratico/core"
 import { loadDeadlines, loadState } from "@autocratico/core/node"
 import { Cron } from "croner"
 
@@ -42,6 +42,8 @@ const TRIAGE_BATCH = 10
 const TRIAGE_DELAY_MS = 60_000
 const KEEP_BACKUPS = 14
 const AGENT_TIMEOUT_MS = 15 * 60_000
+const MAX_STEPS = 200
+const MAX_STEP_TEXT = 600
 
 type Context = {
   config: Config
@@ -142,10 +144,37 @@ export function parseTriage(text: string): TriageResult | null {
   }
 }
 
+/** Steps as shown and logged: the agent's text without the result block meant for the server. */
+export function cleanSteps(steps: JobStep[]): JobStep[] {
+  return steps
+    .map((s) => (s.tool ? s : { ...s, text: s.text.replace(/```json[\s\S]*$/, "").trim().slice(0, MAX_STEP_TEXT) }))
+    .filter((s) => s.tool || s.text)
+}
+
+/** Records what the agent does into `run.steps`, for the live view and the log. */
+export function recorder(run: JobRun) {
+  run.steps = []
+  return (e: ChatEvent) => {
+    const steps = run.steps!
+    if (steps.length >= MAX_STEPS) return
+    const at = new Date().toISOString()
+    if (e.type === "tool") steps.push({ at, tool: e.name, text: e.detail })
+    else if (e.type === "block") steps.push({ at, text: "" })
+    else if (e.type === "text") {
+      const last = steps.at(-1)
+      if (last && !last.tool) last.text += e.text
+      else steps.push({ at, text: e.text })
+    }
+  }
+}
+
 export class Jobs {
   readonly #c: Context
   readonly #crons: Partial<Record<JobName, Cron>> = {}
   #triageTimer: NodeJS.Timeout | null = null
+  #triageAt: string | null = null
+  #current: JobRun | null = null
+  #waiting: JobName[] = []
   #tick: NodeJS.Timeout | null = null
   #gmailFailing = false
 
@@ -191,6 +220,7 @@ export class Jobs {
   stop() {
     for (const c of Object.values(this.#crons)) c?.stop()
     if (this.#triageTimer) clearTimeout(this.#triageTimer)
+    this.#triageAt = null
     if (this.#tick) clearInterval(this.#tick)
   }
 
@@ -202,15 +232,30 @@ export class Jobs {
   queueTriage(delay = TRIAGE_DELAY_MS) {
     if (!this.#c.config.jobs) return
     if (this.#triageTimer) clearTimeout(this.#triageTimer)
+    this.#triageAt = new Date(Date.now() + delay).toISOString()
     this.#triageTimer = setTimeout(() => {
       this.#triageTimer = null
+      this.#triageAt = null
       void this.trigger("triage")
     }, delay)
   }
 
+  /** The run in progress (with the agent's steps so far), the queue, the next triage. */
+  live(): LiveJobs {
+    const current = this.#current && { ...this.#current, steps: this.#current.steps && cleanSteps(this.#current.steps) }
+    const waiting = this.#c.inbox.list().filter((i) => i.status === "new").length
+    return {
+      current,
+      waiting: [...this.#waiting],
+      triage: this.#triageAt ? { at: this.#triageAt, items: waiting } : null,
+    }
+  }
+
   /** Run a job now. Jobs run one at a time, since most of them write to the data folder. */
   trigger(name: JobName): Promise<JobRun> {
+    this.#waiting.push(name)
     return locks.run("jobs", async () => {
+      this.#waiting.splice(this.#waiting.indexOf(name), 1)
       const run: JobRun = {
         id: randomBytes(6).toString("hex"),
         job: name,
@@ -219,29 +264,33 @@ export class Jobs {
         ok: null,
         summary: "",
       }
+      this.#current = run
       try {
-        run.summary = await this.#run(name)
+        run.summary = await this.#run(name, run)
         run.ok = true
       } catch (e) {
         run.ok = false
         run.summary = e instanceof Error ? e.message : String(e)
+      } finally {
+        this.#current = null
       }
       run.finished = new Date().toISOString()
+      if (run.steps) run.steps = cleanSteps(run.steps)
       this.#log(run)
       return run
     })
   }
 
-  #run(name: JobName): Promise<string> {
+  #run(name: JobName, run: JobRun): Promise<string> {
     switch (name) {
       case "gmail":
         return this.#gmail()
       case "triage":
-        return this.#triage()
+        return this.#triage(run)
       case "reminders":
         return this.#reminders()
       case "digest":
-        return this.#digest()
+        return this.#digest(run)
       case "backup":
         return this.#backup()
     }
@@ -274,20 +323,24 @@ export class Jobs {
     }
   }
 
-  async #triage(): Promise<string> {
+  async #triage(run: JobRun): Promise<string> {
     const { inbox, claude, repo, config } = this.#c
     const items = inbox.list().filter((i) => i.status === "new").reverse().slice(0, TRIAGE_BATCH)
     if (!items.length) return "nothing new"
     if (!claude.available) return "skipped: claude not available"
     const ids = items.map((i) => i.id)
+    run.items = items.map((i) => ({ id: i.id, title: i.title }))
     await inbox.setStatus(ids, "processing")
-    const { text, error } = await claude.complete({
-      prompt: triagePrompt(items, config.locale),
-      profile: "triage",
-      instructions: TRIAGE_INSTRUCTIONS,
-      locale: config.locale,
-      signal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
-    })
+    const { text, error } = await claude.complete(
+      {
+        prompt: triagePrompt(items, config.locale),
+        profile: "triage",
+        instructions: TRIAGE_INSTRUCTIONS,
+        locale: config.locale,
+        signal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
+      },
+      recorder(run)
+    )
     const result = parseTriage(text)
     if (error || !result) {
       await inbox.setStatus(ids, "failed", error ?? "no result from the agent")
@@ -337,16 +390,19 @@ export class Jobs {
     return `${due.length} due, ${overdue.length} overdue`
   }
 
-  async #digest(): Promise<string> {
+  async #digest(run: JobRun): Promise<string> {
     const { claude, config } = this.#c
     if (!claude.available) return "skipped: claude not available"
-    const { text, error } = await claude.complete({
-      profile: "read",
-      locale: config.locale,
-      signal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
-      prompt:
-        "Write the weekly digest for a phone notification, at most 12 short lines: deadlines in the next 21 days, overdue ones, open cases with their next step, dates still TODO, inbox items that failed. Start with the most urgent. No preamble.",
-    })
+    const { text, error } = await claude.complete(
+      {
+        profile: "read",
+        locale: config.locale,
+        signal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
+        prompt:
+          "Write the weekly digest for a phone notification, at most 12 short lines: deadlines in the next 21 days, overdue ones, open cases with their next step, dates still TODO, inbox items that failed. Start with the most urgent. No preamble.",
+      },
+      recorder(run)
+    )
     if (error) throw new Error(error)
     await this.#c.notifier()?.notify(`📋 ${this.#t.digest}\n\n${text}`)
     return "sent"

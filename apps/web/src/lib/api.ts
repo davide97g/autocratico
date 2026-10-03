@@ -6,6 +6,7 @@ import type {
   InboxDetail,
   InboxItem,
   JobRun,
+  LiveJobs,
   Reminder,
   Status,
 } from "@autocratico/core"
@@ -22,6 +23,8 @@ export type {
   InboxItem,
   Incomplete,
   JobRun,
+  JobStep,
+  LiveJobs,
   Occurrence,
   Profile,
   Reminder,
@@ -95,6 +98,7 @@ export const activity = () => request<Activity>("/api/activity")
 export const commitPatch = (hash: string) => request<{ patch: string }>(`/api/activity/${hash}`)
 export const revertCommit = (hash: string) => post<{ hash: string }>(`/api/activity/${hash}/revert`)
 export const runJob = (name: string) => post<JobRun>(`/api/jobs/${name}`)
+export const liveJobs = () => request<LiveJobs>("/api/jobs/live")
 
 export const status = () => request<Status>("/api/status")
 export const devices = () => request<Device[]>("/api/devices")

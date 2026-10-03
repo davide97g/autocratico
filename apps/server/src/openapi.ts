@@ -6,6 +6,7 @@ import {
   Device,
   InboxDetail,
   InboxItem,
+  LiveJobs,
   Status,
 } from "@autocratico/core"
 import { z } from "zod"
@@ -38,6 +39,7 @@ export const ROUTES: Route[] = [
   { method: "get", path: "/api/activity", summary: "Job runs and changes to the data", response: Activity },
   { method: "get", path: "/api/activity/{hash}", summary: "One change as a patch", response: z.object({ patch: z.string() }) },
   { method: "post", path: "/api/activity/{hash}/revert", summary: "Undo one change", response: z.object({ hash: z.string() }) },
+  { method: "get", path: "/api/jobs/live", summary: "The job running now with the agent's steps so far, the queue, the next triage", response: LiveJobs },
   { method: "post", path: "/api/jobs/{name}", summary: "Run a job now (gmail, triage, reminders, digest, backup)" },
   { method: "get", path: "/api/status", summary: "Server, jobs and integrations", response: Status },
   { method: "get", path: "/api/devices", summary: "Paired devices", response: z.array(Device) },

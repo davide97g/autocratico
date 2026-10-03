@@ -25,6 +25,7 @@ import { Sensitive, usePrivacy } from "@/components/privacy"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Switch } from "@/components/ui/switch"
@@ -47,7 +48,8 @@ export const VIEWS: { id: View; icon: LucideIcon; group: "agenda" | "archive" | 
   { id: "settings", icon: SettingsIcon, group: "system" },
 ]
 
-export type Counts = Partial<Record<View, number>> & { urgent: number }
+/** `busy`: a job (the agent, usually) is running on the server. */
+export type Counts = Partial<Record<View, number>> & { urgent: number; busy: boolean }
 
 function NavItem({
   active,
@@ -56,6 +58,7 @@ function NavItem({
   icon: Icon,
   count,
   alert,
+  busy,
   onClick,
 }: {
   active: boolean
@@ -64,6 +67,7 @@ function NavItem({
   icon: LucideIcon
   count?: number
   alert?: boolean
+  busy?: boolean
   onClick: () => void
 }) {
   const button = (
@@ -80,6 +84,7 @@ function NavItem({
     <>
       <Icon data-icon="inline-start" />
       <span className={cn(compact && "lg:sr-only")}>{name}</span>
+      {busy && <Spinner className={cn("ml-auto size-3.5 opacity-70", compact && "lg:absolute lg:top-1 lg:right-1 lg:size-3")} />}
       {count != null && count > 0 && (
         <span
           className={cn(
@@ -222,6 +227,7 @@ export function Sidebar({
                 icon={v.icon}
                 count={counts[v.id]}
                 alert={v.id === "deadlines" && counts.urgent > 0}
+                busy={v.id === "activity" && counts.busy}
                 onClick={() => onView(v.id)}
               />
             ))}
@@ -295,6 +301,8 @@ export function TopBar({
   onBell,
   chatOpen,
   onChat,
+  busy,
+  onBusy,
 }: {
   title: string
   today: string | null
@@ -304,6 +312,9 @@ export function TopBar({
   onBell: () => void
   chatOpen: boolean
   onChat: () => void
+  /** Shows "agent at work", linking to the activity: null when nothing runs or the activity is on screen. */
+  busy: string | null
+  onBusy: () => void
 }) {
   const { enabled, setEnabled } = usePrivacy()
   const { t, fmt } = useI18n()
@@ -319,6 +330,13 @@ export function TopBar({
         )}
         <h1 className="truncate text-3xl font-medium tracking-tight sm:text-4xl">{title}</h1>
       </div>
+
+      {busy && (
+        <Button variant="outline" className="h-11 gap-2 rounded-lg border-transparent bg-card px-3" onClick={onBusy} aria-label={busy}>
+          <Spinner className="text-muted-foreground" />
+          <span className="hidden max-w-48 truncate text-sm sm:inline">{busy}</span>
+        </Button>
+      )}
 
       {d && (
         <div className="hidden h-11 items-center gap-3 rounded-lg bg-card py-1 pr-4 pl-1 sm:flex">
@@ -411,7 +429,7 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
   const [more, setMore] = React.useState(false)
   const inMore = MORE.some((v) => v.id === view)
 
-  const tab = (id: View | "more", Icon: LucideIcon, label: string, active: boolean, onClick: () => void, badge?: number) => (
+  const tab = (id: View | "more", Icon: LucideIcon, label: string, active: boolean, onClick: () => void, badge?: number, busy?: boolean) => (
     <button
       key={id}
       type="button"
@@ -435,6 +453,7 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
           {badge}
         </span>
       )}
+      {busy && <Spinner className="absolute top-1.5 left-1/2 ml-2 size-3.5" />}
     </button>
   )
 
@@ -450,7 +469,7 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
             const v = VIEWS.find((x) => x.id === id)!
             return tab(id, v.icon, t.views[id], view === id, () => onView(id), id === "deadlines" ? counts.deadlines : undefined)
           })}
-          {tab("more", EllipsisIcon, t.sidebar.more, inMore || more, () => setMore(true))}
+          {tab("more", EllipsisIcon, t.sidebar.more, inMore || more, () => setMore(true), undefined, counts.busy)}
         </div>
       </nav>
 
@@ -474,6 +493,7 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
               >
                 <v.icon data-icon="inline-start" className="size-5" />
                 {t.views[v.id]}
+                {v.id === "activity" && counts.busy && <Spinner className="ml-auto size-4 opacity-70" />}
                 {counts[v.id] != null && counts[v.id]! > 0 && (
                   <span className="ml-auto font-mono text-xs opacity-60">{counts[v.id]}</span>
                 )}

@@ -270,6 +270,7 @@ export function createApp(s: Services) {
     return hash ? c.json({ hash }) : c.json({ error: "not found" }, 404)
   })
 
+  app.get("/api/jobs/live", (c) => c.json(s.jobs?.live() ?? { current: null, waiting: [], triage: null }))
   app.post("/api/jobs/:name", async (c) => {
     const name = c.req.param("name") as JobName
     if (!s.jobs || !JOB_NAMES.includes(name)) return c.json({ error: "unknown job" }, 404)

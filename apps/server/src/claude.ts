@@ -224,12 +224,13 @@ export class Claude {
     }
   }
 
-  /** Run to the end and return the final text (jobs, Telegram). */
-  async complete(o: RunOptions): Promise<{ text: string; session: string | null; error: string | null }> {
+  /** Run to the end and return the final text (jobs, Telegram); `onEvent` sees every event on the way. */
+  async complete(o: RunOptions, onEvent?: (e: ChatEvent) => void): Promise<{ text: string; session: string | null; error: string | null }> {
     let text = ""
     let session: string | null = null
     let error: string | null = null
     for await (const e of this.run(o)) {
+      onEvent?.(e)
       if (e.type === "session") session = e.id
       else if (e.type === "text") text += e.text
       else if (e.type === "block" && text) text += "\n\n"

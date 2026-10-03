@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useI18n } from "@/i18n"
 import { type Data, loadData, markDone, NotPaired, type Occurrence, type Session, session as loadSession } from "@/lib/api"
+import { useLiveJobs } from "@/lib/live"
 import { level } from "@/lib/status"
 import { Activity } from "@/views/activity"
 import { Cases } from "@/views/cases"
@@ -122,12 +123,18 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
     if (!window.matchMedia("(min-width: 72rem)").matches) setChatOpen(false)
   }, [setChatOpen])
 
-  React.useEffect(() => {
+  const reload = React.useCallback(() => {
     loadData().then(setData, (e: Error) => (e instanceof NotPaired ? onUnpaired() : setError(e.message)))
+  }, [onUnpaired])
+  // When the agent finishes, deadlines and cases may have changed.
+  const live = useLiveJobs(reload)
+
+  React.useEffect(() => {
+    reload()
     const onHash = () => setView(viewFromHash())
     window.addEventListener("hashchange", onHash)
     return () => window.removeEventListener("hashchange", onHash)
-  }, [onUnpaired])
+  }, [reload])
 
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -182,6 +189,7 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
     deadlines: upcoming,
     cases: data?.cases.filter((c) => c.done < c.total).length,
     catalog: data?.catalog.length,
+    busy: Boolean(live?.current),
     urgent:
       data?.agenda.filter((o) => {
         const l = level(o)
@@ -230,6 +238,8 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
             onBell={() => go("deadlines")}
             chatOpen={chatOpen}
             onChat={() => setChatOpen((v) => !v)}
+            busy={live?.current && view !== "activity" ? t.activity.busy : null}
+            onBusy={() => go("activity")}
           />
 
           {error && (
@@ -257,7 +267,7 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
           {data && view === "profile" && <Profile profile={data.profile} />}
           {data && view === "catalog" && <Catalog entries={data.catalog} />}
           {view === "inbox" && <Inbox />}
-          {view === "activity" && <Activity />}
+          {view === "activity" && <Activity live={live} />}
           {view === "settings" && <Settings session={session} />}
           </div>
         </main>

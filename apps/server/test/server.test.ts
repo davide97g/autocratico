@@ -3,13 +3,14 @@ import { cpSync, mkdtempSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 
+import type { JobRun } from "@autocratico/core"
 import { strToU8, zipSync } from "fflate"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { createApp } from "../src/app.ts"
 import { tools } from "../src/claude.ts"
 import { type Config, loadConfig } from "../src/config.ts"
-import { parseTriage } from "../src/jobs.ts"
+import { cleanSteps, parseTriage, recorder } from "../src/jobs.ts"
 import { services } from "../src/services.ts"
 import { outgoing } from "../src/telegram.ts"
 
@@ -167,6 +168,30 @@ describe("agent", () => {
     expect(parseTriage("no block")).toBeNull()
     const d = parseTriage('```json\n{"items":[],"summary":"","phishing":[],"done":["imu-2021@2026-10-20","bad key","x@2026-1-1"]}\n```')
     expect(d?.done).toEqual(["imu-2021@2026-10-20"])
+  })
+
+  it("records the agent's steps without the result block", async () => {
+    const run: JobRun = { id: "r", job: "triage", started: "", finished: null, ok: null, summary: "" }
+    const on = recorder(run)
+    on({ type: "block" })
+    on({ type: "text", text: "Reading the " })
+    on({ type: "text", text: "notice." })
+    on({ type: "tool", name: "Read", detail: "inbox/x/content.md" })
+    on({ type: "block" })
+    on({ type: "text", text: 'Done.\n```json\n{"items":[]}\n```' })
+    on({ type: "block" })
+    on({ type: "text", text: "```json\n{}\n```" })
+    expect(cleanSteps(run.steps!).map(({ tool, text }) => ({ tool, text }))).toEqual([
+      { tool: undefined, text: "Reading the notice." },
+      { tool: "Read", text: "inbox/x/content.md" },
+      { tool: undefined, text: "Done." },
+    ])
+  })
+
+  it("reports no live job when the scheduler is off", async () => {
+    const { app } = setup()
+    const r = await app.request("/api/jobs/live", { headers: LOCAL })
+    expect(await r.json()).toEqual({ current: null, waiting: [], triage: null })
   })
 })
 
