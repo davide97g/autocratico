@@ -63,6 +63,8 @@ export const Case = z.object({
   done: z.number().int(),
   total: z.number().int(),
   md: z.string(),
+  /** Original files the case mentions (inbox/, archive/), folders expanded: data-relative paths. */
+  documents: z.array(z.string()).default([]),
 })
 export type Case = z.infer<typeof Case>
 

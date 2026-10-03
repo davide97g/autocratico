@@ -15,6 +15,8 @@ if (!existsSync(config.data)) {
 
 const s = services(config)
 await s.inbox.recover()
+// Photos that arrived as HEIC before the server converted them.
+void s.inbox.convertAll().catch((e: Error) => console.error(`inbox: ${e.message}`))
 await s.repo.init().catch((e: Error) => console.error(`git: ${e.message}`))
 
 const server = serve({ fetch: createApp(s).fetch, hostname: config.host, port: config.port }, (info) => {

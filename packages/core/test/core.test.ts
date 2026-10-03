@@ -4,6 +4,8 @@ import {
   addMonths,
   agenda,
   daysBetween,
+  documentRefs,
+  isDocumentPath,
   fileName,
   level,
   parseDeadlines,
@@ -117,5 +119,19 @@ describe("chat actions", () => {
     expect(reminderTime("2026-10-02T09:00", "Europe/Rome", now)).toBeNull()
     expect(reminderTime("tomorrow", "Europe/Rome", now)).toBeNull()
     expect(localNow("Europe/Rome", now)).toBe("2026-10-03 15:40 Saturday (UTC+02:00)")
+  })
+})
+
+describe("documents", () => {
+  it("finds the original files a case mentions", () => {
+    const md = "- 2026-10-03: lettera (`inbox/2026-10-03-upload-x-1a2b3c/`), F24 in archive/2026/casa/f24.pdf.\n- inbox/../secrets/x, inbox/a/item.json"
+    expect(documentRefs(md)).toEqual(["inbox/2026-10-03-upload-x-1a2b3c/", "archive/2026/casa/f24.pdf"])
+  })
+
+  it("accepts only paths inside inbox/ and archive/", () => {
+    expect(isDocumentPath("archive/email/x/message.md")).toBe(true)
+    expect(isDocumentPath("secrets/token.json")).toBe(false)
+    expect(isDocumentPath("inbox/.hidden/a.jpg")).toBe(false)
+    expect(isDocumentPath("archive")).toBe(false)
   })
 })

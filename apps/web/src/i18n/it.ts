@@ -189,6 +189,11 @@ export const it: Messages = {
     submit: "Abbina",
     invalid: "Codice non valido o scaduto. Creane uno nuovo.",
   },
+  documents: {
+    title: "Documenti",
+    open: (name: string) => `Apri ${name}`,
+    download: (name: string) => `Scarica ${name}`,
+  },
   inbox: {
     add: "Aggiungi documenti",
     addDescription: "Foto, PDF, export di WhatsApp (.zip) o testo. L'agente li archivia poco dopo.",

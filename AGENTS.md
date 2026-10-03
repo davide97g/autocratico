@@ -32,7 +32,7 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 - `data/profile.toml` — person, properties, vehicles, documents, work, accounts. Free-form; only `person.name` is read by the code.
 - `data/cases/<year>-<slug>/README.md` — one folder per case: `# Title`, a `**Status:** ...` line, `- [ ]` checklist, a Timeline section with ISO dates.
 - `data/catalog/*.md` — researched rules, with sources and last verification date.
-- `data/inbox/<date>-<source>-<slug>-<id6>/` — everything that arrives (email, upload, iOS shortcut, Telegram, WhatsApp export): `item.json` (server-owned), `content.md`, attachments.
+- `data/inbox/<date>-<source>-<slug>-<id6>/` — everything that arrives (email, upload, iOS shortcut, Telegram, WhatsApp export): `item.json` (server-owned), `content.md`, attachments. HEIC photos are replaced by a JPEG on arrival. Paths to `inbox/` or `archive/` written in a case show up as its Documents, and a deadline's `source` may be such a path.
 - `data/archive/` — PDFs and scans in `archive/<year>/<area>/`; emails in `archive/email/<date>-<subject>-<id>/message.md` + attachments.
 - `data/chats/`, `data/jobs/`, `data/reminders.json` — conversations, job log and reminders, server-owned. `data/.git` — local history of the register (never pushed).
 - `data/gmail.toml` — Gmail accounts (`[[account]] name, query`). `data/secrets/` — OAuth credentials and tokens, device and Telegram pairings: never read them, print them or copy them anywhere.
@@ -68,4 +68,4 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
   - `apps/server/src/auth.ts`: loopback-only dev mode; in prod, Cloudflare Access JWT + paired device, Origin check on writes, ingest-only tokens.
   - `apps/server/src/claude.ts`: tool profiles (`read` for chat, `triage` for the background agent: edits only inside the data folder, no web, no secrets, no server-owned files).
   - `apps/server/src/telegram.ts`: paired chats only, every outgoing text redacted.
-  - `apps/server/src/inbox.ts` and `scripts/gmail.py`: file names and zip contents from strangers; attachments are served as downloads only.
+  - `apps/server/src/inbox.ts` and `scripts/gmail.py`: file names and zip contents from strangers. Original files are served only from `inbox/` and `archive/` (`documentFile`: real path checked, no hidden or server files); raster images (JPEG, PNG, WebP, GIF) may be shown inline with their exact type and `nosniff`, everything else is a download.

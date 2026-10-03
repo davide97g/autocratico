@@ -4,8 +4,8 @@
  * The agent's triage job reads new items and updates deadlines and cases.
  */
 import { randomBytes } from "node:crypto"
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
-import { extname, join } from "node:path"
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs"
+import { extname, join, sep } from "node:path"
 
 import {
   fileName,
@@ -14,13 +14,14 @@ import {
   type InboxSource,
   type InboxStatus,
   inboxFolder,
+  isDocumentPath,
   parseWhatsAppExport,
   whatsappToMarkdown,
 } from "@autocratico/core"
 import { unzipSync } from "fflate"
 
 import { locks, writeJson } from "./files.ts"
-import { heicToJpeg, needsCopy } from "./images.ts"
+import { HEIC, replaceHeic } from "./images.ts"
 
 export const MAX_UPLOAD = 25 * 1024 * 1024
 const MAX_ZIP_ENTRIES = 2000
@@ -53,6 +54,22 @@ function unzip(data: Uint8Array): Upload[] {
     },
   })
   return Object.entries(out).map(([name, bytes]) => ({ name: name.split("/").at(-1) ?? name, data: bytes }))
+}
+
+/**
+ * Absolute path of an original file the web app may open (inbox/ or archive/), or null. The real
+ * path must stay there too, so a symlink cannot reach secrets/ or anything else.
+ */
+export function documentFile(data: string, path: string): string | null {
+  if (!isDocumentPath(path)) return null
+  try {
+    const root = realpathSync(data)
+    const real = realpathSync(join(data, path))
+    const inside = [join(root, "inbox"), join(root, "archive")].some((r) => real.startsWith(r + sep))
+    return inside && statSync(real).isFile() ? real : null
+  } catch {
+    return null
+  }
 }
 
 export class Inbox {
@@ -101,24 +118,31 @@ export class Inbox {
     })
   }
 
-  /** Gives each HEIC photo of the item a JPEG copy the agent can look at; returns the item as updated. */
-  async readable(item: InboxItem): Promise<InboxItem> {
-    const added: string[] = []
-    for (const name of needsCopy(item.files)) {
-      try {
-        added.push(...(await heicToJpeg(join(this.dir, item.folder), name, [...item.files, ...added])))
-      } catch (e) {
-        console.error(`inbox: cannot convert ${item.folder}/${name}: ${e instanceof Error ? e.message : e}`)
-      }
+  /**
+   * Replaces HEIC photos with JPEGs, in the item and in the email it points to (archive/email):
+   * one format only, one that the agent and every browser can show. Returns the item as updated.
+   */
+  async convertPhotos(item: InboxItem): Promise<InboxItem> {
+    if (/^archive\/email\/[^/.][^/]*$/.test(item.ref)) {
+      const email = join(this.dir, "..", item.ref)
+      if (existsSync(email)) await replaceHeic(email, readdirSync(email))
     }
-    if (!added.length) return item
+    if (!item.files.some((f) => HEIC.test(f))) return item
+    const converted = await replaceHeic(join(this.dir, item.folder), item.files)
     return locks.run(this.dir, () => {
       const current = this.list().find((i) => i.id === item.id) ?? item
       const { folder, ...rest } = current
-      const files = [...rest.files, ...added.filter((n) => !rest.files.includes(n))]
-      writeJson(join(this.dir, folder, "item.json"), { ...rest, files })
-      return { ...current, files }
+      const files = converted.filter((f) => existsSync(join(this.dir, folder, f)))
+      // An item named after its photo keeps a name that matches what is there.
+      const title = HEIC.test(rest.title) && !files.includes(rest.title) ? rest.title.replace(HEIC, ".jpg") : rest.title
+      writeJson(join(this.dir, folder, "item.json"), { ...rest, title, files })
+      return { ...current, title, files }
     })
+  }
+
+  /** Converts the photos of items that arrived before conversion existed (runs once at start). */
+  async convertAll(): Promise<void> {
+    for (const item of this.list()) await this.convertPhotos(item)
   }
 
   /** Items left halfway by a restart go back to `new`. */
@@ -127,7 +151,11 @@ export class Inbox {
     if (stuck.length) await this.setStatus(stuck, "new")
   }
 
-  add(n: NewItem): Promise<InboxItem> {
+  async add(n: NewItem): Promise<InboxItem> {
+    return this.convertPhotos(await this.#write(n))
+  }
+
+  #write(n: NewItem): Promise<InboxItem> {
     return locks.run(this.dir, () => {
       const id = randomBytes(8).toString("hex")
       const received = new Date().toISOString()

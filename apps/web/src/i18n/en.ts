@@ -187,6 +187,11 @@ export const en = {
     submit: "Pair",
     invalid: "Invalid or expired code. Create a new one.",
   },
+  documents: {
+    title: "Documents",
+    open: (name: string) => `Open ${name}`,
+    download: (name: string) => `Download ${name}`,
+  },
   inbox: {
     add: "Add documents",
     addDescription: "Photos, PDFs, WhatsApp exports (.zip) or plain text. The agent files them shortly after.",

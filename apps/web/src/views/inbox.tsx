@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { cn } from "cn"
 
+import { Documents } from "@/components/documents"
 import { Markdown } from "@/components/markdown"
 import { Sensitive, usePrivacy } from "@/components/privacy"
 import { Badge } from "@/components/ui/badge"
@@ -29,7 +30,6 @@ import {
   type InboxDetail,
   type InboxItem,
   inbox as loadInbox,
-  inboxFileUrl,
   inboxItem,
   ingest,
   setInboxStatus,
@@ -219,16 +219,7 @@ function Item({ item, onChange }: { item: InboxItem; onChange: () => void }) {
       </div>
       {open && detail && (
         <div className="flex flex-col gap-3 pl-12">
-          {detail.files.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {detail.files.map((f) => (
-                <Button key={f} variant="outline" size="xs" render={<a href={inboxFileUrl(item.id, f)} download />}>
-                  <FileIcon data-icon="inline-start" />
-                  <Sensitive>{f}</Sensitive>
-                </Button>
-              ))}
-            </div>
-          )}
+          <Documents paths={detail.files.map((f) => `inbox/${item.folder}/${f}`)} />
           {detail.content &&
             (privacy ? (
               <p className="text-xs text-muted-foreground">{t.privacy.hidden}</p>

@@ -1,9 +1,9 @@
 /** Reading the data folder from disk (Node only). Mirrors the loaders in scripts/store.py. */
-import { existsSync, readdirSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { join } from "node:path"
 
 import { agenda, incomplete, jsonable, parseDeadlines, parseToml } from "./deadlines.ts"
-import { parseCase, parseCatalogEntry } from "./documents.ts"
+import { documentRefs, isDocumentFile, parseCase, parseCatalogEntry } from "./documents.ts"
 import type { Case, CatalogEntry, Data, Deadline, Profile, State } from "./schema.ts"
 
 export function dataPaths(dir: string) {
@@ -50,7 +50,30 @@ export function loadCases(dir: string): Case[] {
     .filter((slug) => existsSync(join(root, slug, "README.md")))
     .sort()
     .reverse()
-    .map((slug) => parseCase(slug, readFileSync(join(root, slug, "README.md"), "utf8")))
+    .map((slug) => {
+      const c = parseCase(slug, readFileSync(join(root, slug, "README.md"), "utf8"))
+      return { ...c, documents: listDocuments(dir, documentRefs(c.md)) }
+    })
+}
+
+/** Files behind document references: a file as is, a folder as the files it holds; missing ones are left out. */
+export function listDocuments(dir: string, refs: readonly string[]): string[] {
+  const out: string[] = []
+  for (const ref of refs) {
+    const path = ref.replace(/\/+$/, "")
+    try {
+      const stat = statSync(join(dir, path))
+      if (stat.isFile()) out.push(path)
+      else if (stat.isDirectory()) {
+        for (const f of readdirSync(join(dir, path)).sort()) {
+          if (isDocumentFile(f) && statSync(join(dir, path, f)).isFile()) out.push(`${path}/${f}`)
+        }
+      }
+    } catch {
+      // gone, or not readable: nothing to show
+    }
+  }
+  return [...new Set(out)]
 }
 
 export function loadCatalog(dir: string): CatalogEntry[] {

@@ -205,9 +205,43 @@ def load_cases() -> list[dict]:
                 "done": len(re.findall(r"^\s*- \[x\]", md, re.M | re.I)),
                 "total": len(re.findall(r"^\s*- \[[ x]\]", md, re.M | re.I)),
                 "md": md,
+                "documents": list_documents(document_refs(md)),
             }
         )
     return cases
+
+
+# Original files a case mentions (mirrors packages/core/src/documents.ts and node.ts).
+NOT_DOCUMENTS = {"item.json", "content.md"}
+
+
+def is_document_path(path: str) -> bool:
+    parts = path.rstrip("/").split("/")
+    return (
+        parts[0] in ("inbox", "archive")
+        and len(parts) >= 2
+        and all(p and not p.startswith(".") and "\\" not in p for p in parts)
+        and parts[-1] not in NOT_DOCUMENTS
+    )
+
+
+def document_refs(md: str) -> list[str]:
+    refs = [re.sub(r"[.,;:!?]+$", "", m) for m in re.findall(r"(?<![\w/.-])((?:inbox|archive)/[^\s`'\"()<>\[\]|*]+)", md)]
+    return [r for r in dict.fromkeys(refs) if is_document_path(r)]
+
+
+def list_documents(refs: list[str]) -> list[str]:
+    out: list[str] = []
+    for ref in refs:
+        path = ref.rstrip("/")
+        full = DATA_DIR / path
+        if full.is_file():
+            out.append(path)
+        elif full.is_dir():
+            for f in sorted(p.name for p in full.iterdir()):
+                if not f.startswith(".") and f not in NOT_DOCUMENTS and (full / f).is_file():
+                    out.append(f"{path}/{f}")
+    return list(dict.fromkeys(out))
 
 
 def load_catalog() -> list[dict]:

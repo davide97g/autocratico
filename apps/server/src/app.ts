@@ -1,6 +1,6 @@
 /** HTTP API and static web app. Routes are listed with their shapes in openapi.ts. */
 import { existsSync, readFileSync, statSync } from "node:fs"
-import { extname, join, resolve, sep } from "node:path"
+import { basename, extname, join, resolve, sep } from "node:path"
 
 import { type ChatEvent, JobRun, parseToml, type Status, stripActions } from "@autocratico/core"
 import { Hono } from "hono"
@@ -14,7 +14,8 @@ import { authMiddleware, type Caller, COOKIE, type Devices } from "./auth.ts"
 import { type Claude, friendlyError } from "./claude.ts"
 import type { Config } from "./config.ts"
 import type { DataRepo } from "./git.ts"
-import { type Inbox, MAX_UPLOAD, type Upload } from "./inbox.ts"
+import { IMAGE_TYPES, thumbnail } from "./images.ts"
+import { documentFile, type Inbox, MAX_UPLOAD, type Upload } from "./inbox.ts"
 import { JOB_NAMES, type JobName, type Jobs } from "./jobs.ts"
 import { openapi } from "./openapi.ts"
 import type { Store } from "./store.ts"
@@ -248,6 +249,26 @@ export function createApp(s: Services) {
     c.header("Content-Type", "application/octet-stream")
     c.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(c.req.param("name"))}`)
     c.header("X-Content-Type-Options", "nosniff")
+    return c.body(readFileSync(file))
+  })
+  // Original files (inbox/, archive/), for the case, deadline, inbox and activity views. Raster images
+  // may be shown inline (exact image type, nosniff); everything else is a download.
+  app.get("/api/file", async (c) => {
+    const path = c.req.query("path") ?? ""
+    const file = documentFile(config.data, path)
+    if (!file) return c.json({ error: "not found" }, 404)
+    const as = c.req.query("as")
+    const type = IMAGE_TYPES[extname(file).toLowerCase()]
+    c.header("X-Content-Type-Options", "nosniff")
+    c.header("Cache-Control", "private, max-age=3600")
+    if (type && (as === "view" || as === "thumb")) {
+      const shown = (as === "thumb" && (await thumbnail(config.data, file))) || file
+      c.header("Content-Type", shown === file ? type : "image/jpeg")
+      c.header("Content-Disposition", "inline")
+      return c.body(readFileSync(shown))
+    }
+    c.header("Content-Type", "application/octet-stream")
+    c.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(basename(file))}`)
     return c.body(readFileSync(file))
   })
   app.post("/api/inbox/:id/status", async (c) => {

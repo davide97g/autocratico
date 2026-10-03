@@ -35,6 +35,7 @@ export const ROUTES: Route[] = [
   { method: "get", path: "/api/inbox", summary: "Inbox items, newest first", response: z.array(InboxItem) },
   { method: "get", path: "/api/inbox/{id}", summary: "One item with its text", response: InboxDetail },
   { method: "get", path: "/api/inbox/{id}/files/{name}", summary: "Download an attachment" },
+  { method: "get", path: "/api/file", summary: "An original file from inbox/ or archive/ (?path=, ?as=view|thumb shows images inline)" },
   { method: "post", path: "/api/inbox/{id}/status", summary: "Set an item to new (process again) or ignored", body: z.object({ status: z.enum(["new", "ignored"]) }), response: Ok },
   { method: "get", path: "/api/activity", summary: "Job runs and changes to the data", response: Activity },
   { method: "get", path: "/api/activity/{hash}", summary: "One change as a patch", response: z.object({ patch: z.string() }) },

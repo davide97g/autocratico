@@ -1,5 +1,6 @@
 import { FolderOpenIcon } from "lucide-react"
 
+import { Documents } from "@/components/documents"
 import { Markdown } from "@/components/markdown"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,6 +51,12 @@ export function Cases({ cases, open }: { cases: Case[]; open: string | null }) {
               <ProgressValue className="font-mono text-xs">{() => `${c.done}/${c.total}`}</ProgressValue>
             </Progress>
             <Markdown text={c.md.replace(HEADER_LINES, "")} />
+            {c.documents.length > 0 && (
+              <section className="flex flex-col gap-3">
+                <h2 className="text-lg font-medium tracking-tight">{t.documents.title}</h2>
+                <Documents paths={c.documents} />
+              </section>
+            )}
           </CardContent>
         </Card>
       ))}

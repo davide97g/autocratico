@@ -3,6 +3,7 @@ import { ClockIcon, GitCommitHorizontalIcon, InboxIcon, MessageSquareTextIcon, T
 import { cn } from "cn"
 
 import { TOOL_ICONS } from "@/components/chat"
+import { Documents } from "@/components/documents"
 import { Sensitive, usePrivacy } from "@/components/privacy"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +15,7 @@ import {
   activity,
   type Commit,
   commitPatch,
+  inboxItem,
   type JobRun,
   type JobStep,
   type LiveJobs,
@@ -86,13 +88,28 @@ function Steps({ steps, live = false }: { steps: JobStep[]; live?: boolean }) {
   )
 }
 
-function Items({ items }: { items: NonNullable<JobRun["items"]> }) {
+/** The files of an inbox item, loaded when shown. */
+function ItemFiles({ id }: { id: string }) {
+  const [paths, setPaths] = React.useState<string[]>([])
+  React.useEffect(() => {
+    inboxItem(id).then(
+      (i) => setPaths(i.files.map((f) => `inbox/${i.folder}/${f}`)),
+      () => setPaths([])
+    )
+  }, [id])
+  return <Documents paths={paths} className="pl-5" />
+}
+
+function Items({ items, files = false }: { items: NonNullable<JobRun["items"]>; files?: boolean }) {
   return (
-    <ul className="flex flex-col gap-1 text-sm">
+    <ul className="flex flex-col gap-2 text-sm">
       {items.map((i) => (
-        <li key={i.id} className="flex min-w-0 items-center gap-2">
-          <InboxIcon className="size-3.5 shrink-0 text-muted-foreground" />
-          <Sensitive className="truncate">{i.title}</Sensitive>
+        <li key={i.id} className="flex min-w-0 flex-col gap-2">
+          <span className="flex min-w-0 items-center gap-2">
+            <InboxIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            <Sensitive className="truncate">{i.title}</Sensitive>
+          </span>
+          {files && <ItemFiles id={i.id} />}
         </li>
       ))}
     </ul>
@@ -192,7 +209,7 @@ function RunRow({ r }: { r: JobRun }) {
           </Button>
           {open && (
             <>
-              {items.length > 0 && <Items items={items} />}
+              {items.length > 0 && <Items items={items} files />}
               <Steps steps={steps} />
             </>
           )}

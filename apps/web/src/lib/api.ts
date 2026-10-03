@@ -83,7 +83,10 @@ export const deleteChat = (id: string) => post<{ ok: boolean }>(`/api/chats/${id
 
 export const inbox = () => request<InboxItem[]>("/api/inbox")
 export const inboxItem = (id: string) => request<InboxDetail>(`/api/inbox/${id}`)
-export const inboxFileUrl = (id: string, name: string) => `${API_BASE}/api/inbox/${id}/files/${encodeURIComponent(name)}`
+/** An original file (inbox/, archive/): `view` and `thumb` show images inline, otherwise a download. */
+export const fileUrl = (path: string, as?: "view" | "thumb") =>
+  `${API_BASE}/api/file?path=${encodeURIComponent(path)}${as ? `&as=${as}` : ""}`
+export const isImage = (path: string) => /\.(jpe?g|png|webp|gif)$/i.test(path)
 export const setInboxStatus = (id: string, status: "new" | "ignored") => post<{ ok: boolean }>(`/api/inbox/${id}/status`, { status })
 
 export function ingest(n: { files: File[]; text: string; title?: string }): Promise<InboxItem> {

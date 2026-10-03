@@ -1,5 +1,6 @@
 import * as React from "react"
-import { CheckIcon, ExternalLinkIcon, FolderOpenIcon, Undo2Icon } from "lucide-react"
+import { isDocumentPath } from "@autocratico/core"
+import { CheckIcon, ExternalLinkIcon, FileIcon, FolderOpenIcon, Undo2Icon } from "lucide-react"
 import { cn } from "cn"
 
 import { Sensitive } from "@/components/privacy"
@@ -11,7 +12,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useI18n } from "@/i18n"
-import type { Data, Occurrence } from "@/lib/api"
+import { type Data, fileUrl, isImage, type Occurrence } from "@/lib/api"
 import { areaIcon, areaName, capitalize, parseDate } from "@/lib/format"
 import { level, STYLE } from "@/lib/status"
 
@@ -135,6 +136,16 @@ export function Deadlines({
   )
 }
 
+/** A web page opens in a new tab; a file from inbox/ or archive/ opens (images) or downloads. */
+function SourceLink({ source, label, ...props }: { source: string; label: string } & React.ComponentProps<"a">) {
+  if (!isDocumentPath(source)) return <a {...props} href={source} target="_blank" rel="noreferrer" aria-label={label} />
+  return isImage(source) ? (
+    <a {...props} href={fileUrl(source, "view")} target="_blank" rel="noreferrer" aria-label={label} />
+  ) : (
+    <a {...props} href={fileUrl(source)} download aria-label={label} />
+  )
+}
+
 function Row({
   o,
   onDone,
@@ -191,10 +202,10 @@ function Row({
             variant="ghost"
             size="icon-sm"
             className="size-9 rounded-lg @lg:size-7"
-            render={<a href={o.source} target="_blank" rel="noreferrer" aria-label={t.deadlines.source} />}
+            render={<SourceLink source={o.source} label={t.deadlines.source} />}
             nativeButton={false}
           >
-            <ExternalLinkIcon />
+            {isDocumentPath(o.source) ? <FileIcon /> : <ExternalLinkIcon />}
           </Button>
         )}
         {done ? (
