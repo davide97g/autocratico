@@ -16,6 +16,16 @@ Move the data from the Mac (once), then stop using the Mac copy for writes:
 rsync -a --chmod=Du=rwx,Dgo=,Fu=rw,Fgo= data/ homelab:autocratico/data/
 ```
 
+Voice messages are transcribed on the server, never by an external service: put a static
+`parakeet-cli` (whisper.cpp, built with `-DBUILD_SHARED_LIBS=OFF`) and a ggml Parakeet model
+(`ggml-parakeet-tdt-0.6b-v3-q8_0.bin`, multilingual) in one folder, and point
+`AUTOCRATICO_ASR_DIR` at it. A hard link to a model another app already downloaded costs no space:
+
+```bash
+mkdir -p ~/autocratico/asr && cp /usr/local/bin/parakeet-cli ~/autocratico/asr/
+ln ~/path/to/ggml-parakeet-tdt-0.6b-v3-q8_0.bin ~/autocratico/asr/
+```
+
 Personal instructions for every agent go in `data/notes/INSTRUCTIONS.md` (language, mailboxes): the container has no `CLAUDE.local.md`.
 
 ## 2. Secrets
@@ -35,7 +45,7 @@ Set them in Dokploy's Environment tab of the compose app (never in the repositor
 With Dokploy (adapt to your own runbook):
 
 1. Project `autocratico`, compose app with `appName: autocratico`, source GitHub `main`, compose path `deploy/compose.homelab.yml`, `autoDeploy: false`.
-2. Environment: the variables above, plus `AUTOCRATICO_DATA_DIR` and `AUTOCRATICO_BACKUP_DIR` (absolute paths of the two folders from step 1).
+2. Environment: the variables above, plus `AUTOCRATICO_DATA_DIR`, `AUTOCRATICO_BACKUP_DIR` and `AUTOCRATICO_ASR_DIR` (absolute paths of the folders from step 1).
 3. Deploy, then on the box: `curl -s http://127.0.0.1:8790/api/health` → `{"ok":true}`.
 
 No Traefik route is needed: the tunnel points straight at `http://localhost:8790`.

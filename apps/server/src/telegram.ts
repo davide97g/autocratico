@@ -17,6 +17,7 @@ import { locks, readJson, writeSecret } from "./files.ts"
 import type { Inbox, Upload } from "./inbox.ts"
 import type { Button, Jobs, Notifier } from "./jobs.ts"
 import type { Store } from "./store.ts"
+import type { Transcriber } from "./transcribe.ts"
 
 const MAX_MESSAGE = 4000
 const EDIT_EVERY_MS = 1500
@@ -38,7 +39,7 @@ const TEXT = {
       "/nuova: nuova conversazione",
       "/stato: stato del server",
       "",
-      "Scrivi una domanda per parlare con l'agente. Inoltra messaggi o manda file/foto per aggiungerli all'inbox.",
+      "Scrivi o manda un vocale per parlare con l'agente (trascritto sul server, mai fuori). Inoltra messaggi o vocali, o manda file/foto, per aggiungerli all'inbox.",
     ].join("\n"),
     paired: "Collegato. Riceverai qui notifiche e promemoria.\n\n",
     received: (n: number) => `Ricevuto (${n} file). Lo elaboro tra poco e ti avviso.`,
@@ -55,6 +56,11 @@ const TEXT = {
     thinking: "…",
     noClaude: "L'agente non è disponibile su questo server.",
     tooBig: "File troppo grande per Telegram (max 20 MB): caricalo dalla web app.",
+    heard: (t: string) => `🎙️ ${t}`,
+    transcript: "Trascrizione del vocale:",
+    noSpeech: "Trascrizione vocale non configurata sul server.",
+    empty: "Non ho capito niente nel vocale.",
+    asrFailed: (e: string) => `Trascrizione non riuscita: ${e}`,
     status: (s: string) => `Stato\n${s}`,
     inDays: (n: number) => (n === 0 ? "oggi" : n === 1 ? "domani" : `tra ${n} g`),
     ago: (n: number) => `${n} g fa`,
@@ -71,7 +77,7 @@ const TEXT = {
       "/nuova: new conversation",
       "/stato: server status",
       "",
-      "Write a question to talk to the agent. Forward messages or send files/photos to add them to the inbox.",
+      "Write or send a voice message to talk to the agent (transcribed on the server, never elsewhere). Forward messages or voice notes, or send files/photos, to add them to the inbox.",
     ].join("\n"),
     paired: "Paired. Notifications and reminders will arrive here.\n\n",
     received: (n: number) => `Received (${n} files). I'll process it shortly and let you know.`,
@@ -88,6 +94,11 @@ const TEXT = {
     thinking: "…",
     noClaude: "The agent is not available on this server.",
     tooBig: "File too large for Telegram (20 MB max): upload it from the web app.",
+    heard: (t: string) => `🎙️ ${t}`,
+    transcript: "Voice message transcript:",
+    noSpeech: "Speech to text is not configured on the server.",
+    empty: "I could not make out anything in the voice message.",
+    asrFailed: (e: string) => `Transcription failed: ${e}`,
     status: (s: string) => `Status\n${s}`,
     inDays: (n: number) => (n === 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} d`),
     ago: (n: number) => `${n} d ago`,
@@ -122,7 +133,7 @@ export function outgoing(text: string): string[] {
   return parts
 }
 
-type Deps = { config: Config; store: Store; inbox: Inbox; claude: Claude; jobs: () => Jobs | null }
+type Deps = { config: Config; store: Store; inbox: Inbox; claude: Claude; transcriber: Transcriber; jobs: () => Jobs | null }
 
 export class Telegram implements Notifier {
   readonly bot: Bot
@@ -306,13 +317,33 @@ export class Telegram implements Notifier {
       const photo = ctx.message.photo?.at(-1)
       const size = doc?.file_size ?? photo?.file_size ?? 0
       if (size > 20 * 1024 * 1024) return this.#reply(ctx, t().tooBig)
-      const file = await ctx.api.getFile((doc ?? photo)!.file_id)
-      const url = `https://api.telegram.org/file/bot${this.bot.token}/${file.file_path}`
-      const r = await fetch(url)
-      if (!r.ok) throw new Error(`download failed: HTTP ${r.status}`)
       const name = doc?.file_name ?? `photo-${ctx.message.date}.jpg`
-      await this.#ingest(ctx, { text: ctx.message.caption, files: [{ name, data: new Uint8Array(await r.arrayBuffer()) }] })
+      await this.#ingest(ctx, { text: ctx.message.caption, files: [{ name, data: await this.#download((doc ?? photo)!.file_id) }] })
       return this.#reply(ctx, t().received(1))
+    })
+
+    // Voice: transcribed locally, then a question for the agent; a forwarded voice note goes to the inbox.
+    bot.on(["message:voice", "message:audio"], async (ctx) => {
+      const media = ctx.message.voice ?? ctx.message.audio!
+      if ((media.file_size ?? 0) > 20 * 1024 * 1024) return this.#reply(ctx, t().tooBig)
+      if (!this.#d.transcriber.available) return this.#reply(ctx, t().noSpeech)
+      await ctx.replyWithChatAction("typing").catch(() => undefined)
+      const name = ctx.message.audio?.file_name ?? `voice-${ctx.message.date}.ogg`
+      const data = await this.#download(media.file_id)
+      let text: string
+      try {
+        text = await this.#d.transcriber.transcribe(data, name)
+      } catch (e) {
+        return this.#reply(ctx, t().asrFailed((e as Error).message))
+      }
+      if (!text) return this.#reply(ctx, t().empty)
+      if (ctx.message.forward_origin || ctx.message.caption) {
+        const caption = ctx.message.caption ? `${ctx.message.caption}\n\n` : ""
+        await this.#ingest(ctx, { text: `${caption}${t().transcript}\n${text}`, files: [{ name, data }] })
+        return this.#reply(ctx, `${t().heard(text)}\n\n${t().saved}`)
+      }
+      await this.#reply(ctx, t().heard(text))
+      return this.#converse(ctx, text)
     })
 
     bot.on("message:text", async (ctx) => {
@@ -326,6 +357,13 @@ export class Telegram implements Notifier {
       }
       return this.#converse(ctx, ctx.message.text)
     })
+  }
+
+  async #download(fileId: string): Promise<Uint8Array> {
+    const file = await this.bot.api.getFile(fileId)
+    const r = await fetch(`https://api.telegram.org/file/bot${this.bot.token}/${file.file_path}`)
+    if (!r.ok) throw new Error(`download failed: HTTP ${r.status}`)
+    return new Uint8Array(await r.arrayBuffer())
   }
 
   #agenda(days: number, withOverdue: boolean): string {

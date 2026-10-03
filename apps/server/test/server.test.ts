@@ -174,3 +174,18 @@ describe("telegram", () => {
     expect(outgoing("x".repeat(9000)).length).toBe(3)
   })
 })
+
+describe("speech to text", () => {
+  it("reads the transcript and catches silent failures", async () => {
+    const { parseTranscript } = await import("../src/transcribe.ts")
+    expect(parseTranscript("Ciao, quanto devo pagare\ndi TARI?\n", "whisper_init: ok\n")).toBe("Ciao, quanto devo pagare di TARI?")
+    expect(() => parseTranscript("", "read_audio_data: failed to read audio data\nerror: failed to read audio file 'x.ogg'\n")).toThrow(/failed to read/)
+  })
+
+  it("is off without a model", async () => {
+    const { Transcriber } = await import("../src/transcribe.ts")
+    const t = new Transcriber(loadConfig({ asr: null, jobs: false, claude: null }))
+    expect(t.available).toBe(false)
+    await expect(t.transcribe(new Uint8Array([1]))).rejects.toThrow(/not configured/)
+  })
+})

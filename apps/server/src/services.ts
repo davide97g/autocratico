@@ -8,6 +8,7 @@ import { Inbox } from "./inbox.ts"
 import { Jobs } from "./jobs.ts"
 import { Store } from "./store.ts"
 import { Telegram } from "./telegram.ts"
+import { Transcriber } from "./transcribe.ts"
 
 export function services(config: Config, overrides: Partial<Services> = {}): Services {
   const store = new Store(config.data, config.timeZone)
@@ -23,10 +24,11 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     repo,
     jobs: null,
     telegram: null,
+    transcriber: new Transcriber(config),
     ...overrides,
   }
   if (config.telegramToken && overrides.telegram === undefined) {
-    s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, jobs: () => s.jobs })
+    s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, transcriber: s.transcriber, jobs: () => s.jobs })
   }
   if (overrides.jobs === undefined) {
     s.jobs = new Jobs({ config, store, inbox, claude, repo, notifier: () => s.telegram })

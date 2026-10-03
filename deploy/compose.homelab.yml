@@ -19,6 +19,8 @@ services:
     volumes:
       - ${AUTOCRATICO_DATA_DIR:?set AUTOCRATICO_DATA_DIR, e.g. /home/<user>/autocratico/data}:/data
       - ${AUTOCRATICO_BACKUP_DIR:?set AUTOCRATICO_BACKUP_DIR, e.g. /home/<user>/backups/autocratico}:/backups
+      # Local speech to text: a folder with parakeet-cli and a ggml Parakeet model (read-only).
+      - ${AUTOCRATICO_ASR_DIR:?set AUTOCRATICO_ASR_DIR, a folder with parakeet-cli and a ggml-parakeet-*.bin model}:/asr:ro
       # Claude Code sessions (chat history resumes across restarts).
       - autocratico_claude:/home/node/.claude
     read_only: true

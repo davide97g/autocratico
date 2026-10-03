@@ -1,5 +1,5 @@
 /** Server settings, all from environment variables (see docs/deploy-homelab.md). */
-import { existsSync } from "node:fs"
+import { existsSync, readdirSync } from "node:fs"
 import { homedir } from "node:os"
 import { resolve } from "node:path"
 
@@ -24,6 +24,8 @@ export type Config = {
   jobs: boolean
   claude: string | null
   python: string
+  /** Local speech to text (parakeet-cli + model + ffmpeg); null when any piece is missing. */
+  asr: { bin: string; model: string; threads: number } | null
 }
 
 function env(name: string): string | undefined {
@@ -31,14 +33,35 @@ function env(name: string): string | undefined {
   return v ? v : undefined
 }
 
+function onPath(name: string): string | null {
+  for (const dir of (process.env.PATH ?? "").split(":")) {
+    if (dir && existsSync(resolve(dir, name))) return resolve(dir, name)
+  }
+  return null
+}
+
 function findClaude(): string | null {
   const explicit = env("CLAUDE_BIN")
   if (explicit) return explicit
-  for (const dir of (process.env.PATH ?? "").split(":")) {
-    if (dir && existsSync(resolve(dir, "claude"))) return resolve(dir, "claude")
-  }
   const local = resolve(homedir(), ".local/bin/claude")
-  return existsSync(local) ? local : null
+  return onPath("claude") ?? (existsSync(local) ? local : null)
+}
+
+/** ASR_BIN / ASR_MODEL, else /asr (the container's mount: parakeet-cli and a ggml .bin model), else PATH. */
+function findAsr(): Config["asr"] {
+  const dir = env("ASR_DIR") ?? "/asr"
+  const inDir = (f: (name: string) => boolean) => {
+    try {
+      const name = readdirSync(dir).find(f)
+      return name ? resolve(dir, name) : null
+    } catch {
+      return null
+    }
+  }
+  const bin = env("ASR_BIN") ?? inDir((n) => n === "parakeet-cli") ?? onPath("parakeet-cli")
+  const model = env("ASR_MODEL") ?? inDir((n) => n.endsWith(".bin"))
+  if (!bin || !model || !existsSync(model) || !onPath("ffmpeg")) return null
+  return { bin, model, threads: Number(env("ASR_THREADS") ?? 4) }
 }
 
 export function loadConfig(overrides: Partial<Config> = {}): Config {
@@ -62,6 +85,7 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     jobs: auth === "prod" ? env("AUTOCRATICO_JOBS") !== "off" : env("AUTOCRATICO_JOBS") === "on",
     claude: findClaude(),
     python: env("PYTHON") ?? "python3",
+    asr: findAsr(),
     ...overrides,
   }
   validate(config)

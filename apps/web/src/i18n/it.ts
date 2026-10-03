@@ -235,6 +235,7 @@ export const it: Messages = {
     mode: "Modalità",
     modes: { dev: "locale (senza accesso)", prod: "online (Cloudflare Access + dispositivi abbinati)" },
     claude: "Agente (Claude Code)",
+    speech: "Trascrizione vocali (locale)",
     available: "disponibile",
     missing: "non trovato",
     lastRun: "Ultima esecuzione",

@@ -19,6 +19,7 @@ import { JOB_NAMES, type JobName, type Jobs } from "./jobs.ts"
 import { openapi } from "./openapi.ts"
 import type { Store } from "./store.ts"
 import type { Telegram } from "./telegram.ts"
+import type { Transcriber } from "./transcribe.ts"
 
 export const VERSION = "0.1.0"
 
@@ -31,6 +32,7 @@ export type Services = {
   repo: DataRepo
   jobs: Jobs | null
   telegram: Telegram | null
+  transcriber: Transcriber
   /** Override for tests: verifies the Cloudflare Access JWT. */
   verifyAccess?: ((t: string | undefined) => Promise<boolean>) | null
 }
@@ -261,6 +263,7 @@ export function createApp(s: Services) {
       version: VERSION,
       auth: config.auth,
       claude: claude.available,
+      speech: s.transcriber.available,
       telegram: { enabled: s.telegram !== null, chats: s.telegram?.chats().length ?? 0 },
       gmail,
       inbox: { new: items.filter((i) => i.status === "new").length, failed: items.filter((i) => i.status === "failed").length },

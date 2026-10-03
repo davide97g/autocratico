@@ -1,7 +1,7 @@
 # Autocratico server: API, PWA, scheduled jobs, Telegram bot, headless Claude Code.
 # Build from the repository root: docker build -f deploy/Dockerfile -t autocratico .
 
-FROM node:24-slim AS build
+FROM node:24-trixie-slim AS build
 WORKDIR /src
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json .prettierrc ./
@@ -15,7 +15,7 @@ RUN pnpm --filter @autocratico/web build
 
 # Production dependencies of the server only, keeping the workspace layout: Node runs the
 # TypeScript sources directly, which it refuses to do for files inside node_modules.
-FROM node:24-slim AS deps
+FROM node:24-trixie-slim AS deps
 WORKDIR /src
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -23,11 +23,13 @@ COPY apps/server/package.json apps/server/
 COPY packages/core/package.json packages/core/
 RUN pnpm install --prod --frozen-lockfile --filter "@autocratico/server..."
 
-FROM node:24-slim
+# trixie: parakeet-cli (speech to text, mounted from the host at /asr) needs glibc 2.38.
+FROM node:24-trixie-slim
 ARG CLAUDE_CODE_VERSION=2.1.288
-# python3: the CLIs in scripts/ (Gmail sync, upcoming, ics); git: history of the data folder.
+# python3: the CLIs in scripts/ (Gmail sync, upcoming, ics); git: history of the data folder;
+# ffmpeg + libgomp1: voice messages (Opus to WAV, and the runtime parakeet-cli links against).
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 git tini ca-certificates tzdata \
+  && apt-get install -y --no-install-recommends python3 git tini ca-certificates tzdata ffmpeg libgomp1 \
   && rm -rf /var/lib/apt/lists/* \
   && npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
   && npm cache clean --force

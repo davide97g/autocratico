@@ -34,7 +34,7 @@
 |---|---|---|
 | Web app / PWA (iPhone, Mac, any browser) | `https://<host>/` | Cloudflare Access + paired device cookie |
 | iOS/macOS share sheet | Shortcut → `POST /api/ingest` | Access service token + ingest-only bearer token |
-| Telegram | bot in a private chat | paired chat ids |
+| Telegram | bot in a private chat: text, voice (transcribed locally), files | paired chat ids |
 | Gmail (several accounts) | `gmail.py sync --all` every 10 min | OAuth per account, read-only |
 | Email from anywhere | forward to a synced Gmail account | — |
 | WhatsApp | Export chat → share to the Shortcut or upload the .zip | as above |

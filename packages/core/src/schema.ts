@@ -195,6 +195,8 @@ export const Status = z.object({
   version: z.string(),
   auth: z.enum(["dev", "prod"]),
   claude: z.boolean(),
+  /** Local speech to text for voice messages. */
+  speech: z.boolean(),
   telegram: z.object({ enabled: z.boolean(), chats: z.number().int() }),
   gmail: z.array(z.object({ name: z.string(), connected: z.boolean() })),
   inbox: z.object({ new: z.number().int(), failed: z.number().int() }),

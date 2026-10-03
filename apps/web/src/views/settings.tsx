@@ -82,6 +82,7 @@ function ServerCard({ s, onRefresh }: { s: Status; onRefresh: () => void }) {
           <Row label={t.settings.version}>{s.version}</Row>
           <Row label={t.settings.mode}>{t.settings.modes[s.auth]}</Row>
           <Row label={t.settings.claude}>{s.claude ? t.settings.available : t.settings.missing}</Row>
+          <Row label={t.settings.speech}>{s.speech ? t.settings.available : t.settings.missing}</Row>
           <Row label={t.views.inbox}>{t.settings.inboxCounts(s.inbox.new, s.inbox.failed)}</Row>
         </div>
         <ul className="flex flex-col gap-2">

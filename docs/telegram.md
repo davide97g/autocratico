@@ -25,6 +25,7 @@ Bots are not end-to-end encrypted: Telegram's servers see the messages. Every ou
 
 ## Use
 
+- Send a voice message: it is transcribed on the server (ffmpeg + `parakeet-cli`, nothing leaves the machine), the bot shows what it understood, then the agent answers. A forwarded voice note, or one with a caption, goes to the inbox with its transcript instead.
 - Write a question: the agent answers (read-only, same as the web chat; one conversation per chat, `/nuova` starts over).
 - Send a photo or a PDF, or forward a message: it goes to the inbox and the agent files it.
 - Reminders at 08:30 come with **✓ Fatto** buttons.

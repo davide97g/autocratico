@@ -19,7 +19,7 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 ## Layout (pnpm monorepo)
 - `packages/core/` — TypeScript shared by server and web: zod schemas (`schema.ts`), deadlines and recurrence (`deadlines.ts`, mirrors `scripts/store.py`), status levels, `redact()`, WhatsApp export parser, safe names. `core/node` reads the data folder from disk.
 - `apps/server/` — Hono server, Node 24 running TypeScript directly (no build):
-  - `app.ts` routes (listed with shapes in `openapi.ts`, served at `/api/openapi.json`), `auth.ts` access control, `store.ts` state and chats, `inbox.ts` ingestion, `claude.ts` headless Claude Code runner, `jobs.ts` scheduler, `telegram.ts` bot, `git.ts` history of the data folder, `cli.ts` admin commands.
+  - `app.ts` routes (listed with shapes in `openapi.ts`, served at `/api/openapi.json`), `auth.ts` access control, `store.ts` state and chats, `inbox.ts` ingestion, `claude.ts` headless Claude Code runner, `jobs.ts` scheduler, `telegram.ts` bot, `git.ts` history of the data folder, `transcribe.ts` local speech to text (ffmpeg + `parakeet-cli`), `cli.ts` admin commands.
 - `apps/web/` — React + Vite + Tailwind v4 + shadcn/ui (`base-ui`, lucide icons), installable PWA. Personal data is rendered only through `<Sensitive>` (`src/components/privacy.tsx`).
 - `scripts/` — Python 3.11+, standard library only: `store.py` (loading and recurrence for the CLIs), `init.py`, `upcoming.py`, `ics.py`, `gmail.py`.
 - `deploy/` — Dockerfile and compose file for the homelab; `docs/` — architecture, deploy, Gmail, Telegram, iOS shortcut.
@@ -49,7 +49,7 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 
 ## Rules
 - Code and data stay separate: names, addresses, amounts, dates and personal references go only in `data/`. Never in code, `example/`, docs, agent instructions or commit messages.
-- Personal data stays on the user's machines. Two deliberate exceptions: the web app is reached through Cloudflare (Tunnel + Access, TLS ends at Cloudflare), and Telegram receives redacted messages only (`redact()` masks `||...||` and recognisable data). Nothing else: no web searches with personal data, no other services. Never store passwords, PINs, PUKs or access codes.
+- Personal data stays on the user's machines. Two deliberate exceptions: the web app is reached through Cloudflare (Tunnel + Access, TLS ends at Cloudflare), and Telegram receives redacted messages only (`redact()` masks `||...||` and recognisable data). Nothing else: no web searches with personal data, no other services (voice messages are transcribed on the server itself). Never store passwords, PINs, PUKs or access codes.
 - In case Markdown files and in answers, wrap personal data in `||...||` (amounts, birth dates, addresses, document numbers, people's names): the web app hides it in privacy mode and Telegram never shows it. All `profile.toml` values, `amount` fields and dates with `sensitive = true` are already hidden in the web app.
 - When a document arrives (pasted, in `data/inbox/` or in `data/archive/`): extract deadlines and amounts, update `deadlines.toml`, open or update the case, add a Timeline line.
 - Before recommending a payment or a money decision: re-check the rule on the web and update `catalog/` with source and verification date. Always tell what is verified apart from what is inferred.

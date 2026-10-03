@@ -233,6 +233,7 @@ export const en = {
     mode: "Mode",
     modes: { dev: "local (no login)", prod: "online (Cloudflare Access + paired devices)" } as Record<string, string>,
     claude: "Agent (Claude Code)",
+    speech: "Voice transcription (local)",
     available: "available",
     missing: "not found",
     lastRun: "Last run",
