@@ -11,7 +11,7 @@ import { join } from "node:path"
 import { type Chat, type Occurrence, redact } from "@autocratico/core"
 import { Bot, type Context, InlineKeyboard } from "grammy"
 
-import type { Claude } from "./claude.ts"
+import { type Claude, friendlyError } from "./claude.ts"
 import type { Config } from "./config.ts"
 import { locks, readJson, writeSecret } from "./files.ts"
 import type { Inbox, Upload } from "./inbox.ts"
@@ -420,7 +420,11 @@ export class Telegram implements Notifier {
           await edit()
         }
       }
-      if (error && !answer) answer = `⚠️ ${error}`
+      if (error) {
+        // A failed run leaves nothing worth resuming: the next message starts a fresh session.
+        chat.session = null
+        if (!answer) answer = `⚠️ ${friendlyError(error, this.#d.config.locale)}`
+      }
       const parts = outgoing(answer)
       if (parts[0] !== shown) await ctx.api.editMessageText(chatId, sent.message_id, parts[0]).catch(() => undefined)
       for (const p of parts.slice(1)) await ctx.reply(p)

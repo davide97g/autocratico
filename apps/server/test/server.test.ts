@@ -164,6 +164,8 @@ describe("agent", () => {
     const r = parseTriage('Done.\n```json\n{"items":[{"id":"a","status":"processed","outcome":"TARI aggiunta"}],"summary":"TARI ||120 €||","phishing":[]}\n```')
     expect(r?.items[0].id).toBe("a")
     expect(parseTriage("no block")).toBeNull()
+    const d = parseTriage('```json\n{"items":[],"summary":"","phishing":[],"done":["imu-2021@2026-10-20","bad key","x@2026-1-1"]}\n```')
+    expect(d?.done).toEqual(["imu-2021@2026-10-20"])
   })
 })
 
@@ -187,5 +189,20 @@ describe("speech to text", () => {
     const t = new Transcriber(loadConfig({ asr: null, jobs: false, claude: null }))
     expect(t.available).toBe(false)
     await expect(t.transcribe(new Uint8Array([1]))).rejects.toThrow(/not configured/)
+  })
+})
+
+describe("agent errors", () => {
+  it("explains failures in plain language", async () => {
+    const { friendlyError } = await import("../src/claude.ts")
+    expect(friendlyError("error_during_execution", "it")).toMatch(/Riprova/)
+    expect(friendlyError("Claude AI usage limit reached|1791040000", "it")).toMatch(/Limite/)
+    expect(friendlyError("API Error: 401 OAuth token has expired", "en")).toMatch(/setup-token/)
+  })
+
+  it("does not resume a session that is gone", async () => {
+    const { Claude } = await import("../src/claude.ts")
+    const c = new Claude(loadConfig({ jobs: false, claude: null }))
+    expect(c.sessionExists("00000000-0000-0000-0000-000000000000")).toBe(false)
   })
 })

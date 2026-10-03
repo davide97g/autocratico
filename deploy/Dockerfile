@@ -61,7 +61,9 @@ ENV NODE_ENV=production \
     DISABLE_AUTOUPDATER=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-RUN mkdir -p /data /backups && chown node:node /data /backups
+# /home/node/.claude must exist and belong to node: a new named volume copies this ownership,
+# otherwise it is root's and Claude Code cannot save sessions (every resumed chat then fails).
+RUN mkdir -p /data /backups /home/node/.claude && chown node:node /data /backups /home/node/.claude
 USER node
 EXPOSE 8790
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

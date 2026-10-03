@@ -8,7 +8,9 @@
  *         no web access at all, since it reads untrusted content while holding write access.
  */
 import { spawn } from "node:child_process"
-import { relative } from "node:path"
+import { existsSync, readdirSync } from "node:fs"
+import { homedir } from "node:os"
+import { join, relative } from "node:path"
 
 import type { ChatEvent } from "@autocratico/core"
 
@@ -67,7 +69,7 @@ const CHAT_INSTRUCTIONS = `You are answering in the chat of autocratico, the use
 - Be direct and brief; use simple Markdown (lists, bold, small tables).
 - Read the data files (deadlines.toml, state.json, profile.toml, cases/, catalog/, notes/, inbox/) before answering about facts and dates.
 - Wrap every piece of personal data in ||...|| (amounts, birth dates, addresses, document numbers, names of people): the web app hides them in privacy mode and Telegram never shows them.
-- To read, use Read, Glob and Grep; the only command you may run is \`python3 scripts/upcoming.py [days]\`, on its own, without pipes or other commands.
+- To read, use Read, Glob and Grep; the only command you may run is \`python3 scripts/upcoming.py [days]\`, typed exactly like that (AUTOCRATICO_DATA is already set): no prefixes, cd, absolute paths or pipes.
 - You are read-only: do not modify files. If a change is needed, say which file and what to change.
 - Tell what is verified apart from what is inferred. Never send personal data to web searches.`
 
@@ -93,6 +95,30 @@ export type RunOptions = {
   signal?: AbortSignal
 }
 
+/** Plain-language text for errors from `claude -p`, shown in the chat and on Telegram. */
+export function friendlyError(message: string, locale: "it" | "en"): string {
+  const it = locale === "it"
+  if (/usage limit|rate.?limit|limit (reached|exceeded)|429|overloaded/i.test(message)) {
+    return it
+      ? "Limite di utilizzo dell'abbonamento Claude raggiunto: riprova più tardi."
+      : "Claude subscription usage limit reached: try again later."
+  }
+  if (/401|unauthori[sz]ed|oauth|invalid api key|authentication|not logged in|\/login/i.test(message)) {
+    return it
+      ? "L'agente non è autenticato sul server: il token Claude va rinnovato (claude setup-token)."
+      : "The agent is not signed in on the server: the Claude token needs renewing (claude setup-token)."
+  }
+  if (/max_turns/i.test(message)) {
+    return it
+      ? "La richiesta ha richiesto troppi passaggi: prova a dividerla in domande più semplici."
+      : "That took too many steps: try splitting it into simpler questions."
+  }
+  if (/not found in PATH/i.test(message)) return it ? "L'agente non è installato su questo server." : "The agent is not installed on this server."
+  return it
+    ? "Non sono riuscito a rispondere per un errore dell'agente. Riprova; se succede ancora, /nuova riparte da zero."
+    : "I couldn't answer because of an agent error. Try again; if it keeps happening, /nuova starts over."
+}
+
 export class Claude {
   readonly config: Config
 
@@ -102,6 +128,16 @@ export class Claude {
 
   get available(): boolean {
     return this.config.claude !== null
+  }
+
+  /** Whether Claude Code still has this session on disk (resuming a missing one fails the whole run). */
+  sessionExists(id: string): boolean {
+    const projects = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "projects")
+    try {
+      return readdirSync(projects).some((dir) => existsSync(join(projects, dir, `${id}.jsonl`)))
+    } catch {
+      return false
+    }
   }
 
   /** Yields: session {id} · text {text} · block · tool {name, detail} · end {cost, duration_ms} · error {message}. */
@@ -128,7 +164,8 @@ export class Claude {
       "--append-system-prompt", [base, o.instructions ?? "", context].filter(Boolean).join("\n\n"),
     ]
     if (relative(root, data).startsWith("..")) args.push("--add-dir", data)
-    if (o.session && SESSION.test(o.session)) args.push("--resume", o.session)
+    // A session lost (restart without the volume, unwritable config dir) starts a new one instead of failing.
+    if (o.session && SESSION.test(o.session) && this.sessionExists(o.session)) args.push("--resume", o.session)
 
     const child = spawn(executable, args, {
       cwd: root,
@@ -143,6 +180,7 @@ export class Claude {
     child.stdin.end(o.prompt)
 
     let finished = false
+    let failed = false
     let rest = ""
     try {
       for await (const chunk of child.stdout.setEncoding("utf8")) {
@@ -152,12 +190,17 @@ export class Claude {
         for (const line of lines) {
           for (const e of translate(line, [data, root])) {
             if (e.type === "end") finished = true
+            if (e.type === "error") {
+              failed = true
+              console.error(`claude (${o.profile}): ${e.message}`)
+            }
             yield e
           }
         }
       }
       for (const e of translate(rest, [data, root])) {
         if (e.type === "end") finished = true
+        if (e.type === "error") failed = true
         yield e
       }
       const code = await exited
@@ -165,6 +208,7 @@ export class Claude {
         const last = stderr.trim().split("\n").at(-1)
         yield { type: "error", message: last || `claude exited with code ${code}` }
       }
+      if (failed && stderr.trim()) console.error(`claude (${o.profile}): ${stderr.trim().split("\n").slice(-5).join(" | ")}`)
     } finally {
       kill()
       o.signal?.removeEventListener("abort", kill)
@@ -205,7 +249,10 @@ function* translate(line: string, bases: string[]): Generator<ChatEvent> {
       if (c.type === "tool_use") yield { type: "tool", name: String(c.name ?? ""), detail: detail(c.input ?? {}, bases) }
     }
   } else if (e.type === "result") {
-    if (e.is_error) yield { type: "error", message: String(e.result ?? e.subtype ?? "error") }
+    if (e.is_error) {
+      const details = Array.isArray(e.errors) ? e.errors.map(String).join("; ") : ""
+      yield { type: "error", message: [e.subtype, e.result, details].filter(Boolean).map(String).join(": ") || "error" }
+    }
     yield { type: "end", cost: e.total_cost_usd ?? null, duration_ms: e.duration_ms ?? null }
   }
 }

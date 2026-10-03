@@ -11,7 +11,7 @@ import { stream } from "hono/streaming"
 import { z } from "zod"
 
 import { authMiddleware, type Caller, COOKIE, type Devices } from "./auth.ts"
-import type { Claude } from "./claude.ts"
+import { type Claude, friendlyError } from "./claude.ts"
 import type { Config } from "./config.ts"
 import type { DataRepo } from "./git.ts"
 import { type Inbox, MAX_UPLOAD, type Upload } from "./inbox.ts"
@@ -173,8 +173,11 @@ export function createApp(s: Services) {
           else if (e.type === "text") answer.text += e.text
           else if (e.type === "block" && answer.text) answer.text += "\n\n"
           else if (e.type === "tool") answer.tools.push({ name: e.name, detail: e.detail })
-          else if (e.type === "error") answer.error = e.message
-          if (!out.aborted) await send(e)
+          else if (e.type === "error") {
+            chat.session = null // nothing worth resuming after a failed run
+            answer.error = friendlyError(e.message, locale === "en" ? "en" : "it")
+          }
+          if (!out.aborted) await send(e.type === "error" ? { type: "error", message: answer.error ?? e.message } : e)
         }
       } finally {
         chat.messages.push(answer)
