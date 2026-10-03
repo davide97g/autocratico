@@ -35,7 +35,8 @@ export default defineConfig({
     apiServer(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "script-defer",
+      // Registered by the app (src/lib/update.ts), which also checks for new builds and reloads when idle.
+      injectRegister: false,
       includeAssets: ["icons/icon.svg", "icons/apple-touch-icon.png"],
       manifest: {
         id: "/",
@@ -63,9 +64,23 @@ export default defineConfig({
       workbox: {
         // App shell only: personal data from /api is never cached.
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
-        navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api\//],
-        runtimeCaching: [],
+        // A new worker takes over at once; the page reloads onto it when idle (src/lib/update.ts).
+        skipWaiting: true,
+        clientsClaim: true,
+        // Pages network-first: a launch after a deploy opens the new build, and an expired Cloudflare Access
+        // session reaches the login redirect. The precached shell is the offline fallback.
+        navigateFallback: null,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) => request.mode === "navigate" && !url.pathname.startsWith("/api/"),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "pages",
+              networkTimeoutSeconds: 3,
+              precacheFallback: { fallbackURL: "/index.html" },
+            },
+          },
+        ],
       },
     }),
   ],

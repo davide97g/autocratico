@@ -21,6 +21,7 @@ import { stripActions } from "@autocratico/core"
 
 import { chats, type Chat as SavedChat } from "@/lib/api"
 import { ask, type ChatEvent } from "@/lib/chat"
+import { holdUpdates } from "@/lib/update"
 
 type Step = { name: string; detail: string }
 type ClaudeMessage = {
@@ -193,6 +194,7 @@ export function Chat({
     const message = text.trim()
     if (!message || abort) return
     const controller = new AbortController()
+    const release = holdUpdates() // a new build must not reload the page mid-answer
     setAbort(controller)
     setDraft("")
     const chat = conversation.chat
@@ -219,6 +221,7 @@ export function Chat({
       })
     } finally {
       setAbort(null)
+      release()
     }
   }
 
