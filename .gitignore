@@ -1,6 +1,7 @@
 # Personal data: never in the repository.
 /data/
 CLAUDE.local.md
+.env
 .claude/settings.local.json
 
 node_modules/

@@ -43,9 +43,11 @@ No Traefik route is needed: the tunnel points straight at `http://localhost:8790
 ## 4. Cloudflare
 
 1. Tunnel → Public hostname: `autocratico.<domain>` → `http://localhost:8790` (before the catch-all rule); proxied CNAME.
-2. Zero Trust → Access → Applications → Self-hosted `autocratico.<domain>`:
-   - policy **Allow** for your email (one-time PIN or your identity provider);
-   - policy **Service Auth** with a service token named `autocratico-shortcut`, limited to path `/api/ingest` (create a second application on `autocratico.<domain>/api/ingest` with only this policy). Keep the Client ID and Secret for the shortcut.
+2. Zero Trust → Access → Applications → Self-hosted `autocratico.<domain>`, with two policies:
+   - **Allow** for your email (one-time PIN or your identity provider);
+   - **Service Auth** with a service token named `autocratico-shortcut`. Keep its Client ID and Secret for the shortcut.
+
+   One application for the whole host on purpose: a separate application on `/api/ingest` would need its own login, which breaks uploads from the web app. The service token passes Access for any path, but the server only lets its ingest-scope bearer token call `/api/ingest`.
 3. Copy the AUD tag into `CF_ACCESS_AUD` and redeploy.
 
 The server rejects any request without a valid Access JWT, so the app is not reachable around Access even from the LAN.
