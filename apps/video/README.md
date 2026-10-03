@@ -22,6 +22,7 @@ on personal data.
 - `data/lyrics.json`, `data/audio.json` — word timings and the music analysis. All the renderer needs.
 - `tools/italian_demo.py` — turns a copy of `example/` into the Italian demo register the captures
   show.
+- `tools/shot.ts` — screenshot of a design page (model sheet, thumbnail).
 - `tools/cutout.swift` — background removal (macOS Vision) for the reference props.
 - `tools/capture.ts` — captures that register's web app (desktop and iPhone, it locale) into
   `public/app/`.
@@ -78,6 +79,33 @@ python3 tools/italian_demo.py ../../var/video/appdata
 (cd ../.. && pnpm build && AUTOCRATICO_DATA=$PWD/var/video/appdata PORT=8799 node apps/server/src/main.ts) &
 bun tools/capture.ts --url http://127.0.0.1:8799
 ```
+
+## The cut with Bollo
+
+Bollo, the mascot, is a Roman black street cat drawn as a die-cut sticker. He raps the song over
+the film. `?bollo=1` adds him as an overlay entry, drawn after every plate, and leaves the plates
+untouched; without the flag the film renders as before.
+- `src/scenes/_bollo-head.ts` — the drawing.
+- `_bollo-rig.ts` — his procedural life:
+  - lip-sync from the aligned Italian words
+  - damped springs plucked by beats, kicks, snares and syllables
+  - blinks and saccades
+- `_bollo-choreo.ts` — the cue machinery: anchors, moves, gaze, acts such as scream and bite.
+- `bollo-choreo.ts` — the cue list.
+- `bollo.ts` — the overlay.
+
+```sh
+bun scripts/render.ts video --samples auto --shutter 0.2 --query bollo=1 --out ../../var/video/autocratico-bollo.mp4
+```
+
+Design pages, served by `bunx vite`:
+- `bollo.html` — the model sheet of the full figure.
+- `thumb.html?v=dark|light` — the YouTube thumbnail. To capture it, run
+  `bun tools/shot.ts URL out.png`.
+
+Animation tests:
+- `--query bollotest=1 --only bollotest`
+- `--query bollohead=1 --only bollohead`
 
 ## Reference imagery
 

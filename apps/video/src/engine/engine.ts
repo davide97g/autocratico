@@ -22,6 +22,11 @@ export interface TimelineEntry {
   params?: Record<string, any>;
   /** Cap on adaptive motion-blur sub-frames while this entry is on screen (for noise that converges slowly). */
   maxSamples?: number;
+  /**
+   * An overlay (e.g. the mascot): composited after every other active entry, whatever its start. Its
+   * scene must set `handlesTransition` and draw `f.under` (the frame beneath) itself.
+   */
+  overlay?: boolean;
 }
 
 interface Loaded { entry: TimelineEntry; scene: Scene | null; error?: string; lastT: number }
@@ -297,7 +302,8 @@ export class Engine {
   private composite(t: number, dt: number, seeked: boolean): { outTex: THREE.Texture; post: PostParams } {
     const r = this.renderer;
 
-    const active = this.timeline.filter((e) => t >= e.start && t < e.end).sort((a, b) => a.start - b.start);
+    const active = this.timeline.filter((e) => t >= e.start && t < e.end)
+      .sort((a, b) => Number(!!a.overlay) - Number(!!b.overlay) || a.start - b.start);
     let post: PostParams = { ...DEFAULT_POST };
     let under: THREE.Texture | null = null;
     let outTex: THREE.Texture | null = null;
@@ -305,7 +311,10 @@ export class Engine {
     active.forEach((e, idx) => {
       const rec = this.loaded.get(e.id);
       const rt = this.rts[idx % this.rts.length]!;
-      const prev = active[idx - 1], next = active[idx + 1];
+      // transitions are between plates: an overlay is nobody's neighbour
+      const plates = active.filter((x) => !x.overlay);
+      const pi = plates.indexOf(e);
+      const prev = e.overlay ? undefined : plates[pi - 1], next = e.overlay ? undefined : plates[pi + 1];
       const tin = prev ? Math.min(1, (t - e.start) / Math.max(1e-3, prev.end - e.start)) : 1;
       const tout = next ? Math.max(0, (t - next.start) / Math.max(1e-3, e.end - next.start)) : 0;
       if (!rec?.scene) {

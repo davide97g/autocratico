@@ -44,7 +44,12 @@ export function makeTimeline(ly: Lyrics, au: AudioData): TimelineEntry[] {
   const E = (id: string, file: string, start: number, end: number, extra: Partial<TimelineEntry> = {}): TimelineEntry =>
     ({ id, load: scene(file), start, end, ...extra });
 
-  return [
+  // design tests outside the film (render with --query bollotest=1 --only bollotest)
+  const q = new URLSearchParams(location.search);
+  if (q.has('bollotest')) return [E('bollotest', 'bollo-test', 0, au.duration)];
+  if (q.has('bollohead')) return [E('bollohead', 'bollo-head-test', 0, au.duration)];
+
+  const film = [
     E('open', 'open', 0, b.pile),
     E('pile', 'pile', b.pile, b.queue),
     E('queue', 'queue', b.queue, b.follia),
@@ -57,4 +62,7 @@ export function makeTimeline(ly: Lyrics, au: AudioData): TimelineEntry[] {
     E('chant', 'chant', b.chant, b.outro),
     E('outro', 'outro', b.outro, b.end),
   ];
+  // the cut with Bollo: the same film, the mascot drawn over it
+  if (q.has('bollo')) film.push(E('bollo', 'bollo', 0, au.duration, { overlay: true }));
+  return film;
 }
