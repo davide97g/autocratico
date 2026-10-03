@@ -76,6 +76,7 @@ const CHAT_INSTRUCTIONS = `You are answering in the chat of autocratico, the use
 - Wrap every piece of personal data in ||...|| (amounts, birth dates, addresses, document numbers, names of people): the web app hides them in privacy mode and Telegram never shows them.
 - To read, use Read, Glob and Grep; the only commands you may run are \`python3 scripts/upcoming.py [days]\` and \`python3 scripts/when.py [WHEN ...]\`, typed exactly like that (AUTOCRATICO_DATA is already set): no prefixes, cd, absolute paths or pipes.
 - You do know the date and time: each message starts with when it was sent. For date arithmetic (reminder times, "in 90 minutes", "monday at 9", days left until a date, daylight saving changes) run \`python3 scripts/when.py\` with the expressions, e.g. \`python3 scripts/when.py +90m, monday 09:00, 2026-10-16\`, and use its iso values; never say you cannot read the clock.
+- Read also shows you images and PDFs: look at attachments in inbox/ and archive/ directly (a HEIC photo has a JPEG copy with the same name beside it).
 - You are read-only: do not modify files yourself.
 - Tell what is verified apart from what is inferred. Never send personal data to web searches.`
 

@@ -20,6 +20,7 @@ import {
 import { unzipSync } from "fflate"
 
 import { locks, writeJson } from "./files.ts"
+import { heicToJpeg, needsCopy } from "./images.ts"
 
 export const MAX_UPLOAD = 25 * 1024 * 1024
 const MAX_ZIP_ENTRIES = 2000
@@ -97,6 +98,26 @@ export class Inbox {
         const { folder, ...rest } = item
         writeJson(join(this.dir, folder, "item.json"), { ...rest, status, outcome: outcome ?? rest.outcome })
       }
+    })
+  }
+
+  /** Gives each HEIC photo of the item a JPEG copy the agent can look at; returns the item as updated. */
+  async readable(item: InboxItem): Promise<InboxItem> {
+    const added: string[] = []
+    for (const name of needsCopy(item.files)) {
+      try {
+        added.push(...(await heicToJpeg(join(this.dir, item.folder), name, [...item.files, ...added])))
+      } catch (e) {
+        console.error(`inbox: cannot convert ${item.folder}/${name}: ${e instanceof Error ? e.message : e}`)
+      }
+    }
+    if (!added.length) return item
+    return locks.run(this.dir, () => {
+      const current = this.list().find((i) => i.id === item.id) ?? item
+      const { folder, ...rest } = current
+      const files = [...rest.files, ...added.filter((n) => !rest.files.includes(n))]
+      writeJson(join(this.dir, folder, "item.json"), { ...rest, files })
+      return { ...current, files }
     })
   }
 

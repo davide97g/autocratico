@@ -27,9 +27,11 @@ RUN pnpm install --prod --frozen-lockfile --filter "@autocratico/server..."
 FROM node:24-trixie-slim
 ARG CLAUDE_CODE_VERSION=2.1.288
 # python3: the CLIs in scripts/ (Gmail sync, upcoming, ics); git: history of the data folder;
-# ffmpeg + libgomp1: voice messages (Opus to WAV, and the runtime parakeet-cli links against).
+# ffmpeg + libgomp1: voice messages (Opus to WAV, and the runtime parakeet-cli links against);
+# libheif: iPhone HEIC photos to JPEG for the agent; poppler-utils: Claude Code reads PDF page ranges with pdftoppm.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 git tini ca-certificates tzdata ffmpeg libgomp1 \
+     libheif-examples libheif-plugin-libde265 poppler-utils \
   && rm -rf /var/lib/apt/lists/* \
   && npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
   && npm cache clean --force
