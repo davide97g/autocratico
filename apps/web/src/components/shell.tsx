@@ -440,8 +440,12 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
 
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-30 px-gutter pb-safe lg:hidden" aria-label={t.sidebar.sections}>
-        <div className="mx-auto mb-2 flex h-16 max-w-lg gap-1 rounded-2xl bg-card/85 p-1.5 shadow-lg ring-1 ring-glass-border backdrop-blur-xl">
+      {/* The fade under the bar hides the page scrolling beneath it, down to the home indicator. */}
+      <nav
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-linear-to-t from-background from-70% to-transparent px-gutter pt-4 pb-safe lg:hidden"
+        aria-label={t.sidebar.sections}
+      >
+        <div className="pointer-events-auto mx-auto mb-2 flex h-16 max-w-lg gap-1 rounded-2xl bg-card/85 p-1.5 shadow-lg ring-1 ring-glass-border backdrop-blur-xl">
           {TABS.map((id) => {
             const v = VIEWS.find((x) => x.id === id)!
             return tab(id, v.icon, t.views[id], view === id, () => onView(id), id === "deadlines" ? counts.deadlines : undefined)
