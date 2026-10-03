@@ -1,5 +1,5 @@
 import * as React from "react"
-import { CopyIcon, KeyRoundIcon, LaptopIcon, PlayIcon, SendIcon, SmartphoneIcon } from "lucide-react"
+import { AlarmClockIcon, CopyIcon, KeyRoundIcon, LaptopIcon, PlayIcon, SendIcon, SmartphoneIcon } from "lucide-react"
 
 import { Sensitive } from "@/components/privacy"
 import { Badge } from "@/components/ui/badge"
@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useI18n } from "@/i18n"
 import {
+  cancelReminder,
   createDevice,
   type Device,
   devices as loadDevices,
+  type Reminder,
+  reminders as loadReminders,
   revokeDevice,
   runJob,
   type Session,
@@ -238,6 +241,49 @@ function TelegramCard({ enabled }: { enabled: boolean }) {
   )
 }
 
+function RemindersCard() {
+  const { t, locale } = useI18n()
+  const [list, setList] = React.useState<Reminder[]>([])
+  const refresh = React.useCallback(() => {
+    loadReminders().then(setList, () => undefined)
+  }, [])
+  React.useEffect(refresh, [refresh])
+  return (
+    <Card className="rounded-xl">
+      <CardHeader>
+        <CardTitle className="text-lg font-medium tracking-tight">{t.settings.reminders}</CardTitle>
+        <CardDescription>{t.settings.remindersDescription}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {list.length === 0 && <p className="text-sm text-muted-foreground">{t.settings.noReminders}</p>}
+        <ul className="flex flex-col gap-2">
+          {list.map((r) => (
+            <li key={r.id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3 text-sm">
+              <AlarmClockIcon className="size-4 shrink-0" />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate">
+                  <Sensitive>{r.text}</Sensitive>
+                </span>
+                <span className="text-xs text-muted-foreground">{when(r.at, locale, "")}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  await cancelReminder(r.id)
+                  refresh()
+                }}
+              >
+                {t.settings.cancel}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function Settings({ session }: { session: Session }) {
   const { t } = useI18n()
   const [s, setS] = React.useState<Status | null>(null)
@@ -269,6 +315,7 @@ export function Settings({ session }: { session: Session }) {
       </div>
       <div className="flex flex-col gap-6">
         <TelegramCard enabled={s.telegram.enabled} />
+        <RemindersCard />
         {session.auth === "prod" && <DevicesCard session={session} />}
       </div>
     </div>

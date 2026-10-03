@@ -12,8 +12,9 @@ import { existsSync, readdirSync } from "node:fs"
 import { homedir } from "node:os"
 import { join, relative } from "node:path"
 
-import type { ChatEvent } from "@autocratico/core"
+import { type ChatEvent, localNow } from "@autocratico/core"
 
+import { ACTION_INSTRUCTIONS } from "./chat-actions.ts"
 import type { Config } from "./config.ts"
 
 // Pages Claude may open to check a rule. `*.x` needs Claude Code 2.1.172 or later.
@@ -47,7 +48,7 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
     }
   }
   // Server-owned files stay out of the agent's reach.
-  const owned = ["state.json", "chats/**", "jobs/**", "inbox/*/item.json", ".git/**"].flatMap((p) => [
+  const owned = ["state.json", "reminders.json", "chats/**", "jobs/**", "inbox/*/item.json", ".git/**"].flatMap((p) => [
     `Edit(${abs(data)}/${p})`,
     `Write(${abs(data)}/${p})`,
   ])
@@ -70,7 +71,7 @@ const CHAT_INSTRUCTIONS = `You are answering in the chat of autocratico, the use
 - Read the data files (deadlines.toml, state.json, profile.toml, cases/, catalog/, notes/, inbox/) before answering about facts and dates.
 - Wrap every piece of personal data in ||...|| (amounts, birth dates, addresses, document numbers, names of people): the web app hides them in privacy mode and Telegram never shows them.
 - To read, use Read, Glob and Grep; the only command you may run is \`python3 scripts/upcoming.py [days]\`, typed exactly like that (AUTOCRATICO_DATA is already set): no prefixes, cd, absolute paths or pipes.
-- You are read-only: do not modify files. If a change is needed, say which file and what to change.
+- You are read-only: do not modify files yourself.
 - Tell what is verified apart from what is inferred. Never send personal data to web searches.`
 
 function detail(args: Record<string, unknown>, bases: string[]): string {
@@ -93,6 +94,8 @@ export type RunOptions = {
   instructions?: string
   locale?: string
   signal?: AbortSignal
+  /** The answer may carry reminder/inbox blocks for the server (chat only). */
+  actions?: boolean
 }
 
 /** Plain-language text for errors from `claude -p`, shown in the chat and on Telegram. */
@@ -149,8 +152,8 @@ export class Claude {
     }
     const { data, root } = this.config
     const language = LANGUAGES[o.locale === "en" ? "en" : o.locale === "it" ? "it" : this.config.locale]
-    const context = `\nToday is ${new Date().toISOString().slice(0, 10)}. The data is in ${data}. Always answer in ${language}.`
-    const base = o.profile === "read" ? CHAT_INSTRUCTIONS : ""
+    const context = `\nCurrent local time: ${localNow(this.config.timeZone)} (${this.config.timeZone}). The data is in ${data}. Always answer in ${language}.`
+    const base = o.profile === "read" ? [CHAT_INSTRUCTIONS, o.actions ? ACTION_INSTRUCTIONS : ""].filter(Boolean).join("\n\n") : ""
     const { allowed, denied } = tools(o.profile, data)
     const args = [
       "-p",

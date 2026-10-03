@@ -203,7 +203,7 @@ export const it: Messages = {
     emptyTitle: "Ancora niente",
     emptyDescription: "I documenti che mandi da qualsiasi dispositivo compaiono qui.",
     status: { new: "Nuovo", processing: "In lavorazione", processed: "Archiviato", ignored: "Ignorato", failed: "Non riuscito" },
-    source: { email: "Email", telegram: "Telegram", upload: "Caricamento", shortcut: "Comando rapido", whatsapp: "WhatsApp" },
+    source: { email: "Email", telegram: "Telegram", upload: "Caricamento", shortcut: "Comando rapido", whatsapp: "WhatsApp", chat: "Chat" },
     retry: "Rielabora",
     ignore: "Ignora",
     show: "Mostra",
@@ -271,5 +271,9 @@ export const it: Messages = {
     connected: "collegato",
     notConnected: "non collegato",
     inboxCounts: (n, f) => `${n} da elaborare, ${f} non riusciti`,
+    reminders: "Promemoria",
+    remindersDescription: "Creati dalla chat («ricordami domani alle 9 di…»), arrivano su Telegram",
+    noReminders: "Nessun promemoria in attesa.",
+    cancel: "Annulla",
   },
 }

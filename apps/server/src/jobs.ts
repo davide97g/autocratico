@@ -17,6 +17,7 @@ import type { Config } from "./config.ts"
 import { locks } from "./files.ts"
 import type { DataRepo } from "./git.ts"
 import type { Inbox } from "./inbox.ts"
+import type { Reminders } from "./reminders.ts"
 import type { Store } from "./store.ts"
 
 const exec = promisify(execFile)
@@ -48,6 +49,7 @@ type Context = {
   inbox: Inbox
   claude: Claude
   repo: DataRepo
+  reminders: Reminders
   notifier: () => Notifier | null
 }
 
@@ -64,6 +66,8 @@ const TEXT = {
     gmailFailed: "Sincronizzazione Gmail non riuscita",
     digest: "Riepilogo settimanale",
     markedDone: "Segnate come fatte",
+    snooze: "+1 h",
+    tomorrow: "Domani 9:00",
   },
   en: {
     reminders: "Reminders",
@@ -77,6 +81,8 @@ const TEXT = {
     gmailFailed: "Gmail sync failed",
     digest: "Weekly digest",
     markedDone: "Marked as done",
+    snooze: "+1 h",
+    tomorrow: "Tomorrow 9:00",
   },
 }
 
@@ -140,6 +146,7 @@ export class Jobs {
   readonly #c: Context
   readonly #crons: Partial<Record<JobName, Cron>> = {}
   #triageTimer: NodeJS.Timeout | null = null
+  #tick: NodeJS.Timeout | null = null
   #gmailFailing = false
 
   constructor(context: Context) {
@@ -161,11 +168,30 @@ export class Jobs {
     }
     // Items that arrived while the server was down.
     if (this.#c.inbox.list().some((i) => i.status === "new")) this.queueTriage(5_000)
+    // Reminders set from the chat: checked every 30 seconds, sent late rather than lost after a restart.
+    this.#tick = setInterval(() => void this.sendDueReminders(), 30_000)
+  }
+
+  async sendDueReminders(): Promise<number> {
+    const notifier = this.#c.notifier()
+    if (!notifier) return 0
+    const due = await this.#c.reminders.takeDue()
+    for (const r of due) {
+      await notifier.notify(`⏰ ${r.text}`, [
+        [
+          { text: `✓ ${this.#t.done}`, data: `rdone:${r.id}` },
+          { text: this.#t.snooze, data: `snooze:${r.id}:60` },
+          { text: this.#t.tomorrow, data: `snooze:${r.id}:tomorrow` },
+        ],
+      ])
+    }
+    return due.length
   }
 
   stop() {
     for (const c of Object.values(this.#crons)) c?.stop()
     if (this.#triageTimer) clearTimeout(this.#triageTimer)
+    if (this.#tick) clearInterval(this.#tick)
   }
 
   next(name: JobName): string | null {

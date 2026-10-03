@@ -8,7 +8,7 @@
 import { createHash, randomInt, timingSafeEqual } from "node:crypto"
 import { join } from "node:path"
 
-import { type Chat, type Occurrence, redact } from "@autocratico/core"
+import { type Chat, type Occurrence, redact, stripActions } from "@autocratico/core"
 import { Bot, type Context, InlineKeyboard } from "grammy"
 
 import { type Claude, friendlyError } from "./claude.ts"
@@ -16,6 +16,8 @@ import type { Config } from "./config.ts"
 import { locks, readJson, writeSecret } from "./files.ts"
 import type { Inbox, Upload } from "./inbox.ts"
 import type { Button, Jobs, Notifier } from "./jobs.ts"
+import { finishAnswer } from "./chat-actions.ts"
+import type { Reminders } from "./reminders.ts"
 import type { Store } from "./store.ts"
 import type { Transcriber } from "./transcribe.ts"
 
@@ -36,6 +38,7 @@ const TEXT = {
       "/inbox: ultimi documenti arrivati",
       "/fatto <id>: segna fatta la prossima scadenza con quell'id",
       "/salva <testo>: aggiunge il testo all'inbox",
+      "/promemoria: promemoria in attesa (per crearne uno, chiedilo: «ricordami tra 2 ore di…»)",
       "/nuova: nuova conversazione",
       "/stato: stato del server",
       "",
@@ -58,6 +61,12 @@ const TEXT = {
     tooBig: "File troppo grande per Telegram (max 20 MB): caricalo dalla web app.",
     heard: (t: string) => `🎙️ ${t}`,
     transcript: "Trascrizione del vocale:",
+    reminders: "Promemoria in attesa",
+    noReminders: "Nessun promemoria in attesa.",
+    cancel: "Annulla",
+    cancelled: "Promemoria annullato.",
+    ok: "Fatto ✓",
+    snoozed: (when: string) => `Ti riscrivo ${when}.`,
     noSpeech: "Trascrizione vocale non configurata sul server.",
     empty: "Non ho capito niente nel vocale.",
     asrFailed: (e: string) => `Trascrizione non riuscita: ${e}`,
@@ -74,6 +83,7 @@ const TEXT = {
       "/inbox: latest items",
       "/fatto <id>: mark the next deadline with that id as done",
       "/salva <text>: add the text to the inbox",
+      "/promemoria: pending reminders (to set one, just ask: \"remind me in 2 hours to…\")",
       "/nuova: new conversation",
       "/stato: server status",
       "",
@@ -96,6 +106,12 @@ const TEXT = {
     tooBig: "File too large for Telegram (20 MB max): upload it from the web app.",
     heard: (t: string) => `🎙️ ${t}`,
     transcript: "Voice message transcript:",
+    reminders: "Pending reminders",
+    noReminders: "No pending reminders.",
+    cancel: "Cancel",
+    cancelled: "Reminder cancelled.",
+    ok: "Done ✓",
+    snoozed: (when: string) => `I'll write again ${when}.`,
     noSpeech: "Speech to text is not configured on the server.",
     empty: "I could not make out anything in the voice message.",
     asrFailed: (e: string) => `Transcription failed: ${e}`,
@@ -133,7 +149,15 @@ export function outgoing(text: string): string[] {
   return parts
 }
 
-type Deps = { config: Config; store: Store; inbox: Inbox; claude: Claude; transcriber: Transcriber; jobs: () => Jobs | null }
+type Deps = {
+  config: Config
+  store: Store
+  inbox: Inbox
+  claude: Claude
+  reminders: Reminders
+  transcriber: Transcriber
+  jobs: () => Jobs | null
+}
 
 export class Telegram implements Notifier {
   readonly bot: Bot
@@ -289,6 +313,14 @@ export class Telegram implements Notifier {
       await this.#ingest(ctx, { text: ctx.match })
       return this.#reply(ctx, t().saved)
     })
+    bot.command("promemoria", (ctx) => {
+      const list = this.#d.reminders.pending()
+      if (!list.length) return this.#reply(ctx, t().noReminders)
+      const lines = list.map((r) => `• ${this.#d.reminders.format(r.at, this.#d.config.locale)} — ${r.text}`)
+      const buttons = list.slice(0, 8).map((r) => [{ text: `✕ ${t().cancel}: ${r.text.slice(0, 30)}`, data: `rcancel:${r.id}` }])
+      return this.#reply(ctx, `${t().reminders}\n${lines.join("\n")}`, buttons)
+    })
+
     bot.command("nuova", async (ctx) => {
       const chat = this.#chat(ctx.chat.id)
       await this.#d.store.saveChat({ ...chat, session: null, messages: [] })
@@ -310,6 +342,23 @@ export class Telegram implements Notifier {
       const o = this.#d.store.data().agenda.find((x) => x.key === key)
       if (o) await this.#d.store.setDone(key, true)
       await ctx.answerCallbackQuery({ text: o ? t().doneOk(redact(o.title)).slice(0, 190) : t().doneMissing })
+    })
+
+    bot.callbackQuery(/^rdone:(\w+)$/, async (ctx) => {
+      await ctx.editMessageReplyMarkup().catch(() => undefined)
+      await ctx.answerCallbackQuery({ text: t().ok })
+    })
+    bot.callbackQuery(/^rcancel:(\w+)$/, async (ctx) => {
+      const r = await this.#d.reminders.cancel(ctx.match[1])
+      await ctx.answerCallbackQuery({ text: r ? t().cancelled : t().noReminders })
+    })
+    bot.callbackQuery(/^snooze:(\w+):(60|tomorrow)$/, async (ctx) => {
+      const old = this.#d.reminders.get(ctx.match[1])
+      if (!old) return ctx.answerCallbackQuery({ text: t().noReminders })
+      const at = ctx.match[2] === "60" ? new Date(Date.now() + 3_600_000).toISOString() : tomorrowAt9(this.#d.config.timeZone)
+      const r = await this.#d.reminders.add(at, old.text, "telegram")
+      await ctx.editMessageReplyMarkup().catch(() => undefined)
+      await ctx.answerCallbackQuery({ text: r ? t().snoozed(this.#d.reminders.format(r.at, this.#d.config.locale)) : t().noReminders })
     })
 
     bot.on(["message:document", "message:photo"], async (ctx) => {
@@ -403,13 +452,13 @@ export class Telegram implements Notifier {
       const tools: { name: string; detail: string }[] = []
       let error: string | undefined
       const edit = async () => {
-        const preview = outgoing(answer)[0]
+        const preview = outgoing(stripActions(answer) || "…")[0]
         if (preview && preview !== shown) {
           shown = preview
           await ctx.api.editMessageText(chatId, sent.message_id, preview).catch(() => undefined)
         }
       }
-      for await (const e of this.#d.claude.run({ prompt: text, profile: "read", session: chat.session, locale: this.#d.config.locale })) {
+      for await (const e of this.#d.claude.run({ prompt: text, profile: "read", session: chat.session, locale: this.#d.config.locale, actions: true })) {
         if (e.type === "session") chat.session = e.id
         else if (e.type === "text") answer += e.text
         else if (e.type === "block" && answer) answer += "\n\n"
@@ -425,6 +474,14 @@ export class Telegram implements Notifier {
         chat.session = null
         if (!answer) answer = `⚠️ ${friendlyError(error, this.#d.config.locale)}`
       }
+      const sender = [ctx.from?.first_name, ctx.from?.last_name].filter(Boolean).join(" ")
+      answer = await finishAnswer(answer, "telegram", sender, {
+        reminders: this.#d.reminders,
+        inbox: this.#d.inbox,
+        jobs: this.#d.jobs(),
+        telegram: true,
+        locale: this.#d.config.locale,
+      })
       const parts = outgoing(answer)
       if (parts[0] !== shown) await ctx.api.editMessageText(chatId, sent.message_id, parts[0]).catch(() => undefined)
       for (const p of parts.slice(1)) await ctx.reply(p)
@@ -443,4 +500,10 @@ function keyboard(rows: Button[][]): InlineKeyboard {
     k.row()
   }
   return k
+}
+
+/** Tomorrow at 09:00 in the deadlines' time zone, as local "YYYY-MM-DDT09:00". */
+function tomorrowAt9(timeZone: string): string {
+  const d = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() + 86_400_000))
+  return `${d}T09:00`
 }

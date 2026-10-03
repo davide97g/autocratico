@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { extname, join, resolve, sep } from "node:path"
 
-import { type ChatEvent, JobRun, parseToml, type Status } from "@autocratico/core"
+import { type ChatEvent, JobRun, parseToml, type Status, stripActions } from "@autocratico/core"
 import { Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
 import { setCookie } from "hono/cookie"
@@ -18,6 +18,8 @@ import { type Inbox, MAX_UPLOAD, type Upload } from "./inbox.ts"
 import { JOB_NAMES, type JobName, type Jobs } from "./jobs.ts"
 import { openapi } from "./openapi.ts"
 import type { Store } from "./store.ts"
+import { finishAnswer } from "./chat-actions.ts"
+import type { Reminders } from "./reminders.ts"
 import type { Telegram } from "./telegram.ts"
 import type { Transcriber } from "./transcribe.ts"
 
@@ -33,6 +35,7 @@ export type Services = {
   jobs: Jobs | null
   telegram: Telegram | null
   transcriber: Transcriber
+  reminders: Reminders
   /** Override for tests: verifies the Cloudflare Access JWT. */
   verifyAccess?: ((t: string | undefined) => Promise<boolean>) | null
 }
@@ -155,6 +158,7 @@ export function createApp(s: Services) {
     const body = ChatBody.safeParse(await c.req.json().catch(() => null))
     if (!body.success) return c.json({ error: "empty message" }, 400)
     const { message, view, locale } = body.data
+    const caller = c.get("caller")
     const chat = (body.data.chat && store.chat(body.data.chat)) || store.newChat("web")
     chat.messages.push({ role: "user", text: message, tools: [] })
     await store.saveChat(chat)
@@ -167,15 +171,29 @@ export function createApp(s: Services) {
       await send({ type: "chat", id: chat.id })
       const answer = { role: "assistant" as const, text: "", tools: [] as { name: string; detail: string }[], error: undefined as string | undefined }
       const instructions = view ? `The user is looking at the «${view}» section of the web app.` : undefined
+      const lang = locale === "en" ? "en" : "it"
       try {
-        for await (const e of claude.run({ prompt: message, profile: "read", session: chat.session, locale, instructions, signal })) {
+        for await (const e of claude.run({ prompt: message, profile: "read", session: chat.session, locale, instructions, signal, actions: true })) {
           if (e.type === "session") chat.session = e.id
           else if (e.type === "text") answer.text += e.text
           else if (e.type === "block" && answer.text) answer.text += "\n\n"
           else if (e.type === "tool") answer.tools.push({ name: e.name, detail: e.detail })
           else if (e.type === "error") {
             chat.session = null // nothing worth resuming after a failed run
-            answer.error = friendlyError(e.message, locale === "en" ? "en" : "it")
+            answer.error = friendlyError(e.message, lang)
+          }
+          if (e.type === "end") {
+            // Act on the reminder/inbox blocks, then tell the user what was done (the web app hides the blocks).
+            const raw = answer.text
+            answer.text = await finishAnswer(raw, "web", caller.device?.name ?? "web", {
+              reminders: s.reminders,
+              inbox,
+              jobs: s.jobs,
+              telegram: s.telegram !== null,
+              locale: lang,
+            })
+            const extra = answer.text.slice(stripLength(raw))
+            if (extra.trim() && !out.aborted) await send({ type: "text", text: extra })
           }
           if (!out.aborted) await send(e.type === "error" ? { type: "error", message: answer.error ?? e.message } : e)
         }
@@ -295,6 +313,9 @@ export function createApp(s: Services) {
     return c.json({ ok: await devices.revoke(c.req.param("id")) })
   })
 
+  app.get("/api/reminders", (c) => c.json(s.reminders.pending()))
+  app.delete("/api/reminders/:id", async (c) => c.json({ ok: (await s.reminders.cancel(c.req.param("id"))) !== null }))
+
   app.get("/api/telegram/chats", (c) => c.json(s.telegram?.chats() ?? []))
   app.post("/api/telegram/pair", async (c) => {
     if (!s.telegram) return c.json({ error: "TELEGRAM_BOT_TOKEN not set" }, 400)
@@ -322,6 +343,11 @@ export function createApp(s: Services) {
   })
 
   return app
+}
+
+/** Length of the answer once its action blocks are removed: what follows it is the server's confirmation. */
+function stripLength(raw: string): number {
+  return stripActions(raw).length
 }
 
 /** Accounts from gmail.toml (same rules as scripts/gmail.py) and whether each has a token. */

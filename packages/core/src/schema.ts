@@ -89,7 +89,7 @@ export type Data = z.infer<typeof Data>
 
 // ---------- Inbox: everything that arrives, from any entry point ----------
 
-export const INBOX_SOURCES = ["email", "telegram", "upload", "shortcut", "whatsapp"] as const
+export const INBOX_SOURCES = ["email", "telegram", "upload", "shortcut", "whatsapp", "chat"] as const
 export const InboxSource = z.enum(INBOX_SOURCES)
 export type InboxSource = z.infer<typeof InboxSource>
 
@@ -119,6 +119,21 @@ export type InboxItem = z.infer<typeof InboxItem>
 
 export const InboxDetail = InboxItem.extend({ content: z.string() })
 export type InboxDetail = z.infer<typeof InboxDetail>
+
+// ---------- Reminders ----------
+
+/** A one-off reminder, set from the chat; sent on Telegram when due. Stored in reminders.json. */
+export const Reminder = z.object({
+  id: z.string(),
+  /** ISO instant. */
+  at: z.string(),
+  text: z.string(),
+  created: z.string(),
+  /** Where it was asked: telegram, web. */
+  source: z.string(),
+  sent: z.string().nullable(),
+})
+export type Reminder = z.infer<typeof Reminder>
 
 // ---------- Devices, jobs, chats ----------
 

@@ -17,6 +17,8 @@ import { Markdown } from "@/components/markdown"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useI18n } from "@/i18n"
+import { stripActions } from "@autocratico/core"
+
 import { chats, type Chat as SavedChat } from "@/lib/api"
 import { ask, type ChatEvent } from "@/lib/chat"
 
@@ -131,7 +133,7 @@ function Answer({ m }: { m: ClaudeMessage }) {
     <div className="flex flex-col gap-3">
       <Steps steps={m.steps} running={running} />
       {m.text ? (
-        <Markdown text={headings(m.text)} className="max-w-none [&_ol]:gap-1 [&_p]:my-1.5 [&_ul]:gap-1 [&>:first-child]:mt-0" />
+        <Markdown text={headings(stripActions(m.text))} className="max-w-none [&_ol]:gap-1 [&_p]:my-1.5 [&_ul]:gap-1 [&>:first-child]:mt-0" />
       ) : (
         running && (
           <span className="flex items-center gap-2 text-sm text-muted-foreground">

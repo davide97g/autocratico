@@ -95,3 +95,27 @@ describe("whatsapp", () => {
     expect(chat.messages[1].attachment).toBe("IMG-1.jpg")
   })
 })
+
+describe("chat actions", () => {
+  it("extracts reminder and inbox blocks and hides them", async () => {
+    const { extractActions, stripActions } = await import("../src/index.ts")
+    const answer = 'Va bene, te lo ricordo.\n\n```reminder\n{"at":"2026-10-03T17:05","text":"Inserire la TARI"}\n```\n```inbox\n{"title":"TARI","text":"Avviso ricevuto, scade il 16/10"}\n```'
+    const { text, actions } = extractActions(answer)
+    expect(text).toBe("Va bene, te lo ricordo.")
+    expect(actions.reminders).toEqual([{ at: "2026-10-03T17:05", text: "Inserire la TARI" }])
+    expect(actions.inbox[0].title).toBe("TARI")
+    expect(stripActions('Ok\n```reminder\n{"at":"2026-')).toBe("Ok")
+    expect(extractActions("```reminder\nnot json\n```").actions.reminders).toEqual([])
+  })
+
+  it("reads reminder times in the deadlines' time zone", async () => {
+    const { reminderTime, localNow } = await import("../src/index.ts")
+    const now = new Date("2026-10-03T13:40:00Z")
+    expect(reminderTime("2026-10-03T17:05", "Europe/Rome", now)).toBe("2026-10-03T15:05:00.000Z")
+    expect(reminderTime("2026-12-01T09:00", "Europe/Rome", now)).toBe("2026-12-01T08:00:00.000Z") // winter time
+    expect(reminderTime("2026-10-03T16:05:00+02:00", "Europe/Rome", now)).toBe("2026-10-03T14:05:00.000Z")
+    expect(reminderTime("2026-10-02T09:00", "Europe/Rome", now)).toBeNull()
+    expect(reminderTime("tomorrow", "Europe/Rome", now)).toBeNull()
+    expect(localNow("Europe/Rome", now)).toBe("2026-10-03 15:40 (UTC+02:00)")
+  })
+})

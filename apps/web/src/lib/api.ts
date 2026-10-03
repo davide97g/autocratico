@@ -6,6 +6,7 @@ import type {
   InboxDetail,
   InboxItem,
   JobRun,
+  Reminder,
   Status,
 } from "@autocratico/core"
 
@@ -23,6 +24,7 @@ export type {
   JobRun,
   Occurrence,
   Profile,
+  Reminder,
   Status,
   Value,
 } from "@autocratico/core"
@@ -104,3 +106,6 @@ export type TelegramChat = { id: number; name: string; paired: string }
 export const telegramChats = () => request<TelegramChat[]>("/api/telegram/chats")
 export const telegramPair = () => post<{ code: string; bot: string | null }>("/api/telegram/pair")
 export const telegramUnpair = (id: number) => post<{ ok: boolean }>(`/api/telegram/chats/${id}`, undefined, "DELETE")
+
+export const reminders = () => request<Reminder[]>("/api/reminders")
+export const cancelReminder = (id: string) => post<{ ok: boolean }>(`/api/reminders/${id}`, undefined, "DELETE")

@@ -201,7 +201,7 @@ export const en = {
     emptyTitle: "Nothing yet",
     emptyDescription: "Documents you send from any device show up here.",
     status: { new: "New", processing: "Processing", processed: "Filed", ignored: "Ignored", failed: "Failed" } as Record<string, string>,
-    source: { email: "Email", telegram: "Telegram", upload: "Upload", shortcut: "Shortcut", whatsapp: "WhatsApp" } as Record<string, string>,
+    source: { email: "Email", telegram: "Telegram", upload: "Upload", shortcut: "Shortcut", whatsapp: "WhatsApp", chat: "Chat" } as Record<string, string>,
     retry: "Process again",
     ignore: "Ignore",
     show: "Show",
@@ -269,6 +269,10 @@ export const en = {
     connected: "connected",
     notConnected: "not connected",
     inboxCounts: (n: number, f: number) => `${n} to process, ${f} failed`,
+    reminders: "Reminders",
+    remindersDescription: "Set from the chat (\"remind me tomorrow at 9 to…\"), sent on Telegram",
+    noReminders: "No pending reminders.",
+    cancel: "Cancel",
   },
 }
 

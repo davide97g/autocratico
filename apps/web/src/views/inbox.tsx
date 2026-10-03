@@ -5,6 +5,7 @@ import {
   InboxIcon,
   MailIcon,
   MessageCircleIcon,
+  MessageSquareTextIcon,
   PaperclipIcon,
   RotateCcwIcon,
   SendIcon,
@@ -40,6 +41,7 @@ const SOURCE_ICON: Record<string, LucideIcon> = {
   upload: UploadIcon,
   shortcut: SmartphoneIcon,
   whatsapp: MessageCircleIcon,
+  chat: MessageSquareTextIcon,
 }
 
 const STATUS_STYLE: Record<string, string> = {

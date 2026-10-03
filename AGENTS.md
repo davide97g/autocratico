@@ -19,7 +19,7 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 ## Layout (pnpm monorepo)
 - `packages/core/` — TypeScript shared by server and web: zod schemas (`schema.ts`), deadlines and recurrence (`deadlines.ts`, mirrors `scripts/store.py`), status levels, `redact()`, WhatsApp export parser, safe names. `core/node` reads the data folder from disk.
 - `apps/server/` — Hono server, Node 24 running TypeScript directly (no build):
-  - `app.ts` routes (listed with shapes in `openapi.ts`, served at `/api/openapi.json`), `auth.ts` access control, `store.ts` state and chats, `inbox.ts` ingestion, `claude.ts` headless Claude Code runner, `jobs.ts` scheduler, `telegram.ts` bot, `git.ts` history of the data folder, `transcribe.ts` local speech to text (ffmpeg + `parakeet-cli`), `cli.ts` admin commands.
+  - `app.ts` routes (listed with shapes in `openapi.ts`, served at `/api/openapi.json`), `auth.ts` access control, `store.ts` state and chats, `inbox.ts` ingestion, `claude.ts` headless Claude Code runner, `jobs.ts` scheduler, `telegram.ts` bot, `git.ts` history of the data folder, `transcribe.ts` local speech to text (ffmpeg + `parakeet-cli`), `reminders.ts` and `chat-actions.ts` (the read-only chat agent asks for reminders and inbox notes with fenced blocks the server validates; parsing in `core/actions.ts`), `cli.ts` admin commands.
 - `apps/web/` — React + Vite + Tailwind v4 + shadcn/ui (`base-ui`, lucide icons), installable PWA. Personal data is rendered only through `<Sensitive>` (`src/components/privacy.tsx`).
 - `scripts/` — Python 3.11+, standard library only: `store.py` (loading and recurrence for the CLIs), `init.py`, `upcoming.py`, `ics.py`, `gmail.py`.
 - `deploy/` — Dockerfile and compose file for the homelab; `docs/` — architecture, deploy, Gmail, Telegram, iOS shortcut.
@@ -34,7 +34,7 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 - `data/catalog/*.md` — researched rules, with sources and last verification date.
 - `data/inbox/<date>-<source>-<slug>-<id6>/` — everything that arrives (email, upload, iOS shortcut, Telegram, WhatsApp export): `item.json` (server-owned), `content.md`, attachments.
 - `data/archive/` — PDFs and scans in `archive/<year>/<area>/`; emails in `archive/email/<date>-<subject>-<id>/message.md` + attachments.
-- `data/chats/`, `data/jobs/` — conversations and job log, server-owned. `data/.git` — local history of the register (never pushed).
+- `data/chats/`, `data/jobs/`, `data/reminders.json` — conversations, job log and reminders, server-owned. `data/.git` — local history of the register (never pushed).
 - `data/gmail.toml` — Gmail accounts (`[[account]] name, query`). `data/secrets/` — OAuth credentials and tokens, device and Telegram pairings: never read them, print them or copy them anywhere.
 
 ## Commands

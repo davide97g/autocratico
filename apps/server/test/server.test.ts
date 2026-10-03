@@ -151,7 +151,7 @@ describe("agent", () => {
     const { allowed, denied } = tools("triage", "/data")
     expect(allowed).toContain("Edit(//data/**)")
     expect(allowed.some((t) => t.startsWith("WebFetch") || t === "WebSearch" || t === "Bash")).toBe(false)
-    expect(denied).toEqual(expect.arrayContaining(["WebFetch", "WebSearch", "Read(//data/secrets/**)", "Edit(//data/state.json)", "Write(//data/inbox/*/item.json)"]))
+    expect(denied).toEqual(expect.arrayContaining(["WebFetch", "WebSearch", "Read(//data/secrets/**)", "Edit(//data/state.json)", "Write(//data/reminders.json)", "Write(//data/inbox/*/item.json)"]))
   })
 
   it("keeps the chat read-only", () => {
@@ -204,5 +204,38 @@ describe("agent errors", () => {
     const { Claude } = await import("../src/claude.ts")
     const c = new Claude(loadConfig({ jobs: false, claude: null }))
     expect(c.sessionExists("00000000-0000-0000-0000-000000000000")).toBe(false)
+  })
+})
+
+describe("reminders", () => {
+  it("stores, lists, cancels and delivers reminders once", async () => {
+    const { Reminders } = await import("../src/reminders.ts")
+    const { data } = setup()
+    const r = new Reminders(data, "Europe/Rome")
+    const soon = await r.add(new Date(Date.now() + 1000).toISOString(), "Inserire la TARI", "telegram")
+    const later = await r.add("2099-01-01T09:00", "too far", "telegram")
+    expect(soon).toBeTruthy()
+    expect(later).toBeNull()
+    const other = await r.add(new Date(Date.now() + 3_600_000).toISOString(), "Chiamare il CAF", "web")
+    expect(r.pending().map((x) => x.text)).toEqual(["Inserire la TARI", "Chiamare il CAF"])
+    expect(await r.takeDue(new Date(Date.now() + 5000))).toHaveLength(1)
+    expect(await r.takeDue(new Date(Date.now() + 5000))).toHaveLength(0)
+    expect((await r.cancel(other!.id))?.text).toBe("Chiamare il CAF")
+    expect(r.pending()).toEqual([])
+  })
+
+  it("acts on the chat agent's blocks", async () => {
+    const { finishAnswer } = await import("../src/chat-actions.ts")
+    const { Reminders } = await import("../src/reminders.ts")
+    const { s, data } = setup()
+    const reminders = new Reminders(data, "Europe/Rome")
+    const at = new Date(Date.now() + 90 * 60_000).toISOString()
+    const answer = `Ok, te lo ricordo.\n\n\`\`\`reminder\n{"at":"${at}","text":"Inserire i dati della TARI"}\n\`\`\`\n\`\`\`inbox\n{"title":"TARI 2026","text":"Avviso TARI ricevuto, scadenza 16 ottobre"}\n\`\`\``
+    const out = await finishAnswer(answer, "telegram", "Mario", { reminders, inbox: s.inbox, jobs: null, telegram: true, locale: "it" })
+    expect(out).toMatch(/^Ok, te lo ricordo\.\n\n⏰ Promemoria per .+: Inserire i dati della TARI\n📥 Aggiunto all'inbox: TARI 2026/)
+    expect(reminders.pending()).toHaveLength(1)
+    expect(s.inbox.list().find((i) => i.source === "chat")?.title).toBe("TARI 2026")
+    const off = await finishAnswer(answer, "web", "Mac", { reminders, inbox: s.inbox, jobs: null, telegram: false, locale: "it" })
+    expect(off).toMatch(/Telegram non è configurato/)
   })
 })

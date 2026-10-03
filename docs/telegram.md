@@ -17,6 +17,7 @@ Bots are not end-to-end encrypted: Telegram's servers see the messages. Every ou
    inbox - ultimi documenti
    fatto - segna fatta una scadenza
    salva - aggiungi un testo all'inbox
+   promemoria - promemoria in attesa
    nuova - nuova conversazione
    stato - stato del server
    ```
@@ -26,6 +27,8 @@ Bots are not end-to-end encrypted: Telegram's servers see the messages. Every ou
 ## Use
 
 - Send a voice message: it is transcribed on the server (ffmpeg + `parakeet-cli`, nothing leaves the machine), the bot shows what it understood, then the agent answers. A forwarded voice note, or one with a caption, goes to the inbox with its transcript instead.
+- Ask for a reminder in plain words ("ricordami tra un'ora e mezza di inserire la TARI", "domani alle 9 chiamare il CAF"): it arrives here at that time, with ✓ Fatto, +1 h and Domani 9:00 buttons. `/promemoria` lists and cancels the pending ones.
+- Tell it something to record ("ho pagato il condominio", "è arrivata la TARI, scade il 16"): the agent puts it in the inbox and the background agent updates deadlines and cases a minute later.
 - Write a question: the agent answers (read-only, same as the web chat; one conversation per chat, `/nuova` starts over).
 - Send a photo or a PDF, or forward a message: it goes to the inbox and the agent files it.
 - Reminders at 08:30 come with **✓ Fatto** buttons.
