@@ -115,8 +115,8 @@ export function Overview({
       <Card className="@2xl:col-span-2 @4xl:col-span-8">
         <CardHeader>
           <CardTitle className="text-lg font-medium tracking-tight">{t.overview.calendar}</CardTitle>
-          <CardDescription>{t.overview.calendarDescription(Number(months))}</CardDescription>
-          <CardAction>
+          <CardDescription className="col-start-1">{t.overview.calendarDescription(Number(months))}</CardDescription>
+          <CardAction className="@max-md:col-start-1 @max-md:row-span-1 @max-md:row-start-3 @max-md:mt-3 @max-md:justify-self-start">
             <ToggleGroup
               value={[months]}
               onValueChange={(v) => v[0] && setMonths(v[0])}

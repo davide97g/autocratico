@@ -32,6 +32,8 @@ export const en = {
     profileMissing: "Profile to fill in",
     privacy: "Privacy",
     language: "Language",
+    more: "More",
+    close: "Close",
   },
   topbar: {
     search: "Search a deadline…",

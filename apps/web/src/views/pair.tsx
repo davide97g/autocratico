@@ -30,7 +30,7 @@ export function Pair({ onPaired }: { onPaired: () => void }) {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-4">
+    <div className="flex min-h-svh items-center justify-center px-gutter pt-safe pb-safe">
       <Card className="w-full max-w-sm rounded-xl">
         <CardHeader>
           <span className="mb-2 flex size-10 items-center justify-center rounded-md bg-primary text-primary-foreground">

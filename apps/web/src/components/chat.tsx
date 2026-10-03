@@ -153,7 +153,18 @@ function Answer({ m }: { m: ClaudeMessage }) {
   )
 }
 
-export function Chat({ view, onClose, className }: { view: string; onClose: () => void; className?: string }) {
+export function Chat({
+  view,
+  onClose,
+  className,
+  autoFocus = true,
+}: {
+  view: string
+  onClose: () => void
+  className?: string
+  /** Off on touch screens, where focusing would cover the suggestions with the keyboard. */
+  autoFocus?: boolean
+}) {
   const { t, locale } = useI18n()
   const [conversation, setConversation] = React.useState<Conversation>(read)
   const [draft, setDraft] = React.useState("")
@@ -169,12 +180,13 @@ export function Chat({ view, onClose, className }: { view: string; onClose: () =
     bottom.current?.scrollIntoView({ block: "end" })
   }, [conversation.messages])
   React.useEffect(() => {
-    input.current?.focus()
+    if (autoFocus) input.current?.focus()
     // The latest web conversation, possibly started on another device.
     chats("web").then(
       ([latest]) => setConversation((c) => (latest && !c.messages.some((m) => m.role === "claude" && m.status === "running") ? fromServer(latest) : c)),
       () => undefined
     )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on mount only
   }, [])
 
   async function send(text: string) {
@@ -241,7 +253,7 @@ export function Chat({ view, onClose, className }: { view: string; onClose: () =
         </Button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+      <div className="min-h-0 flex-1 overscroll-contain overflow-y-auto px-4 py-5">
         {conversation.messages.length === 0 ? (
           <div className="flex h-full flex-col justify-end gap-5">
             <div className="flex flex-col gap-2">
@@ -297,8 +309,9 @@ export function Chat({ view, onClose, className }: { view: string; onClose: () =
               }
             }}
             placeholder={t.chat.placeholder}
+            enterKeyHint="send"
             aria-label={t.chat.inputLabel}
-            className="field-sizing-content max-h-40 min-h-8 flex-1 resize-none bg-transparent py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+            className="field-sizing-content max-h-40 min-h-8 flex-1 resize-none bg-transparent py-1.5 text-base outline-none placeholder:text-muted-foreground sm:text-sm"
           />
           {abort ? (
             <Button type="button" size="icon" onClick={() => abort.abort()} aria-label={t.chat.stop}>
@@ -310,7 +323,7 @@ export function Chat({ view, onClose, className }: { view: string; onClose: () =
             </Button>
           )}
         </div>
-        <p className="px-1 pt-2 text-xs text-muted-foreground">{t.chat.hint}</p>
+        <p className="px-1 pt-2 text-xs text-muted-foreground pointer-coarse:hidden">{t.chat.hint}</p>
       </form>
     </aside>
   )

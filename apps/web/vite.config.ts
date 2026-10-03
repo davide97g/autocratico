@@ -38,6 +38,7 @@ export default defineConfig({
       injectRegister: "script-defer",
       includeAssets: ["icons/icon.svg", "icons/apple-touch-icon.png"],
       manifest: {
+        id: "/",
         name: "Autocratico",
         short_name: "Autocratico",
         description: "Personal register for Italian bureaucracy",
@@ -45,7 +46,9 @@ export default defineConfig({
         start_url: "/",
         scope: "/",
         display: "standalone",
-        background_color: "#ececec",
+        orientation: "any",
+        categories: ["productivity", "finance"],
+        background_color: "#e6e6e6",
         theme_color: "#1a1a1a",
         icons: [
           { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },

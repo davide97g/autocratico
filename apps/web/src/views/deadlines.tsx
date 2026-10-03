@@ -56,7 +56,7 @@ export function Deadlines({
         <ToggleGroup
           value={[filter]}
           onValueChange={(v) => v[0] && setFilter(v[0])}
-          className="flex-wrap rounded-lg bg-card p-1"
+          className="no-scrollbar max-w-full overflow-x-auto rounded-lg bg-card p-1 @lg:flex-wrap"
           aria-label={t.deadlines.filter}
         >
           <ToggleGroupItem value={ALL} className="rounded-md px-4">
@@ -69,8 +69,9 @@ export function Deadlines({
           ))}
         </ToggleGroup>
         <StatusLegend className="ml-auto" />
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Switch checked={showDone} onCheckedChange={setShowDone} />
+        <label className="flex h-11 items-center gap-2 text-sm text-muted-foreground">
+          {/* On the page background the default track (input) would not show. */}
+          <Switch checked={showDone} onCheckedChange={setShowDone} className="data-unchecked:bg-muted-foreground/30" />
           {t.deadlines.showDone}
         </label>
       </div>
@@ -149,7 +150,7 @@ function Row({
   const l = level(o)
 
   return (
-    <div className={cn("flex items-center gap-4 border-b py-3 last:border-b-0", done && "opacity-55")}>
+    <div className={cn("flex items-center gap-3 border-b py-3 last:border-b-0 @lg:gap-4", done && "opacity-55")}>
       <div
         className={cn(
           "flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md leading-none",
@@ -163,8 +164,9 @@ function Row({
       </div>
 
       <div className="min-w-0 flex-1 py-1">
-        <div className="truncate text-sm font-medium">{o.title}</div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+        <div className="line-clamp-2 text-sm font-medium @lg:line-clamp-1">{o.title}</div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {!done && <StatusBadge level={l} days={o.days} className="@lg:hidden" />}
           <span>{areaName(t, o.area)}</span>
           <SeverityIcon value={o.severity} />
           {o.amount != null && <Sensitive>{fmt.euro.format(o.amount)}</Sensitive>}
@@ -172,12 +174,12 @@ function Row({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className="flex shrink-0 items-center gap-1 @lg:gap-1.5">
         {o.case && (
           <Button
             variant="ghost"
             size="icon-sm"
-            className="rounded-lg"
+            className="size-9 rounded-lg @lg:size-7"
             onClick={() => onOpenCase(o.case!)}
             aria-label={t.deadlines.openCase}
           >
@@ -188,7 +190,7 @@ function Row({
           <Button
             variant="ghost"
             size="icon-sm"
-            className="rounded-lg"
+            className="size-9 rounded-lg @lg:size-7"
             render={<a href={o.source} target="_blank" rel="noreferrer" aria-label={t.deadlines.source} />}
             nativeButton={false}
           >
@@ -197,19 +199,22 @@ function Row({
         )}
         {done ? (
           <>
-            <Badge variant="secondary" className={STYLE.done.soft}>
+            <Badge variant="secondary" className={cn("hidden @lg:inline-flex", STYLE.done.soft)}>
               <CheckIcon data-icon="inline-start" />
               {t.deadlines.doneOn(fmt.short.format(parseDate(o.done_on!)))}
             </Badge>
-            <Button variant="ghost" size="icon-sm" className="rounded-lg" onClick={() => onDone(o, false)} aria-label={t.deadlines.undo}>
+            <Button variant="ghost" size="icon-sm" className="size-10 rounded-lg @lg:size-7" onClick={() => onDone(o, false)} aria-label={t.deadlines.undo}>
               <Undo2Icon />
             </Button>
           </>
         ) : (
           <>
-            <StatusBadge level={l} days={o.days} />
-            <Button size="sm" className="rounded-lg" onClick={() => onDone(o, true)}>
+            <StatusBadge level={l} days={o.days} className="hidden @lg:inline-flex" />
+            <Button size="sm" className="hidden rounded-lg @lg:inline-flex" onClick={() => onDone(o, true)}>
               {t.deadlines.markDone}
+            </Button>
+            <Button size="icon-lg" className="size-10 rounded-lg @lg:hidden" onClick={() => onDone(o, true)} aria-label={t.deadlines.markDone}>
+              <CheckIcon />
             </Button>
           </>
         )}

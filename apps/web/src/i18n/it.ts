@@ -34,6 +34,8 @@ export const it: Messages = {
     profileMissing: "Profilo da compilare",
     privacy: "Omissis",
     language: "Lingua",
+    more: "Altro",
+    close: "Chiudi",
   },
   topbar: {
     search: "Cerca una scadenza…",

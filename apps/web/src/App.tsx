@@ -3,7 +3,7 @@ import { cn } from "cn"
 
 import { Chat } from "@/components/chat"
 import { usePrivacy } from "@/components/privacy"
-import { Sidebar, TopBar, type View, VIEWS } from "@/components/shell"
+import { Sidebar, TabBar, TopBar, type View, VIEWS } from "@/components/shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useI18n } from "@/i18n"
@@ -55,6 +55,33 @@ function useMedia(query: string) {
   )
 }
 
+/**
+ * While `active`, mirrors the visual viewport (the part above the iOS keyboard) into CSS variables
+ * for the h-visual, top-visual and pb-safe-visual utilities, and stops the page behind from scrolling.
+ */
+function useVisualViewport(active: boolean) {
+  React.useEffect(() => {
+    const vv = window.visualViewport
+    if (!active || !vv) return
+    const root = document.documentElement
+    const update = () => {
+      root.style.setProperty("--visual-height", `${vv.height}px`)
+      root.style.setProperty("--visual-top", `${vv.offsetTop}px`)
+      if (window.innerHeight - vv.height > 120) root.style.setProperty("--visual-safe-bottom", "0px")
+      else root.style.removeProperty("--visual-safe-bottom")
+    }
+    update()
+    vv.addEventListener("resize", update)
+    vv.addEventListener("scroll", update)
+    root.style.overflow = "hidden"
+    return () => {
+      vv.removeEventListener("resize", update)
+      vv.removeEventListener("scroll", update)
+      for (const p of ["--visual-height", "--visual-top", "--visual-safe-bottom", "overflow"]) root.style.removeProperty(p)
+    }
+  }, [active])
+}
+
 function viewFromHash(): View {
   const h = window.location.hash.slice(1)
   return VIEWS.some((v) => v.id === h) ? (h as View) : "overview"
@@ -86,7 +113,14 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
   const [chatOpen, setChatOpen] = usePreference("autocratico.chat-open", false)
   const wide = useMedia("(min-width: 72rem)")
   const wider = useMedia("(min-width: 96rem)")
+  const touch = useMedia("(pointer: coarse)")
   const chatDocked = chatOpen && wide
+  const chatSheet = chatOpen && !wide
+  useVisualViewport(chatSheet)
+  // On phones the chat covers the app: it does not reopen by itself at launch.
+  React.useEffect(() => {
+    if (!window.matchMedia("(min-width: 72rem)").matches) setChatOpen(false)
+  }, [setChatOpen])
 
   React.useEffect(() => {
     loadData().then(setData, (e: Error) => (e instanceof NotPaired ? onUnpaired() : setError(e.message)))
@@ -161,14 +195,17 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
       view={title}
       onClose={() => setChatOpen(false)}
       className={cn(chatDocked ? "sticky top-6 h-[calc(100svh-6rem)]" : "h-full shadow-2xl")}
+      autoFocus={chatDocked || !touch}
     />
   )
 
   return (
-    <div className={cn("mx-auto min-h-svh p-3 sm:p-6", chatDocked ? "max-w-[1840px]" : "max-w-[1480px]")}>
+    <div className={cn("mx-auto min-h-svh pt-safe pb-tabbar lg:p-6", chatDocked ? "max-w-[1840px]" : "max-w-[1480px]")}>
+      {/* Behind the translucent iOS status bar (zero height elsewhere). */}
+      <div aria-hidden className="fixed inset-x-0 top-0 z-50 h-safe-top bg-status-bar" />
       <div
         className={cn(
-          "grid items-start gap-6 rounded-2xl bg-glass p-3 ring-1 ring-glass-border backdrop-blur-2xl sm:p-6 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-8",
+          "grid items-start gap-6 px-gutter pt-4 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-8 lg:rounded-2xl lg:bg-glass lg:p-6 lg:ring-1 lg:ring-glass-border lg:backdrop-blur-2xl",
           chatDocked && "lg:grid-cols-[auto_minmax(0,1fr)_22rem] 2xl:grid-cols-[auto_minmax(0,1fr)_26rem]"
         )}
       >
@@ -209,6 +246,7 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
             </div>
           )}
 
+          <div key={view} className="view-in flex min-w-0 flex-col gap-8">
           {data && view === "overview" && (
             <Overview data={data} onDone={onDone} onOpenCase={onOpenCase} onOpenDeadlines={() => go("deadlines")} />
           )}
@@ -221,19 +259,28 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
           {view === "inbox" && <Inbox />}
           {view === "activity" && <Activity />}
           {view === "settings" && <Settings session={session} />}
+          </div>
         </main>
 
         {chatDocked && chat}
       </div>
 
-      {chatOpen && !wide && (
-        <div className="fixed inset-0 z-40 flex justify-end bg-foreground/20 p-3 backdrop-blur-xs" onClick={() => setChatOpen(false)}>
-          <div className="h-full w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+      <TabBar view={view} onView={go} name={name} counts={counts} />
+
+      {chatSheet && (
+        <div
+          className="fixed inset-x-0 top-visual z-40 flex h-visual justify-end bg-foreground/20 pt-safe pb-safe-visual backdrop-blur-xs duration-200 animate-in fade-in-0 motion-reduce:animate-none"
+          onClick={() => setChatOpen(false)}
+        >
+          <div
+            className="h-full w-full p-2 duration-300 ease-out animate-in slide-in-from-bottom-8 motion-reduce:animate-none sm:max-w-md sm:p-3 sm:slide-in-from-right-8 sm:slide-in-from-bottom-0"
+            onClick={(e) => e.stopPropagation()}
+          >
             {chat}
           </div>
         </div>
       )}
-      <p className="px-6 py-5 text-xs text-muted-foreground">{t.app.footer}</p>
+      <p className="px-gutter py-5 text-xs text-muted-foreground lg:px-6">{t.app.footer}</p>
     </div>
   )
 }

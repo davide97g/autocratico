@@ -51,6 +51,7 @@
     --color-status-done: var(--status-done);
     --color-status-done-foreground: var(--status-done-foreground);
     --color-glass-border: var(--glass-border);
+    --color-status-bar: var(--status-bar);
     --radius-sm: calc(var(--radius) * 0.6);
     --radius-md: calc(var(--radius) * 0.8);
     --radius-lg: var(--radius);
@@ -95,6 +96,8 @@
     --status-done: oklch(0.6 0.14 152);
     --status-done-foreground: oklch(0.985 0 0);
     --glass-border: oklch(1 0 0 / 70%);
+    /* Behind the iOS status bar, whose text is always white (black-translucent): dark in both themes. */
+    --status-bar: oklch(0.17 0 0);
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -155,21 +158,69 @@
     }
   body {
     @apply bg-background text-foreground;
+    touch-action: manipulation;
     }
   html {
-    @apply font-sans;
+    @apply bg-background font-sans;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
     }
 }
-/* Background: grey with blurred white shapes, like a studio photo. */
+
+/*
+ * iOS: the page runs edge to edge (viewport-fit=cover, black-translucent status bar),
+ * so anything near an edge pads itself with the safe-area insets.
+ */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility h-safe-top {
+  height: env(safe-area-inset-top);
+}
+/* Side gutter: 1rem, more in landscape where the notch takes a side. */
+@utility px-gutter {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  @media (width >= 40rem) {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+}
+/* Height of the mobile tab bar plus the home indicator, for content to clear it. */
+@utility pb-tabbar {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+/* The visible viewport, which shrinks when the iOS keyboard opens (set by useVisualViewport). */
+@utility h-visual {
+  height: var(--visual-height, 100dvh);
+}
+@utility top-visual {
+  top: var(--visual-top, 0px);
+}
+/* The home indicator inset, dropped while the keyboard is open (it covers the indicator). */
+@utility pb-safe-visual {
+  padding-bottom: var(--visual-safe-bottom, env(safe-area-inset-bottom));
+}
+/*
+ * Background: grey with blurred white shapes, like a studio photo.
+ * A fixed layer instead of background-attachment: fixed, which iOS Safari ignores and repaints on scroll.
+ */
 @layer base {
-  body {
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background-image:
       radial-gradient(28rem 22rem at 18% 8%, oklch(1 0 0 / 85%), transparent 70%),
       radial-gradient(30rem 26rem at 72% 96%, oklch(1 0 0 / 75%), transparent 70%),
       radial-gradient(22rem 18rem at 96% 30%, oklch(1 0 0 / 60%), transparent 70%);
-    background-attachment: fixed;
   }
-  .dark body {
+  .dark body::before {
     background-image:
       radial-gradient(28rem 22rem at 18% 8%, oklch(0.3 0 0 / 60%), transparent 70%),
       radial-gradient(30rem 26rem at 72% 96%, oklch(0.28 0 0 / 50%), transparent 70%);
@@ -210,4 +261,20 @@
 
 @media (prefers-reduced-motion: reduce) {
   .chrome-orb { animation: none; }
+}
+
+/* Horizontal strips that scroll with a swipe, without a scrollbar. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* A view slides in when the tab changes. */
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .view-in { animation: view-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
 }
