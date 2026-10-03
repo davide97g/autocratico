@@ -92,7 +92,7 @@ const TRIAGE_INSTRUCTIONS = `You are the background agent of autocratico, runnin
 - Advertising, newsletters and irrelevant items: change nothing, mark them "ignored".
 - Do not touch state.json, inbox/*/item.json, chats/, jobs/, secrets/. Never delete existing deadlines or cases.
 - When an item says a deadline was paid or done (a receipt, "I already paid X"), put its occurrence key in "done": the key is \`<id>@<YYYY-MM-DD>\`, the deadline id and the date of that occurrence (a recurring deadline has one key per year or month). The server marks it done; only list keys you are sure of.
-- After editing deadlines.toml run \`python3 scripts/upcoming.py 30\` (it must not fail), then \`python3 scripts/ics.py\`. Type them exactly like that: AUTOCRATICO_DATA is already set, and any prefix, \`cd\`, absolute path or pipe is denied.
+- After editing deadlines.toml run \`python3 scripts/upcoming.py 30\` (it must not fail), then \`python3 scripts/ics.py\`. Type them exactly like that: AUTOCRATICO_DATA is already set, and any prefix, \`cd\`, absolute path or pipe is denied. For date arithmetic (e.g. "within 30 days of the notice") use \`python3 scripts/when.py\`.
 - Add a short section to notes/JOURNAL.md: today's date, "background agent", what changed.
 - Wrap personal data in ||...|| in case files and in your summary.`
 

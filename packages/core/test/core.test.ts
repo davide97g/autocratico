@@ -116,6 +116,6 @@ describe("chat actions", () => {
     expect(reminderTime("2026-10-03T16:05:00+02:00", "Europe/Rome", now)).toBe("2026-10-03T14:05:00.000Z")
     expect(reminderTime("2026-10-02T09:00", "Europe/Rome", now)).toBeNull()
     expect(reminderTime("tomorrow", "Europe/Rome", now)).toBeNull()
-    expect(localNow("Europe/Rome", now)).toBe("2026-10-03 15:40 (UTC+02:00)")
+    expect(localNow("Europe/Rome", now)).toBe("2026-10-03 15:40 Saturday (UTC+02:00)")
   })
 })

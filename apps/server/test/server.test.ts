@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process"
 import { cpSync, mkdtempSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -237,5 +238,24 @@ describe("reminders", () => {
     expect(s.inbox.list().find((i) => i.source === "chat")?.title).toBe("TARI 2026")
     const off = await finishAnswer(answer, "web", "Mac", { reminders, inbox: s.inbox, jobs: null, telegram: false, locale: "it" })
     expect(off).toMatch(/Telegram non è configurato/)
+  })
+})
+
+describe("date and time tool", () => {
+  const when = (...args: string[]) =>
+    execFileSync("python3", [join(ROOT, "scripts/when.py"), ...args], { encoding: "utf8", env: { ...process.env, WHEN_NOW: "2026-10-03T15:47:00+02:00" } })
+
+  it("gives the current time and resolves expressions, across DST", () => {
+    expect(when()).toMatch(/^now: 2026-10-03 15:47 Saturday \(Europe\/Rome, UTC\+02:00\)/)
+    const out = when("+90m, domani alle 9:30, lunedì, 2026-10-26 09:00")
+    expect(out).toMatch(/\+90m: 2026-10-03 17:17 .* iso 2026-10-03T17:17:00\+02:00 · in 1 h 30 min/)
+    expect(out).toMatch(/domani alle 9:30: 2026-10-04 09:30 Sunday/)
+    expect(out).toMatch(/lunedì: 2026-10-05 09:00 Monday/)
+    expect(out).toMatch(/2026-10-26 09:00: .*UTC\+01:00/)
+  })
+
+  it("is allowed to both agents", () => {
+    expect(tools("read", "/data").allowed).toContain("Bash(python3 scripts/when.py:*)")
+    expect(tools("triage", "/data").allowed).toContain("Bash(python3 scripts/when.py:*)")
   })
 })

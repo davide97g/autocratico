@@ -13,7 +13,7 @@ export const ACTION_INSTRUCTIONS = `You cannot change files, but the server acts
 \`\`\`reminder
 {"at": "YYYY-MM-DDTHH:MM", "text": "<what to remember, short, in the user's language>"}
 \`\`\`
-with the local time (the zone of the current time given below). Reminders arrive on Telegram.
+with the local time (the zone of the current time given below); compute it with \`python3 scripts/when.py\` (e.g. \`python3 scripts/when.py +90m\`) rather than in your head. Reminders arrive on Telegram.
 - When the user gives information to record in the register (a payment made, a notice received, a new date or amount, facts about a case): a block
 \`\`\`inbox
 {"title": "<short title>", "text": "<everything needed: what, dates, amounts, which deadline or case>"}

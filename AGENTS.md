@@ -21,7 +21,7 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 - `apps/server/` — Hono server, Node 24 running TypeScript directly (no build):
   - `app.ts` routes (listed with shapes in `openapi.ts`, served at `/api/openapi.json`), `auth.ts` access control, `store.ts` state and chats, `inbox.ts` ingestion, `claude.ts` headless Claude Code runner, `jobs.ts` scheduler, `telegram.ts` bot, `git.ts` history of the data folder, `transcribe.ts` local speech to text (ffmpeg + `parakeet-cli`), `reminders.ts` and `chat-actions.ts` (the read-only chat agent asks for reminders and inbox notes with fenced blocks the server validates; parsing in `core/actions.ts`), `cli.ts` admin commands.
 - `apps/web/` — React + Vite + Tailwind v4 + shadcn/ui (`base-ui`, lucide icons), installable PWA. Personal data is rendered only through `<Sensitive>` (`src/components/privacy.tsx`).
-- `scripts/` — Python 3.11+, standard library only: `store.py` (loading and recurrence for the CLIs), `init.py`, `upcoming.py`, `ics.py`, `gmail.py`.
+- `scripts/` — Python 3.11+, standard library only: `store.py` (loading and recurrence for the CLIs), `init.py`, `upcoming.py`, `ics.py`, `gmail.py`, `when.py` (current time and date arithmetic for the agents).
 - `deploy/` — Dockerfile and compose file for the homelab; `docs/` — architecture, deploy, Gmail, Telegram, iOS shortcut.
 - `example/` — made-up dataset with the same layout as `data/`; `scripts/init.py` copies it. Never put real data there.
 - Native apps (later) go in `apps/ios`, `apps/macos`, against the same API.
@@ -43,6 +43,7 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 - Development: `pnpm dev` → http://localhost:5173 (also starts the server on 127.0.0.1:8790)
 - Checks: `pnpm lint && pnpm typecheck && pnpm test` (core tests include parity with `scripts/store.py`)
 - Admin: `node apps/server/src/cli.ts pair | token --name N | devices | revoke ID | telegram | job NAME`
+- Date and time: `python3 scripts/when.py [+90m, tomorrow 09:00, monday, 2026-10-16 …]` (now, date arithmetic, DST-aware; the chat and background agents use it)
 - Upcoming deadlines: `python3 scripts/upcoming.py [days]`; calendar: `python3 scripts/ics.py` → `data/out/autocratico.ics`
 - Gmail: `python3 scripts/gmail.py accounts | login [--account N] [--manual] | search "Q" | sync [--account N | --all] | logout` (read-only, setup in `docs/gmail.md`)
 - Deploy: `docs/deploy-homelab.md`

@@ -85,10 +85,10 @@ export function offsetMs(timeZone: string, date: Date): number {
   return (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] ?? 0)) * 60_000
 }
 
-/** "2026-10-03 15:40 (UTC+02:00)": the current local time, for the agent's context. */
+/** "2026-10-03 15:40 Saturday (UTC+02:00)": the current local time, for the agent's context. */
 export function localNow(timeZone: string, now = new Date()): string {
   const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "long", hourCycle: "h23" })
       .formatToParts(now)
       .map((p) => [p.type, p.value])
   )
@@ -96,5 +96,5 @@ export function localNow(timeZone: string, now = new Date()): string {
   const sign = off < 0 ? "-" : "+"
   const hh = String(Math.floor(Math.abs(off) / 60)).padStart(2, "0")
   const mm = String(Math.abs(off) % 60).padStart(2, "0")
-  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute} (UTC${sign}${hh}:${mm})`
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute} ${parts.weekday} (UTC${sign}${hh}:${mm})`
 }

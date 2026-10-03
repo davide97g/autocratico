@@ -43,6 +43,8 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
         "WebSearch",
         ...DOMAINS.flatMap((d) => [`WebFetch(domain:${d})`, `WebFetch(domain:*.${d})`]),
         "Bash(python3 scripts/upcoming.py:*)",
+        "Bash(python3 scripts/when.py)",
+        "Bash(python3 scripts/when.py:*)",
       ],
       denied: ["Edit", "Write", "NotebookEdit", ...secrets],
     }
@@ -61,6 +63,8 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
       `Write(${abs(data)}/**)`,
       "Bash(python3 scripts/upcoming.py:*)",
       "Bash(python3 scripts/ics.py)",
+      "Bash(python3 scripts/when.py)",
+      "Bash(python3 scripts/when.py:*)",
     ],
     denied: ["WebSearch", "WebFetch", "NotebookEdit", "Task", ...secrets, ...owned],
   }
@@ -70,7 +74,8 @@ const CHAT_INSTRUCTIONS = `You are answering in the chat of autocratico, the use
 - Be direct and brief; use simple Markdown (lists, bold, small tables).
 - Read the data files (deadlines.toml, state.json, profile.toml, cases/, catalog/, notes/, inbox/) before answering about facts and dates.
 - Wrap every piece of personal data in ||...|| (amounts, birth dates, addresses, document numbers, names of people): the web app hides them in privacy mode and Telegram never shows them.
-- To read, use Read, Glob and Grep; the only command you may run is \`python3 scripts/upcoming.py [days]\`, typed exactly like that (AUTOCRATICO_DATA is already set): no prefixes, cd, absolute paths or pipes.
+- To read, use Read, Glob and Grep; the only commands you may run are \`python3 scripts/upcoming.py [days]\` and \`python3 scripts/when.py [WHEN ...]\`, typed exactly like that (AUTOCRATICO_DATA is already set): no prefixes, cd, absolute paths or pipes.
+- You do know the date and time: each message starts with when it was sent. For date arithmetic (reminder times, "in 90 minutes", "monday at 9", days left until a date, daylight saving changes) run \`python3 scripts/when.py\` with the expressions, e.g. \`python3 scripts/when.py +90m, monday 09:00, 2026-10-16\`, and use its iso values; never say you cannot read the clock.
 - You are read-only: do not modify files yourself.
 - Tell what is verified apart from what is inferred. Never send personal data to web searches.`
 
@@ -180,7 +185,8 @@ export class Claude {
     let stderr = ""
     child.stderr.setEncoding("utf8").on("data", (s: string) => (stderr = (stderr + s).slice(-4000)))
     const exited = new Promise<number | null>((resolve) => child.once("close", resolve))
-    child.stdin.end(o.prompt)
+    // The send time goes in the message itself, so a resumed conversation always has the current one.
+    child.stdin.end(`[Sent ${localNow(this.config.timeZone)}, ${this.config.timeZone}]\n\n${o.prompt}`)
 
     let finished = false
     let failed = false
