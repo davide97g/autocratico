@@ -1,0 +1,29 @@
+{
+  "name": "@autocratico/waitlist",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Public waitlist API for the landing page: validates an email and stores it in Postgres. No register data.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "watch": "node --watch src/main.ts",
+    "start": "node src/main.ts",
+    "export": "node src/export.ts",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.3",
+    "hono": "^4.13.12",
+    "postgres": "^3.4.9",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "~6.0.2",
+    "vitest": "^5.0.3"
+  }
+}

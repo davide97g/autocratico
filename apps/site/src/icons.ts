@@ -1,6 +1,7 @@
 // Only the icons the page uses, so the bundle stays small.
 import {
   ArrowDownRight,
+  ArrowRight,
   ArrowUpRight,
   Calendar,
   Camera,
@@ -17,6 +18,7 @@ import {
   Inbox,
   Lock,
   Mail,
+  MailCheck,
   MessageCircle,
   Mic,
   Paperclip,
@@ -36,6 +38,7 @@ import {
 
 const icons = {
   ArrowDownRight,
+  ArrowRight,
   ArrowUpRight,
   Calendar,
   Camera,
@@ -52,6 +55,7 @@ const icons = {
   Inbox,
   Lock,
   Mail,
+  MailCheck,
   MessageCircle,
   Mic,
   Paperclip,

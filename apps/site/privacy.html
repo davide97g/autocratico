@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy e cookie · Autocratico</title>
+    <meta name="description" content="Come il sito di Autocratico tratta l'email della lista d'attesa e i cookie di statistica." />
+    <link rel="canonical" href="%SITE_URL%privacy.html" />
+    <meta name="theme-color" content="#e7e7e7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Vai al contenuto</a>
+
+    <header class="nav is-stuck">
+      <div class="wrap nav__row">
+        <a class="brand" href="./" aria-label="Autocratico, torna alla pagina principale">
+          <img src="./icon.svg" alt="" width="30" height="30" />
+          <span>Autocratico</span>
+        </a>
+      </div>
+    </header>
+
+    <main id="main" class="legal">
+      <div class="wrap legal__inner">
+        <h1 class="h2">Privacy e cookie</h1>
+        <p class="body">
+          Questa pagina riguarda solo il sito <a href="%SITE_URL%">%SITE_URL%</a>. Il registro di Autocratico gira sui computer di chi lo
+          installa: quei dati non passano mai da qui.
+        </p>
+
+        <h2>Titolare</h2>
+        <p>%SITE_OWNER%, contattabile a <a href="%CONTACT_HREF%">%CONTACT%</a>. Per qualsiasi richiesta sui tuoi dati scrivi lì.</p>
+
+        <h2 id="lista">Lista d'attesa</h2>
+        <ul>
+          <li>
+            <strong>Cosa salviamo:</strong> il tuo indirizzo email, la data dell'iscrizione, la lingua del browser e da dove arrivi (i
+            parametri <code>utm_</code> del link e il dominio del sito che ti ha mandato qui). Non salviamo l'indirizzo IP.
+          </li>
+          <li>
+            <strong>Perché:</strong> per scriverti quando Autocratico si potrà usare senza installare niente. Niente newsletter, nessuna
+            cessione a terzi.
+          </li>
+          <li><strong>Base giuridica:</strong> il tuo consenso (art. 6.1.a GDPR), che puoi revocare quando vuoi.</li>
+          <li>
+            <strong>Verifica dell'indirizzo:</strong> per scartare indirizzi finti, usa e getta o con errori di battitura, il dominio viene
+            controllato nel DNS e l'indirizzo viene inviato a TypeSafe (typesafe.ai), un servizio che risponde solo con una valutazione. Gli
+            indirizzi scartati non vengono salvati.
+          </li>
+          <li>
+            <strong>Dove:</strong> in un database su un server gestito dal titolare. Il traffico passa da Cloudflare, che fornisce la
+            connessione cifrata al sito.
+          </li>
+          <li><strong>Per quanto:</strong> finché resti in lista, al massimo 24 mesi. Poi l'indirizzo viene cancellato.</li>
+          <li>
+            <strong>I tuoi diritti:</strong> accesso, rettifica, cancellazione, opposizione e portabilità, scrivendo al titolare. Puoi
+            anche fare reclamo al <a href="https://www.garanteprivacy.it" rel="noopener">Garante per la protezione dei dati personali</a>.
+          </li>
+        </ul>
+
+        <h2 id="cookie">Cookie</h2>
+        <ul>
+          <li>
+            <strong>Tecnico, sempre:</strong> la tua scelta sul banner resta salvata nel browser (<code>localStorage</code>, chiave
+            <code>autocratico-consent</code>) per 6 mesi, poi te la chiediamo di nuovo.
+          </li>
+          <li>
+            <strong>Statistica, solo se accetti:</strong> Google Analytics 4 di Google Ireland Ltd. Cookie <code>_ga</code> e
+            <code>_ga_&lt;ID&gt;</code>, durata 13 mesi. Contiamo pagine e sezioni viste, clic su pulsanti e link esterni, uso della demo e
+            iscrizioni alla lista (senza l'indirizzo). Non inviamo mai quello che scrivi nella demo o nel modulo. Google Signals e
+            personalizzazione degli annunci sono disattivati. I dati possono essere trattati negli Stati Uniti: Google aderisce all'EU-US
+            Data Privacy Framework.
+          </li>
+          <li>
+            <strong>Prima della tua scelta, e se rifiuti,</strong> nessuno script di Google viene caricato e nessun cookie di statistica
+            viene scritto.
+          </li>
+        </ul>
+        <p><button class="btn btn--ghost btn--sm" type="button" id="cookie-prefs">Cambia le preferenze sui cookie</button></p>
+
+        <p class="legal__date">Ultimo aggiornamento: 3 ottobre 2026.</p>
+      </div>
+    </main>
+
+    <div class="consent" id="consent" role="region" aria-labelledby="consent-title" hidden>
+      <p>
+        <strong id="consent-title">Cookie di statistica?</strong> Con il tuo sì usiamo Google Analytics per contare visite e clic, in forma
+        aggregata. Senza, la pagina funziona uguale.
+      </p>
+      <div class="consent__actions">
+        <button class="btn btn--ghost btn--sm" type="button" data-consent="denied">Rifiuta</button>
+        <button class="btn btn--ghost btn--sm" type="button" data-consent="granted">Accetta</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/privacy.ts"></script>
+  </body>
+</html>

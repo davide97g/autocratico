@@ -164,11 +164,12 @@
             <li><a href="#come-funziona">Come funziona</a></li>
             <li><a href="#privacy">Privacy</a></li>
             <li><a href="#domande">Domande</a></li>
+            <li><a href="#lista">Lista d'attesa</a></li>
           </ul>
         </nav>
         <div class="nav__cta">
-          <a class="btn btn--ghost btn--sm hide-sm" href="%REPO_URL%" rel="noopener">Codice su GitHub</a>
-          <a class="btn btn--primary btn--sm" href="#demo">Prova la demo</a>
+          <a class="btn btn--ghost btn--sm hide-sm" href="%REPO_URL%" rel="noopener" data-track="github">Codice su GitHub</a>
+          <a class="btn btn--primary btn--sm" href="#demo" data-track="demo">Prova la demo</a>
         </div>
       </div>
     </header>
@@ -186,8 +187,8 @@
               Scadenze, tasse e pratiche in un registro privato. Un agente legge quello che arriva e ti avvisa in tempo.
             </p>
             <div class="ctas">
-              <a class="btn btn--primary" href="#demo">Prova la demo <i data-lucide="arrow-down-right"></i></a>
-              <a class="btn btn--ghost" href="%REPO_URL%" rel="noopener">Codice su GitHub</a>
+              <a class="btn btn--primary" href="#demo" data-track="demo">Prova la demo <i data-lucide="arrow-down-right"></i></a>
+              <a class="btn btn--ghost" href="%REPO_URL%" rel="noopener" data-track="github">Codice su GitHub</a>
             </div>
           </div>
 
@@ -676,7 +677,55 @@
             <li>Python 3.11</li>
             <li>Claude Code, per chat e agente</li>
           </ul>
-          <a class="btn btn--primary rv" href="%REPO_URL%" rel="noopener">Codice su GitHub <i data-lucide="arrow-up-right"></i></a>
+          <a class="btn btn--primary rv" href="%REPO_URL%" rel="noopener" data-track="github">Codice su GitHub <i data-lucide="arrow-up-right"></i></a>
+          <p class="install__alt rv">Preferisci non installare niente? <a href="#lista" data-track="waitlist">Entra in lista d'attesa</a></p>
+        </div>
+      </section>
+
+      <!-- Waitlist -->
+      <section class="wl" id="lista" aria-labelledby="wl-title">
+        <div class="wrap">
+          <div class="wl__card rv">
+            <div class="wl__copy">
+              <p class="eyebrow">Lista d'attesa</p>
+              <h2 id="wl-title" class="h2">Non vuoi un server in casa?</h2>
+              <p class="body">
+                Lasciaci l'email: ti scriviamo quando Autocratico si potrà usare senza installare niente. Una mail quando c'è qualcosa da
+                provare, niente newsletter.
+              </p>
+            </div>
+            <form class="wl__form" id="wl-form">
+              <label class="sr-only" for="wl-email">La tua email</label>
+              <div class="wl__row">
+                <input
+                  id="wl-email"
+                  name="email"
+                  type="email"
+                  required
+                  maxlength="254"
+                  autocomplete="email"
+                  inputmode="email"
+                  spellcheck="false"
+                  placeholder="nome@esempio.it"
+                  aria-describedby="wl-status"
+                />
+                <button class="btn btn--primary" type="submit" data-track="waitlist_submit"><span>Avvisami</span><i data-lucide="arrow-right"></i></button>
+              </div>
+              <div class="wl__hp" aria-hidden="true">
+                <label for="wl-website">Lascia vuoto</label>
+                <input id="wl-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+              </div>
+              <label class="wl__consent">
+                <input id="wl-consent" name="consent" type="checkbox" required />
+                <span>Ho letto l'<a href="./privacy.html#lista">informativa privacy</a> e voglio ricevere email su Autocratico. Mi posso cancellare quando voglio.</span>
+              </label>
+              <p class="wl__status" id="wl-status" role="status" aria-live="polite"></p>
+            </form>
+            <div class="wl__done" id="wl-done" tabindex="-1" hidden>
+              <i data-lucide="mail-check"></i>
+              <p><strong>Ci sei.</strong> Ti scriviamo solo quando c'è qualcosa da provare.</p>
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -686,8 +735,23 @@
         <span class="brand brand--foot"><img src="./icon.svg" alt="" width="24" height="24" loading="lazy" /> Autocratico</span>
         <p>Open source, licenza MIT. Non affiliato ad Agenzia delle Entrate, INPS, Comuni o altri enti pubblici.</p>
         <p>Le schermate e la demo usano dati inventati.</p>
+        <p class="foot__links">
+          <a href="./privacy.html">Privacy e cookie</a>
+          <button class="foot__link" type="button" id="cookie-prefs">Preferenze cookie</button>
+        </p>
       </div>
     </footer>
+
+    <div class="consent" id="consent" role="region" aria-labelledby="consent-title" hidden>
+      <p>
+        <strong id="consent-title">Cookie di statistica?</strong> Con il tuo sì usiamo Google Analytics per contare visite e clic, in forma
+        aggregata. Senza, la pagina funziona uguale. <a href="./privacy.html#cookie">Dettagli</a>
+      </p>
+      <div class="consent__actions">
+        <button class="btn btn--ghost btn--sm" type="button" data-consent="denied">Rifiuta</button>
+        <button class="btn btn--ghost btn--sm" type="button" data-consent="granted">Accetta</button>
+      </div>
+    </div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

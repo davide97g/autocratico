@@ -1,6 +1,7 @@
 // The interactive demo: a made-up register (Maria Rossi) that files documents, colours deadlines,
 // sends Telegram reminders and answers a few questions. Everything is scripted and runs in the page.
 import { addDays, daysBetween, fmtFull, fmtLong, fmtShort, iso, level, reducedMotion, relative, today, type Severity } from "./time.ts"
+import { track } from "./analytics.ts"
 import { renderIcons, swapIcon } from "./icons.ts"
 
 type DocId = "tari" | "multa" | "phishing" | "bollo"
@@ -255,6 +256,7 @@ export function initDemo(): { setPrivate: (on: boolean) => void } {
 
   async function file(id: DocId, viaDrop = false) {
     if (busy || filed.has(id)) return
+    track("demo_file", { doc: id, via: viaDrop ? "drop" : "click" })
     const me = run
     const btn = docs.find((d) => d.dataset.doc === id)!
     const script = SCRIPTS[id]
@@ -328,6 +330,7 @@ export function initDemo(): { setPrivate: (on: boolean) => void } {
       done.className = "msg__btn"
       done.innerHTML = `<i data-lucide="check"></i>Fatto`
       done.addEventListener("click", () => {
+        track("demo_reminder_done", { deadline: target })
         const c = chips.find((x) => x.id === target)
         if (c) c.done = true
         renderChips()
@@ -497,7 +500,10 @@ export function initDemo(): { setPrivate: (on: boolean) => void } {
   })
 
   for (const b of document.querySelectorAll<HTMLButtonElement>(".sug")) {
-    b.addEventListener("click", () => ask(b.dataset.q!, b.textContent!.trim()))
+    b.addEventListener("click", () => {
+      track("demo_ask", { question: b.dataset.q, via: "suggestion" })
+      ask(b.dataset.q!, b.textContent!.trim())
+    })
   }
   const form = $<HTMLFormElement>("#chat-form")
   const input = $<HTMLInputElement>("#chat-input")
@@ -516,10 +522,13 @@ export function initDemo(): { setPrivate: (on: boolean) => void } {
           : /scad|prossim|mese|30/.test(t)
             ? "soon"
             : "other"
+    // the category only: what people type stays in the page
+    track("demo_ask", { question: q, via: "typed" })
     ask(q, text)
   })
 
   $("#demo-reset").addEventListener("click", () => {
+    track("demo_reset")
     run++
     chips = BASE.map((c) => ({ ...c }))
     filed.clear()

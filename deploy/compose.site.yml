@@ -1,10 +1,16 @@
 # Autocratico landing page on the homelab (Dokploy compose app). Public: no Cloudflare Access.
 # The Cloudflare tunnel on the host points get-autocratico.<domain> at http://localhost:8791.
+# nginx serves the static page and proxies /api/waitlist to the waitlist service, which stores
+# addresses in its own Postgres. Nothing here touches the register's data. See docs/deploy-homelab.md.
 services:
   site:
     build:
       context: ..
       dockerfile: deploy/site.Dockerfile
+      args:
+        GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
+        SITE_OWNER: ${SITE_OWNER:-}
+        SITE_CONTACT_EMAIL: ${SITE_CONTACT_EMAIL:-}
     restart: unless-stopped
     ports:
       - "127.0.0.1:8791:8080"
@@ -17,3 +23,54 @@ services:
       resources:
         limits:
           memory: 64m
+
+  waitlist:
+    build:
+      context: ..
+      dockerfile: deploy/waitlist.Dockerfile
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: waitlist
+      PGDATABASE: waitlist
+      PGPASSWORD: ${WAITLIST_DB_PASSWORD:?set WAITLIST_DB_PASSWORD (e.g. openssl rand -hex 24)}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:?set TYPESAFE_API_KEY (Jev checks the addresses)}
+      WAITLIST_ORIGINS: ${WAITLIST_ORIGINS:-https://get-autocratico.davideghiotto.it}
+    # No ports: only nginx reaches it, on the compose network.
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: waitlist
+      POSTGRES_DB: waitlist
+      POSTGRES_PASSWORD: ${WAITLIST_DB_PASSWORD:?set WAITLIST_DB_PASSWORD}
+    # No ports: reach it with `docker compose exec db psql -U waitlist`.
+    volumes:
+      - waitlist_db:/var/lib/postgresql
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waitlist -d waitlist"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+volumes:
+  waitlist_db:

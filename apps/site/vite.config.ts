@@ -4,10 +4,22 @@ import { defineConfig, type Plugin } from "vite"
 // Override with SITE_URL to build for another host (e.g. a preview deploy).
 const SITE_URL = (process.env.SITE_URL ?? "https://get-autocratico.davideghiotto.it/").replace(/\/?$/, "/")
 const REPO_URL = "https://github.com/davide97g/autocratico"
+// Google Analytics 4 measurement ID (G-XXXXXXXXXX). Unset: no analytics and no cookie banner.
+const GA_ID = process.env.GA_MEASUREMENT_ID?.trim() ?? ""
+if (GA_ID && !/^G-[A-Z0-9]{4,16}$/.test(GA_ID)) throw new Error(`GA_MEASUREMENT_ID looks wrong: ${GA_ID}`)
+// Data controller named on privacy.html (GDPR): set both for a public deploy.
+const OWNER = process.env.SITE_OWNER?.trim() || "Il manutentore del progetto"
+const CONTACT = process.env.SITE_CONTACT_EMAIL?.trim() || ""
 
-/** Fills %SITE_URL% / %REPO_URL% in index.html and writes robots.txt, sitemap.xml and llms.txt. */
+/** Fills the %PLACEHOLDERS% in the HTML pages and writes robots.txt, sitemap.xml and llms.txt. */
 function seo(): Plugin {
-  const fill = (s: string) => s.replaceAll("%SITE_URL%", SITE_URL).replaceAll("%REPO_URL%", REPO_URL)
+  const fill = (s: string) =>
+    s
+      .replaceAll("%SITE_URL%", SITE_URL)
+      .replaceAll("%REPO_URL%", REPO_URL)
+      .replaceAll("%SITE_OWNER%", OWNER)
+      .replaceAll("%CONTACT_HREF%", CONTACT ? `mailto:${CONTACT}` : `${REPO_URL}/issues`)
+      .replaceAll("%CONTACT%", CONTACT || "le issue del repository")
   return {
     name: "autocratico-seo",
     transformIndexHtml: fill,
@@ -28,5 +40,12 @@ function seo(): Plugin {
 export default defineConfig({
   base: "./",
   plugins: [seo()],
-  build: { target: "es2022", assetsInlineLimit: 0 },
+  define: { __GA_ID__: JSON.stringify(GA_ID) },
+  // The waitlist service (apps/waitlist) in development; nginx proxies it in production.
+  server: { proxy: { "/api": "http://127.0.0.1:8792" } },
+  build: {
+    target: "es2022",
+    assetsInlineLimit: 0,
+    rollupOptions: { input: { main: "index.html", privacy: "privacy.html" } },
+  },
 })

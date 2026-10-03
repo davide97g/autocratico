@@ -153,6 +153,9 @@ svg.lucide {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
 }
+[hidden] {
+  display: none !important;
+}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -2347,6 +2350,199 @@ details p {
   color: var(--graphite);
 }
 
+.install__alt {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.install__alt a {
+  color: var(--pen);
+  text-underline-offset: 3px;
+}
+
+/* ---------- waitlist ---------- */
+.wl {
+  padding-block: 0 clamp(80px, 12vh, 140px);
+}
+.wl__card {
+  display: grid;
+  gap: 28px;
+  padding: clamp(24px, 4vw, 48px);
+  border-radius: var(--r-card);
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+@media (min-width: 960px) {
+  .wl__card {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 48px;
+  }
+}
+.wl__copy .body {
+  margin-top: 16px;
+}
+.wl__form {
+  display: grid;
+  gap: 14px;
+}
+.wl__row {
+  display: flex;
+  gap: 8px;
+}
+.wl__row input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--pen);
+  font: inherit;
+}
+.wl__row input::placeholder {
+  color: var(--muted);
+}
+.wl__row input[aria-invalid="true"] {
+  border-color: var(--overdue);
+}
+@media (max-width: 560px) {
+  .wl__row {
+    flex-direction: column;
+  }
+}
+.wl__hp {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.wl__consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--graphite);
+  cursor: pointer;
+}
+.wl__consent input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: var(--pen);
+}
+.wl__consent a,
+.consent a,
+.foot__links a {
+  color: inherit;
+  text-underline-offset: 3px;
+}
+.wl__status {
+  min-height: 1.5em;
+  font-size: 0.92rem;
+}
+.wl__status[data-kind="error"] {
+  color: var(--overdue);
+}
+.wl__done {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: var(--r-ctl);
+  background: var(--paper);
+  color: var(--graphite);
+}
+.wl__done svg {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  color: var(--done);
+}
+.wl__done strong {
+  color: var(--pen);
+}
+
+/* ---------- privacy page ---------- */
+.legal {
+  padding-block: 40px clamp(80px, 12vh, 140px);
+}
+.legal__inner {
+  max-width: 760px;
+  display: grid;
+  gap: 16px;
+}
+.legal h2 {
+  margin-top: 24px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.legal ul {
+  display: grid;
+  gap: 10px;
+  padding-left: 1.2em;
+  list-style: disc;
+}
+.legal p,
+.legal li {
+  color: var(--graphite);
+}
+.legal a {
+  color: var(--pen);
+  text-underline-offset: 3px;
+}
+.legal code {
+  font-family: var(--mono);
+  font-size: 0.9em;
+}
+.legal__date {
+  margin-top: 24px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+/* ---------- cookie banner ---------- */
+.consent {
+  position: fixed;
+  z-index: 60;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: grid;
+  gap: 14px;
+  max-width: 460px;
+  padding: 18px 20px;
+  border-radius: var(--r-card);
+  border: 1px solid var(--line-strong);
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--shadow);
+  font-size: 0.92rem;
+  color: var(--graphite);
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.3s var(--ease),
+    transform 0.3s var(--ease);
+}
+.consent.is-in {
+  opacity: 1;
+  transform: none;
+}
+.consent strong {
+  color: var(--pen);
+}
+.consent__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 /* ---------- footer ---------- */
 .foot {
   padding-block: 40px 56px;
@@ -2362,6 +2558,20 @@ details p {
 }
 .brand--foot {
   color: var(--pen);
+}
+.foot__links {
+  display: flex;
+  gap: 16px;
+}
+.foot__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 
 /* ---------- reveal on scroll (CSS only, where supported) ---------- */

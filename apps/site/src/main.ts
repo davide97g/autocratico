@@ -1,9 +1,13 @@
 import "./styles.css"
+import { initAnalytics, track } from "./analytics.ts"
 import { initDemo } from "./demo.ts"
 import { renderIcons, swapIcon } from "./icons.ts"
 import { LEVEL_LABEL, addDays, daysBetween, fmtLong, fmtShort, level, reducedMotion, relative, today, type Severity } from "./time.ts"
+import { initWaitlist } from "./waitlist.ts"
 
 renderIcons()
+initAnalytics()
+initWaitlist()
 
 const $ = <T extends Element = HTMLElement>(sel: string) => document.querySelector<T>(sel)!
 const T0 = today()
@@ -44,6 +48,7 @@ const T0 = today()
     const r = pile.getBoundingClientRect()
     const el = document.createElement("span")
     el.className = "stamp"
+    if (n === 0) track("pile_stamp")
     el.textContent = WORDS[n++ % WORDS.length]
     el.style.setProperty("--x", `${(((e.clientX - r.left) / r.width) * 100 - 12).toFixed(1)}%`)
     el.style.setProperty("--y", `${(((e.clientY - r.top) / r.height) * 100 - 5).toFixed(1)}%`)
@@ -113,12 +118,14 @@ const T0 = today()
     })
   }
   range.addEventListener("input", paint)
+  range.addEventListener("change", () => track("time_machine", { days: Number(range.value) }))
   list.addEventListener("click", (e) => {
     const btn = (e.target as Element).closest<HTMLButtonElement>(".check")
     if (!btn) return
     const it = items[Number(btn.closest<HTMLLIElement>(".row")!.dataset.i)]
     it.done = !it.done
     btn.setAttribute("aria-pressed", String(it.done))
+    track("time_machine_done", { item: it.name, done: it.done })
     paint()
   })
   paint()
@@ -131,19 +138,20 @@ const demo = initDemo()
   const shot = $("#privacy-shot")
   const demoBtn = $<HTMLButtonElement>("#demo-privacy")
   let on = false
-  const set = (v: boolean) => {
+  const set = (v: boolean, via: string) => {
     on = v
+    track("privacy_toggle", { on, via })
     sw.setAttribute("aria-checked", String(on))
     shot.classList.toggle("is-on", on)
     demo.setPrivate(on)
   }
-  sw.addEventListener("click", () => set(!on))
-  demoBtn.addEventListener("click", () => set(!on))
+  sw.addEventListener("click", () => set(!on, "switch"))
+  demoBtn.addEventListener("click", () => set(!on, "demo"))
   document.addEventListener("keydown", (e) => {
     if (e.key.toLowerCase() !== "p" || e.metaKey || e.ctrlKey || e.altKey) return
     const t = e.target as HTMLElement
     if (t.closest("input, textarea, [contenteditable]")) return
-    set(!on)
+    set(!on, "key")
   })
 }
 
@@ -158,6 +166,7 @@ const demo = initDemo()
       .join("\n")
     try {
       await navigator.clipboard.writeText(text)
+      track("copy_install")
       label.textContent = "Copiato"
       swapIcon(btn, "check")
     } catch {
