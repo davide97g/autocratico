@@ -15,9 +15,9 @@ without it, sync uses the account's query.
 New messages from the last INBOX_DAYS days also get an item in data/inbox/, so that the
 autocratico server's agent files them (deadlines, cases).
 
-Requires data/secrets/credentials.json: an OAuth client of type "Desktop app" created on
-Google Cloud with the Gmail API enabled. Tokens are saved in data/secrets/gmail/<name>.json (0600).
-Setup: docs/gmail.md.
+Requires data/secrets/credentials.json: an OAuth client created on Google Cloud with the Gmail
+API enabled ("Web application" from Settings in the web app, or "Desktop app" for `login` here).
+Tokens are saved in data/secrets/gmail/<name>.json (0600). Setup: docs/gmail.md.
 """
 
 from __future__ import annotations
@@ -101,9 +101,11 @@ def _client() -> dict:
     if not CREDENTIALS.exists():
         raise GmailError(f"{CREDENTIALS} is missing: download it from Google Cloud (see docs/gmail.md)")
     data = json.loads(CREDENTIALS.read_text())
-    client = data.get("installed")
+    # "Web application" clients (set up from the web app) refresh tokens the same way; `login`
+    # here needs a "Desktop app" client, since it listens on 127.0.0.1.
+    client = data.get("installed") or data.get("web")
     if not client:
-        raise GmailError("credentials.json is not of type 'Desktop app'")
+        raise GmailError("credentials.json is not an OAuth client ('Desktop app' or 'Web application')")
     return client
 
 

@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, extname, join, resolve, sep } from "node:path"
 
-import { type ChatEvent, JobRun, parseToml, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
+import { type ChatEvent, GmailAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
 import { type Context, Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
 import { secureHeaders } from "hono/secure-headers"
@@ -15,6 +15,7 @@ import type { Changes } from "./changes.ts"
 import { type Claude, friendlyError } from "./claude.ts"
 import type { Config } from "./config.ts"
 import type { DataRepo } from "./git.ts"
+import { Gmail, GmailError } from "./gmail.ts"
 import { IMAGE_TYPES, thumbnail } from "./images.ts"
 import { documentFile, type Inbox, MAX_UPLOAD, type Upload } from "./inbox.ts"
 import { JOB_NAMES, type JobName, type Jobs } from "./jobs.ts"
@@ -42,6 +43,8 @@ export type Services = {
   telegram: Telegram | null
   transcriber: Transcriber
   reminders: Reminders
+  /** Override for tests: Gmail setup with a fake Google. */
+  gmail?: Gmail
   /** Override for tests: verifies the Cloudflare Access JWT. */
   verifyAccess?: ((t: string | undefined) => Promise<boolean>) | null
 }
@@ -81,6 +84,7 @@ const IngestJson = z.object({ text: z.string().max(200_000).optional(), title: z
 
 export function createApp(s: Services) {
   const { config, store, inbox, devices, account, claude, repo } = s
+  const gmail = s.gmail ?? new Gmail(config.data)
   const app = new Hono<Env>()
 
   app.use(
@@ -113,6 +117,7 @@ export function createApp(s: Services) {
     return bodyLimit({ maxSize: 1024 * 1024, onError: (x) => x.json({ error: "too large" }, 413) })(c, next)
   })
   app.onError((e, c) => {
+    if (e instanceof GmailError) return c.json({ error: e.message }, e.status)
     if (e instanceof AccountError) {
       if (e.retryAfter) c.header("Retry-After", String(e.retryAfter))
       return c.json({ error: e.message, ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}) }, e.status)
@@ -410,18 +415,52 @@ export function createApp(s: Services) {
 
   app.get("/api/status", (c) => {
     const items = inbox.list()
-    const gmail = gmailAccounts(config.data)
     const status: Status = {
       version: VERSION,
       auth: config.auth,
       claude: claude.available,
       speech: s.transcriber.available,
       telegram: { enabled: s.telegram !== null, chats: s.telegram?.chats().length ?? 0 },
-      gmail,
+      gmail: gmail.setup().accounts.map((a) => ({ name: a.name, connected: a.state === "connected" })),
       inbox: { new: items.filter((i) => i.status === "new").length, failed: items.filter((i) => i.status === "failed").length },
       jobs: JOB_NAMES.map((job) => ({ job, last: s.jobs?.last(job) ?? null, next: s.jobs?.next(job) ?? null })),
     }
     return c.json(status)
+  })
+
+  // ---------- Gmail (OAuth client, accounts, sign-in; secrets stay on the server) ----------
+
+  app.get("/api/gmail", (c) => c.json(gmail.setup()))
+  app.put("/api/gmail/client", async (c) => {
+    userOf(c)
+    return c.json(gmail.saveClient(await c.req.json().catch(() => null)))
+  })
+  app.post("/api/gmail/accounts", async (c) => {
+    userOf(c)
+    const body = GmailAccountInput.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    await gmail.saveAccount(body.data)
+    commit(`Gmail: account ${body.data.name}`)
+    return c.json({ ok: true })
+  })
+  app.delete("/api/gmail/accounts/:name", async (c) => {
+    userOf(c)
+    const removed = await gmail.removeAccount(c.req.param("name"))
+    if (removed) commit(`Gmail: account ${c.req.param("name")} removed`)
+    return removed ? c.json({ ok: true }) : c.json({ error: "not found" }, 404)
+  })
+  app.post("/api/gmail/accounts/:name/authorize", (c) => {
+    userOf(c)
+    // Browser writes carry an Origin the auth middleware already matched to the app's own.
+    const origin = config.publicOrigin ?? c.req.header("origin")
+    if (!origin) return c.json({ error: "missing Origin" }, 400)
+    return c.json(gmail.authorize(c.req.param("name"), origin))
+  })
+  app.post("/api/gmail/complete", async (c) => {
+    userOf(c)
+    const body = z.object({ url: z.string().min(1).max(4000) }).safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    return c.json(await gmail.complete(body.data.url))
   })
 
   // ---------- ingest tokens and Telegram ----------
@@ -479,20 +518,3 @@ function stripLength(raw: string): number {
   return stripActions(raw).length
 }
 
-/** Accounts from gmail.toml (same rules as scripts/gmail.py) and whether each has a token. */
-function gmailAccounts(data: string): { name: string; connected: boolean }[] {
-  const names = new Set<string>()
-  const legacy = existsSync(join(data, "secrets", "token.json"))
-  try {
-    const config = parseToml(readFileSync(join(data, "gmail.toml"), "utf8"), "gmail.toml")
-    if (typeof config.query === "string" && config.query.trim()) names.add("default")
-    for (const a of Array.isArray(config.account) ? config.account : []) if (typeof a?.name === "string") names.add(a.name)
-  } catch {
-    // no or malformed gmail.toml: Gmail is simply not configured
-  }
-  if (legacy) names.add("default")
-  return [...names].map((name) => ({
-    name,
-    connected: existsSync(join(data, "secrets", "gmail", `${name}.json`)) || (name === "default" && legacy),
-  }))
-}

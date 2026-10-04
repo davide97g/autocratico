@@ -5,6 +5,8 @@ import type {
   Chat,
   Data,
   Device,
+  GmailAccountInput,
+  GmailSetup,
   InboxDetail,
   InboxItem,
   JobRun,
@@ -18,6 +20,8 @@ import type {
 
 export type {
   AccountSession,
+  GmailAccount,
+  GmailSetup,
   Activity,
   ArchiveEntry,
   Case,
@@ -140,6 +144,16 @@ export const runJob = (name: string) => post<JobRun>(`/api/jobs/${name}`)
 export const liveJobs = () => request<LiveJobs>("/api/jobs/live")
 
 export const status = () => request<Status>("/api/status")
+
+export const gmailSetup = () => request<GmailSetup>("/api/gmail")
+/** The OAuth client JSON from Google Cloud: stored on the server, its secret never comes back. */
+export const saveGmailClient = (file: unknown) => post<GmailSetup["client"]>("/api/gmail/client", file, "PUT")
+export const saveGmailAccount = (a: GmailAccountInput) => post<Ok>("/api/gmail/accounts", a)
+export const removeGmailAccount = (name: string) => post<Ok>(`/api/gmail/accounts/${encodeURIComponent(name)}`, undefined, "DELETE")
+export const authorizeGmail = (name: string) =>
+  post<{ url: string; type: "web" | "installed" }>(`/api/gmail/accounts/${encodeURIComponent(name)}/authorize`)
+/** Finish the sign-in with the address Google sent the browser back to. */
+export const completeGmail = (url: string) => post<{ name: string; address: string }>("/api/gmail/complete", { url })
 export const devices = () => request<Device[]>("/api/devices")
 export const createDevice = (name: string) => post<{ token: string }>("/api/devices", { name })
 export const revokeDevice = (id: string) => post<{ ok: boolean }>(`/api/devices/${id}`, undefined, "DELETE")

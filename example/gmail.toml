@@ -1,5 +1,6 @@
 # Gmail accounts synced by `python3 scripts/gmail.py sync --all` (every 10 minutes on the server).
-# Each account signs in once: python3 scripts/gmail.py login --account NAME [--manual]
+# Add them and sign in from Settings → Gmail accounts in the web app
+# (or: python3 scripts/gmail.py login --account NAME [--manual], with a "Desktop app" client).
 # Query syntax: https://support.google.com/mail/answer/7190
 
 [[account]]

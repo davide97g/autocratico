@@ -13,8 +13,8 @@ import {
   TabletIcon,
 } from "lucide-react"
 
+import { GmailCard } from "@/components/gmail"
 import { Sensitive } from "@/components/privacy"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -501,7 +501,6 @@ export function Settings({
   onSignedOut: () => void
   onTour: () => void
 }) {
-  const { t } = useI18n()
   const [s, setS] = React.useState<Status | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const refresh = React.useCallback(() => {
@@ -517,21 +516,9 @@ export function Settings({
         <AccountCard session={session} onRenamed={onRenamed} onSignedOut={onSignedOut} onTour={onTour} />
         <SessionsCard />
         <ServerCard s={s} onRefresh={refresh} />
-        <Card className="rounded-xl">
-          <CardHeader>
-            <CardTitle className="text-lg font-medium tracking-tight">{t.settings.gmail}</CardTitle>
-            <CardDescription>{t.settings.gmailDescription}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {s.gmail.map((g) => (
-              <Badge key={g.name} variant={g.connected ? "secondary" : "outline"}>
-                {g.name} · {g.connected ? t.settings.connected : t.settings.notConnected}
-              </Badge>
-            ))}
-          </CardContent>
-        </Card>
       </div>
       <div className="flex flex-col gap-6">
+        <GmailCard />
         <TelegramCard enabled={s.telegram.enabled} />
         <RemindersCard />
         <ShortcutsCard />

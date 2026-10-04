@@ -338,3 +338,40 @@ export const Status = z.object({
   jobs: z.array(z.object({ job: z.string(), last: JobRun.nullable(), next: z.string().nullable() })),
 })
 export type Status = z.infer<typeof Status>
+
+/** Gmail mailbox names in gmail.toml and secrets/gmail/<name>.json (same rule as scripts/gmail.py). */
+export const GMAIL_NAME = /^[a-z0-9][a-z0-9_-]{0,31}$/
+export const GMAIL_DEFAULT_QUERY = "-in:spam -in:trash -category:promotions newer_than:1y"
+/** Where Google sends the browser back after sign-in, with a "Web application" OAuth client. */
+export const GMAIL_REDIRECT_PATH = "/oauth/gmail"
+
+export const GmailAccount = z.object({
+  name: z.string(),
+  query: z.string(),
+  /** reconnect: the token belongs to an OAuth client that has been replaced since. */
+  state: z.enum(["connected", "disconnected", "reconnect"]),
+  /** The Gmail address, once signed in. */
+  address: z.string().nullable(),
+})
+export type GmailAccount = z.infer<typeof GmailAccount>
+
+export const GmailSetup = z.object({
+  /** The OAuth client in secrets/credentials.json (its secret never leaves the server). */
+  client: z
+    .object({
+      type: z.enum(["web", "installed"]),
+      clientId: z.string(),
+      project: z.string().nullable(),
+      /** Redirect URIs listed in the downloaded file (web clients). */
+      redirects: z.array(z.string()),
+    })
+    .nullable(),
+  accounts: z.array(GmailAccount),
+})
+export type GmailSetup = z.infer<typeof GmailSetup>
+
+export const GmailAccountInput = z.object({
+  name: z.string().regex(GMAIL_NAME),
+  query: z.string().trim().min(1).max(500),
+})
+export type GmailAccountInput = z.infer<typeof GmailAccountInput>
