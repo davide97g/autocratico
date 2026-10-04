@@ -1,5 +1,11 @@
 import {
   BanknoteIcon,
+  BellRingIcon,
+  BotIcon,
+  DatabaseBackupIcon,
+  MailIcon,
+  NewspaperIcon,
+  WorkflowIcon,
   BriefcaseBusinessIcon,
   CarIcon,
   HeartIcon,
@@ -25,6 +31,19 @@ const AREA_ICONS: Record<string, LucideIcon> = {
   bank: BanknoteIcon,
   family: HeartIcon,
   business: StoreIcon,
+}
+
+const JOB_ICONS: Record<string, LucideIcon> = {
+  gmail: MailIcon,
+  triage: BotIcon,
+  reminders: BellRingIcon,
+  digest: NewspaperIcon,
+  backup: DatabaseBackupIcon,
+}
+
+/** Icon of a server job (`JOB_NAMES` in apps/server/src/jobs.ts). */
+export function jobIcon(job: string): LucideIcon {
+  return JOB_ICONS[job] ?? WorkflowIcon
 }
 
 export function areaIcon(a: Area): LucideIcon {

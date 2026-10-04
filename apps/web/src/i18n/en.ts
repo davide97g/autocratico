@@ -153,6 +153,8 @@ export const en = {
   },
   profile: {
     toFill: "to fill in",
+    copy: "Copy",
+    copied: "Copied",
     yes: "yes",
     no: "no",
     sections: {
@@ -329,6 +331,9 @@ export const en = {
   },
   inbox: {
     add: "Add documents",
+    dropAnywhere: "Drop to add to the inbox",
+    dropAnywhereHint: "Then add a note, if you like, and send",
+    openInbox: "Open the inbox",
     addDescription: "Photos, PDFs, WhatsApp exports (.zip) or plain text. The agent files them shortly after.",
     drop: "Drop files here or choose them",
     choose: "Choose files",
@@ -400,6 +405,8 @@ export const en = {
     account: "Account",
     accountDescription: "The only user of this register",
     name: "Name",
+    language: "Language",
+    languageDescription: "Of the app. Telegram and the scheduled jobs follow AUTOCRATICO_LOCALE on the server.",
     rename: "Save",
     saved: "Saved",
     changePassword: "Change masterpass",

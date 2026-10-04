@@ -155,6 +155,8 @@ export const it: Messages = {
   },
   profile: {
     toFill: "da compilare",
+    copy: "Copia",
+    copied: "Copiato",
     yes: "sì",
     no: "no",
     sections: {
@@ -331,6 +333,9 @@ export const it: Messages = {
   },
   inbox: {
     add: "Aggiungi documenti",
+    dropAnywhere: "Rilascia per aggiungere all'inbox",
+    dropAnywhereHint: "Poi, se vuoi, aggiungi una nota e invia",
+    openInbox: "Apri l'inbox",
     addDescription: "Foto, PDF, export di WhatsApp (.zip) o testo. L'agente li archivia poco dopo.",
     drop: "Trascina qui i file o sceglili",
     choose: "Scegli file",
@@ -402,6 +407,8 @@ export const it: Messages = {
     account: "Account",
     accountDescription: "L'unico utente di questo registro",
     name: "Nome",
+    language: "Lingua",
+    languageDescription: "Dell'app. Telegram e i job programmati seguono AUTOCRATICO_LOCALE sul server.",
     rename: "Salva",
     saved: "Salvato",
     changePassword: "Cambia masterpass",

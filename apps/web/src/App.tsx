@@ -3,6 +3,7 @@ import { caseOpen } from "@autocratico/core"
 import { cn } from "cn"
 
 import { Chat, chatAbout } from "@/components/chat"
+import { DropToInbox } from "@/components/drop-to-inbox"
 import { usePrivacy } from "@/components/privacy"
 import { Sidebar, TabBar, TopBar, type View, VIEWS } from "@/components/shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -213,6 +214,7 @@ function Main({
     window.scrollTo({ top: 0 })
   }, [])
   const openDeadlines = React.useCallback(() => go("deadlines"), [go])
+  const openInbox = React.useCallback(() => go("inbox"), [go])
   const openDeadline = React.useCallback((key: string) => {
     window.location.hash = DEADLINE_HASH + encodeURIComponent(key)
     setView("deadlines")
@@ -279,7 +281,7 @@ function Main({
   )
 
   return (
-    <div className={cn("mx-auto min-h-svh pt-safe pb-tabbar lg:p-6", chatDocked ? "max-w-[1840px]" : "max-w-[1480px]")}>
+    <div className="min-h-svh pt-safe pb-tabbar lg:p-6">
       {/* Behind the translucent iOS status bar (zero height elsewhere). */}
       <div aria-hidden className="fixed inset-x-0 top-0 z-50 h-safe-top bg-status-bar" />
       <div
@@ -385,6 +387,7 @@ function Main({
       )}
       <p className="px-gutter py-5 text-xs text-muted-foreground lg:px-6">{t.app.footer}</p>
       {tour && data && <Tour onClose={() => onTour(false)} />}
+      <DropToInbox onOpenInbox={openInbox} />
     </div>
   )
 }

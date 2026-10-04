@@ -21,6 +21,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useI18n } from "@/i18n"
+import { LanguageSwitch } from "@/components/shell"
+import { jobIcon } from "@/lib/format"
 import { UsernameHint } from "@/views/login"
 import {
   type AccountSession,
@@ -112,9 +114,12 @@ function ServerCard({ s, onRefresh }: { s: Status; onRefresh: () => void }) {
         <ul className="flex flex-col gap-2">
           {s.jobs.map((j) => (
             <li key={j.job} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-card">
+                {React.createElement(jobIcon(j.job), { className: "size-4" })}
+              </span>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
                 <span className="font-medium">{t.activity.jobs[j.job] ?? j.job}</span>
-                <span className="truncate text-xs text-muted-foreground">
+                <span className="text-xs break-words text-muted-foreground">
                   {t.settings.lastRun}: {when(j.last?.started ?? null, locale, t.settings.never)}
                   {j.last && ` · ${j.last.ok ? t.activity.ok : t.activity.failed} · ${j.last.summary}`}
                 </span>
@@ -211,6 +216,14 @@ function AccountCard({
             {renamed ? t.settings.saved : t.settings.rename}
           </Button>
         </form>
+
+        <div className="flex items-center gap-4 border-t pt-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
+            <span className="font-medium">{t.settings.language}</span>
+            <span className="text-xs text-muted-foreground">{t.settings.languageDescription}</span>
+          </div>
+          <LanguageSwitch compact={false} touch />
+        </div>
 
         <form onSubmit={savePassword} className="flex flex-col gap-3 border-t pt-4">
           <span className="text-sm font-medium">{t.settings.changePassword}</span>

@@ -22,6 +22,7 @@ import {
   type LiveJobs,
   revertCommit,
 } from "@/lib/api"
+import { jobIcon } from "@/lib/format"
 import { unlessChanged } from "@/lib/utils"
 
 function when(iso: string, locale: string) {
@@ -79,7 +80,7 @@ function Steps({ steps, live = false }: { steps: JobStep[]; live?: boolean }) {
             {s.tool ? (
               <span className="flex min-w-0 gap-2 text-muted-foreground">
                 <span className="shrink-0">{t.chat.tools[s.tool] ?? s.tool}</span>
-                <Sensitive className="min-w-0 truncate font-mono text-[0.7rem]">{s.text}</Sensitive>
+                <Sensitive className="min-w-0 font-mono text-[0.7rem] break-all">{s.text}</Sensitive>
               </span>
             ) : (
               <span className="min-w-0 leading-relaxed break-words whitespace-pre-line">
@@ -110,9 +111,9 @@ function Items({ items, files = false }: { items: NonNullable<JobRun["items"]>; 
     <ul className="flex flex-col gap-2 text-sm">
       {items.map((i) => (
         <li key={i.id} className="flex min-w-0 flex-col gap-2">
-          <span className="flex min-w-0 items-center gap-2">
-            <InboxIcon className="size-3.5 shrink-0 text-muted-foreground" />
-            <Sensitive className="truncate">{i.title}</Sensitive>
+          <span className="flex min-w-0 items-start gap-2">
+            <InboxIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+            <Sensitive className="min-w-0 wrap-anywhere">{i.title}</Sensitive>
           </span>
           {files && <ItemFiles id={i.id} />}
         </li>
@@ -142,8 +143,9 @@ export function Now({ live }: { live: LiveJobs | null }) {
         {current && (
           <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3">
             <div className="flex items-center gap-2 text-sm">
-              <Spinner className="text-muted-foreground" />
+              {React.createElement(jobIcon(current.job), { className: "size-4 text-muted-foreground" })}
               <span className="font-medium">{jobName(current.job)}</span>
+              <Spinner className="text-muted-foreground" />
               <span className="text-xs text-muted-foreground">
                 {t.activity.runningFor(duration(now - new Date(current.started).getTime()))}
               </span>
@@ -189,26 +191,31 @@ function RunRow({ r }: { r: JobRun }) {
   return (
     <li className="flex flex-col gap-2 rounded-lg bg-muted/50 p-3 text-sm">
       <div className="flex items-start gap-3">
-        <span
-          className={cn(
-            "mt-1.5 size-2 shrink-0 rounded-full",
-            r.ok === null ? "bg-status-soon" : r.ok ? "bg-status-done" : "bg-status-overdue"
-          )}
-        />
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <span className="font-medium">
-            {t.activity.jobs[r.job] ?? r.job}
-            <span className="ml-2 text-xs font-normal text-muted-foreground">
+        <span className="relative flex size-9 shrink-0 items-center justify-center rounded-md bg-card">
+          {React.createElement(jobIcon(r.job), { className: "size-4" })}
+          <span
+            className={cn(
+              "absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-muted",
+              r.ok === null ? "bg-status-soon" : r.ok ? "bg-status-done" : "bg-status-overdue"
+            )}
+          />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex flex-wrap items-baseline gap-x-2">
+            <span className="font-medium">{t.activity.jobs[r.job] ?? r.job}</span>
+            <span className="text-xs text-muted-foreground">
               {when(r.started, locale)}
               {r.finished && ` · ${duration(new Date(r.finished).getTime() - new Date(r.started).getTime())}`} ·{" "}
-              {r.ok === null ? t.activity.running : r.ok ? t.activity.ok : t.activity.failed}
+              <span className={cn(r.ok === false && "text-status-overdue")}>
+                {r.ok === null ? t.activity.running : r.ok ? t.activity.ok : t.activity.failed}
+              </span>
             </span>
           </span>
           <span className="text-xs break-words text-muted-foreground">{r.summary}</span>
         </div>
       </div>
       {(steps.length > 0 || items.length > 0) && (
-        <div className="flex flex-col gap-3 pl-5">
+        <div className="flex flex-col gap-3 pl-12">
           <Button variant="ghost" size="xs" className="self-start" onClick={() => setOpen((o) => !o)}>
             {open ? t.activity.hideSteps : t.activity.steps(steps.length)}
           </Button>
@@ -245,22 +252,20 @@ function CommitRow({ c, onReverted }: { c: Commit; onReverted: (msg: string) => 
   return (
     <li className="flex flex-col gap-2 rounded-lg bg-muted/50 p-3">
       <div className="flex items-start gap-3">
-        {chat ? (
-          <MessageSquareTextIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <GitCommitHorizontalIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-        )}
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-card">
+          {chat ? <MessageSquareTextIcon className="size-4" /> : <GitCommitHorizontalIcon className="size-4" />}
+        </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="text-sm font-medium">
             {chat && <Badge variant="secondary" className="mr-2 align-middle">{t.activity.fromChat}</Badge>}
             <AgentText text={chat ? c.subject.slice(CHAT.length) : c.subject} />
           </span>
-          <span className="font-mono text-xs text-muted-foreground">
+          <span className="font-mono text-xs break-words text-muted-foreground">
             {c.hash} · {when(c.date, locale)} · {c.files.join(", ")}
           </span>
         </div>
       </div>
-      <div className="flex gap-2 pl-7">
+      <div className="flex gap-2 pl-12">
         <Button variant="ghost" size="xs" onClick={toggle}>
           {open ? t.activity.hidePatch : t.activity.showPatch}
         </Button>
@@ -270,7 +275,7 @@ function CommitRow({ c, onReverted }: { c: Commit; onReverted: (msg: string) => 
         </Button>
       </div>
       {open && patch && (
-        <pre className="ml-7 max-h-96 overflow-auto rounded-md bg-card p-3 font-mono text-xs leading-relaxed">
+        <pre className="ml-12 max-h-96 overflow-auto rounded-md bg-card p-3 font-mono text-xs leading-relaxed">
           {privacy
             ? t.privacy.hidden
             : patch.split("\n").map((line, i) => (

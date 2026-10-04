@@ -32,7 +32,7 @@ function Entry({ e }: { e: ArchiveEntry }) {
           <Icon className="size-4" />
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-sm font-medium">
+          <span className="text-sm font-medium wrap-anywhere">
             <Sensitive>{e.title}</Sensitive>
           </span>
           <span className="flex min-w-0 flex-wrap gap-x-2 text-xs text-muted-foreground">
@@ -41,10 +41,16 @@ function Entry({ e }: { e: ArchiveEntry }) {
                 <Sensitive>{e.from}</Sensitive>
               </span>
             )}
-            {e.account && <span>· {e.account}</span>}
+            {e.account && (
+              <span>
+                {e.from && "· "}
+                {e.account}
+              </span>
+            )}
             {e.files > 0 && (
               <span className="inline-flex items-center gap-1">
-                · <PaperclipIcon className="size-3" />
+                {(e.from || e.account) && "· "}
+                <PaperclipIcon className="size-3" />
                 {t.archive.attachments(e.files)}
               </span>
             )}

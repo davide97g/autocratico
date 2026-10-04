@@ -291,7 +291,6 @@ export function Sidebar({
               </label>
             </div>
           )}
-          <LanguageSwitch compact={compact} />
         </div>
       </div>
     </aside>
@@ -517,7 +516,6 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
               <Switch checked={enabled} onCheckedChange={setEnabled} aria-label={t.sidebar.privacy} />
               {t.sidebar.privacy}
             </label>
-            <LanguageSwitch compact={false} touch />
           </div>
         </SheetContent>
       </Sheet>

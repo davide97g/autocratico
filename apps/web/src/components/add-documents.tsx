@@ -13,10 +13,28 @@ import { Textarea } from "@/components/ui/textarea"
 import { useI18n } from "@/i18n"
 import { ingest } from "@/lib/api"
 
-/** Files, photos and text to the inbox (Inbox view, onboarding). `onAdded` runs after each send. */
-export function AddDocuments({ onAdded }: { onAdded: () => void }) {
+/** Tells the Inbox view that something new arrived (it refreshes its list). */
+export const INBOX_ADDED = "autocratico:inbox-added"
+
+/**
+ * Files, photos and text to the inbox (Inbox view, onboarding, the drop dialog). `onAdded` runs
+ * after each send. `files` and `onFiles` make the list controlled, for files dropped elsewhere.
+ */
+export function AddDocuments({
+  onAdded,
+  files: controlled,
+  onFiles,
+  autoFocus = false,
+}: {
+  onAdded: () => void
+  files?: File[]
+  onFiles?: (update: (before: File[]) => File[]) => void
+  autoFocus?: boolean
+}) {
   const { t } = useI18n()
-  const [files, setFiles] = React.useState<File[]>([])
+  const [own, setOwn] = React.useState<File[]>([])
+  const files = controlled ?? own
+  const setFiles = onFiles ?? setOwn
   const [text, setText] = React.useState("")
   const [state, setState] = React.useState<"idle" | "sending" | "sent">("idle")
   const [error, setError] = React.useState<string | null>(null)
@@ -34,9 +52,10 @@ export function AddDocuments({ onAdded }: { onAdded: () => void }) {
     setError(null)
     try {
       await ingest({ files, text })
-      setFiles([])
+      setFiles(() => [])
       setText("")
       setState("sent")
+      window.dispatchEvent(new Event(INBOX_ADDED))
       onAdded()
     } catch (e) {
       setError((e as Error).message)
@@ -45,7 +64,7 @@ export function AddDocuments({ onAdded }: { onAdded: () => void }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-w-0 flex-col gap-4">
       <div
         onDragOver={(e) => {
           e.preventDefault()
@@ -54,6 +73,7 @@ export function AddDocuments({ onAdded }: { onAdded: () => void }) {
         onDragLeave={() => setOver(false)}
         onDrop={(e) => {
           e.preventDefault()
+          e.stopPropagation() // not again by the app-wide drop target
           setOver(false)
           add(e.dataTransfer.files)
         }}
@@ -104,10 +124,12 @@ export function AddDocuments({ onAdded }: { onAdded: () => void }) {
           {files.map((f, i) => (
             <li
               key={`${f.name}-${i}`}
-              className="flex items-center gap-2 rounded-md bg-muted px-3 py-1.5"
+              className="flex min-w-0 items-center gap-2 rounded-md bg-muted px-3 py-1.5"
             >
               <FileIcon className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">{f.name}</span>
+              <span className="min-w-0 truncate" title={f.name}>
+                {f.name}
+              </span>
               <span className="ml-auto shrink-0 font-mono text-xs text-muted-foreground">
                 {Math.ceil(f.size / 1024)} KB
               </span>
@@ -131,6 +153,7 @@ export function AddDocuments({ onAdded }: { onAdded: () => void }) {
           onChange={(e) => setText(e.target.value)}
           placeholder={t.inbox.textPlaceholder}
           rows={3}
+          autoFocus={autoFocus}
         />
       </label>
 

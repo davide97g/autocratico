@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 import { cn } from "cn"
 
-import { AddDocuments } from "@/components/add-documents"
+import { AddDocuments, INBOX_ADDED } from "@/components/add-documents"
 import { Documents } from "@/components/documents"
 import { Markdown } from "@/components/markdown"
 import { Sensitive, usePrivacy } from "@/components/privacy"
@@ -48,7 +48,7 @@ const STATUS_STYLE: Record<string, string> = {
   failed: "bg-status-overdue/12 text-status-overdue",
 }
 
-function AddCard({ onAdded }: { onAdded: () => void }) {
+function AddCard() {
   const { t } = useI18n()
   return (
     <Card className="rounded-xl">
@@ -57,7 +57,7 @@ function AddCard({ onAdded }: { onAdded: () => void }) {
         <CardDescription>{t.inbox.addDescription}</CardDescription>
       </CardHeader>
       <CardContent>
-        <AddDocuments onAdded={onAdded} />
+        <AddDocuments onAdded={() => undefined} />
       </CardContent>
     </Card>
   )
@@ -87,7 +87,7 @@ function Item({ item, onChange }: { item: InboxItem; onChange: () => void }) {
           <Icon className="size-4" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="truncate text-sm font-medium">
+          <span className="text-sm font-medium wrap-anywhere">
             <Sensitive>{item.title}</Sensitive>
           </span>
           <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
@@ -153,12 +153,16 @@ export function Inbox() {
     refresh()
     // Items change state while the agent works: poll gently while some are pending.
     const timer = setInterval(refresh, 15_000)
-    return () => clearInterval(timer)
+    window.addEventListener(INBOX_ADDED, refresh)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener(INBOX_ADDED, refresh)
+    }
   }, [refresh])
 
   return (
-    <div className="grid items-start gap-6 @4xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <AddCard onAdded={refresh} />
+    <div className="grid items-start gap-6 @4xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] @7xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      <AddCard />
       <Card className="rounded-xl">
         <CardHeader>
           <CardTitle className="text-lg font-medium tracking-tight">{t.inbox.items}</CardTitle>
