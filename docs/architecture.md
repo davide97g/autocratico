@@ -8,7 +8,7 @@
                                                   ▼                   ▼
  ┌────────────────────────── homelab mini PC: one container ─────────────────────────────┐
  │  apps/server (Hono, Node 24)                                                           │
- │   ├─ /api  data · done · chat · ingest · inbox · activity · devices · status           │
+ │   ├─ /api  session · data · done · chat · ingest · inbox · activity · account · status │
  │   ├─ web app (apps/web/dist, PWA)                                                      │
  │   ├─ scheduler: gmail (10 min) · triage (on new items) · reminders (08:30)            │
  │   │             digest (Mon 08:00) · backup (03:00)                                    │
@@ -36,13 +36,13 @@ The chat agent (web and Telegram) stays read-only. When the user asks for a remi
 
 | Entry point | How | Auth |
 |---|---|---|
-| Web app / PWA (iPhone, Mac, any browser) | `https://<host>/` | Cloudflare Access + paired device cookie |
+| Web app / PWA (iPhone, Mac, any browser) | `https://<host>/` | Cloudflare Access + masterpass session cookie (one owner per instance, Better Auth) |
 | iOS/macOS share sheet | Shortcut → `POST /api/ingest` | Access service token + ingest-only bearer token |
 | Telegram | bot in a private chat: text, voice (transcribed locally), files | paired chat ids |
 | Gmail (several accounts) | `gmail.py sync --all` every 10 min | OAuth per account, read-only |
 | Email from anywhere | forward to a synced Gmail account | — |
 | WhatsApp | Export chat → share to the Shortcut or upload the .zip | as above |
-| Native apps (later) | same API, `/api/openapi.json` | bearer device token |
+| Native apps (later) | same API, `/api/openapi.json` | masterpass session |
 
 ## Why these choices
 

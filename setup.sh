@@ -1,14 +1,25 @@
 #!/usr/bin/env bash
 # One-step setup: checks requirements, creates the data folder, builds the web app.
 #
-# Usage: ./setup.sh [--start]
-#   --start   launch the server when done (http://127.0.0.1:8790)
+# Usage: ./setup.sh [--example] [--start]
+#   --example  start from the made-up example dataset instead of an empty register
+#   --start    launch the server when done (http://127.0.0.1:8790)
 #
 # The data folder is data/ (ignored by git) or the one in AUTOCRATICO_DATA.
 # Running it again is safe: existing data is never touched.
 set -euo pipefail
 
 cd "$(dirname "$0")"
+
+example=""
+start=""
+for arg in "$@"; do
+  case "$arg" in
+    --example) example="--example" ;;
+    --start) start=1 ;;
+    *) printf 'unknown option: %s\n' "$arg" >&2; exit 2 ;;
+  esac
+done
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 ok() { printf '  \033[32m✓\033[0m %s\n' "$*"; }
@@ -44,8 +55,8 @@ data_dir="$(cd scripts && python3 -c 'from store import DATA_DIR; print(DATA_DIR
 if [ -d "$data_dir" ] && [ -n "$(ls -A "$data_dir" 2>/dev/null)" ]; then
   ok "$data_dir already exists, left untouched"
 else
-  python3 scripts/init.py >/dev/null
-  ok "created $data_dir from the example dataset"
+  python3 scripts/init.py $example >/dev/null
+  if [ -n "$example" ]; then ok "created $data_dir from the example dataset"; else ok "created $data_dir (empty register)"; fi
 fi
 
 bold "Building the web app"
@@ -62,9 +73,9 @@ bold "Done."
 echo "  Start:     pnpm start                    → http://127.0.0.1:8790"
 echo "  Dev mode:  pnpm dev                      → http://localhost:5173"
 echo "  Online (homelab, Telegram, other devices): docs/deploy-homelab.md"
-echo "  Then replace the example data with yours, or ask Claude Code to do it."
+echo "  First open: the onboarding sets your name and masterpass, then your profile and documents."
 
-if [ "${1:-}" = "--start" ]; then
+if [ -n "$start" ]; then
   echo
   exec node apps/server/src/main.ts
 fi

@@ -135,3 +135,16 @@ describe("documents", () => {
     expect(isDocumentPath("archive")).toBe(false)
   })
 })
+
+describe("first-run datasets", () => {
+  it("loads the empty template and the example", async () => {
+    const { resolve } = await import("node:path")
+    const { loadData } = await import("../src/node.ts")
+    const root = resolve(import.meta.dirname, "../../..")
+    const empty = loadData(resolve(root, "template"), "2026-10-04")
+    expect(empty.agenda).toEqual([])
+    expect(empty.cases).toEqual([])
+    expect(empty.profile).toEqual({})
+    expect(loadData(resolve(root, "example"), "2026-10-04").agenda.length).toBeGreaterThan(0)
+  })
+})

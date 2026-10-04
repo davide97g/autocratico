@@ -11,7 +11,7 @@ export type Config = {
   web: string
   host: string
   port: number
-  /** dev: loopback only, no login. prod: Cloudflare Access + paired devices. */
+  /** Both need the masterpass. dev: loopback only. prod: any interface, behind Cloudflare Access. */
   auth: "dev" | "prod"
   /** Public address of the web app, e.g. https://autocratico.example.com (prod). */
   publicOrigin: string | null
@@ -103,7 +103,7 @@ function validate(c: Config) {
   if (!c.publicOrigin) throw new Error("AUTOCRATICO_AUTH=prod needs PUBLIC_ORIGIN (e.g. https://autocratico.example.com)")
   if (!c.access && env("CF_ACCESS") !== "off") {
     throw new Error(
-      "AUTOCRATICO_AUTH=prod needs CF_ACCESS_TEAM and CF_ACCESS_AUD (Cloudflare Access), or CF_ACCESS=off to rely on paired devices only"
+      "AUTOCRATICO_AUTH=prod needs CF_ACCESS_TEAM and CF_ACCESS_AUD (Cloudflare Access), or CF_ACCESS=off to rely on the masterpass only"
     )
   }
 }

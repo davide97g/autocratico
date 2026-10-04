@@ -41,6 +41,7 @@ WORKDIR /app
 COPY AGENTS.md CLAUDE.md ./
 COPY scripts scripts
 COPY example example
+COPY template template
 COPY --from=deps /src/node_modules node_modules
 COPY --from=deps /src/apps/server/node_modules apps/server/node_modules
 COPY --from=deps /src/packages/core/node_modules packages/core/node_modules

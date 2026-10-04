@@ -10,7 +10,7 @@ Never attach real personal data, tokens or credentials to a report: use the `exa
 
 ## Scope
 
-- `apps/server/src/auth.ts`: anything that lets a website, another user or a remote host read the data, trigger the chat or the agent, or pair a device without a valid code; bypasses of the Cloudflare Access check.
+- `apps/server/src/auth.ts` and `account.ts`: anything that lets a website, another user or a remote host read the data, trigger the chat or the agent without the masterpass; claiming a fresh instance without the setup code; creating a second user; bypasses of the login throttle or of the Cloudflare Access check.
 - `apps/server/src/claude.ts` and `jobs.ts`: ways for file contents (an email, an upload, a WhatsApp export) to make the agent write outside the data folder, read secrets, run commands or send data outside the allowed domains.
 - `apps/server/src/telegram.ts`: messages from unpaired chats being served; personal data leaving unredacted.
 - `apps/server/src/inbox.ts`, `scripts/gmail.py`: file names, zip contents and attachments from strangers (path traversal, zip bombs, content served inline).

@@ -28,12 +28,16 @@ cd autocratico
 ./setup.sh --start          # checks requirements, creates data/, builds the UI, starts it
 ```
 
-Open http://127.0.0.1:8790. The app starts with a made-up example dataset: replace it with your own, or open Claude Code in the folder and ask it to (e.g. *"here is my car insurance policy, add the renewal"*).
+Open http://127.0.0.1:8790. The onboarding asks for your name and a **masterpass** (the only login, no username), then a few basics (vehicles, homes, work) and your first documents, and ends with a quick tour. Later, open Claude Code in the folder and ask it things like *"here is my car insurance policy, add the renewal"*.
+
+To look around first, start from a made-up dataset with `./setup.sh --example --start`.
+
+Forgot the masterpass? `pnpm reset-password` on the server sets a new one and logs every browser out.
 
 `setup.sh` is safe to run again: it never touches an existing data folder. To do the same steps by hand:
 
 ```bash
-python3 scripts/init.py                       # creates data/ by copying example/
+python3 scripts/init.py                       # creates an empty data/ (--example: copies example/)
 pnpm install && pnpm build
 pnpm start                                    # http://127.0.0.1:8790
 ```
@@ -67,7 +71,7 @@ Monorepo (pnpm + Turborepo): `apps/web` (PWA), `apps/server` (Hono, Node 24), `p
 | `pnpm start` | server and web app on http://127.0.0.1:8790 |
 | `pnpm dev` | development on http://localhost:5173 (also starts the server) |
 | `pnpm lint && pnpm typecheck && pnpm test` | checks |
-| `node apps/server/src/cli.ts pair \| token \| devices \| telegram \| job NAME` | pairing and admin |
+| `node apps/server/src/cli.ts setup-code \| reset-password \| token \| devices \| telegram \| job NAME` | first setup, masterpass reset, admin |
 | `python3 scripts/upcoming.py [days]` | upcoming deadlines and dates still missing |
 | `python3 scripts/ics.py` | writes `data/out/autocratico.ics` |
 | `python3 scripts/gmail.py accounts \| login --account N \| sync --all` | read-only Gmail, several accounts, see [docs/gmail.md](docs/gmail.md) |
@@ -85,10 +89,10 @@ data/
   inbox/             everything that arrived, one folder per item
   archive/           PDFs, scans, downloaded emails
   chats/, jobs/      conversations and job log (written by the server)
-  secrets/           OAuth tokens, paired devices and Telegram chats (0700)
+  secrets/           masterpass and sessions (auth.db), OAuth tokens, shortcut tokens, Telegram chats (0700)
 ```
 
-[`example/`](example/) has the same layout with made-up data. A deadline looks like this:
+[`example/`](example/) has the same layout with made-up data; [`template/`](template/) is the empty register a new install starts from. A deadline looks like this:
 
 ```toml
 [[deadline]]
@@ -111,8 +115,9 @@ Personal instructions (your language, your mailboxes) go in `data/notes/INSTRUCT
 ## Privacy and security
 
 - **Code and data are separate.** Everything personal lives in `data/` (ignored by git) or in `AUTOCRATICO_DATA`. The repository contains only code and a made-up example.
+- **One owner, one masterpass.** Each instance has a single user, created in the onboarding ([Better Auth](https://www.better-auth.com), hashed in `secrets/auth.db`). Every request needs its session cookie (HttpOnly, SameSite=Strict, 90 days, revocable per device from Settings); five wrong attempts lock logins for 15 minutes.
 - **Local by default.** Without configuration the server listens on `127.0.0.1` only and refuses requests whose `Host` or `Origin` is not local (DNS rebinding, CSRF).
-- **Online mode** (`AUTOCRATICO_AUTH=prod`): every request needs a Cloudflare Access token **and** a paired device (one-time codes, hashed tokens, revocable); browser writes must come from the app's own origin; shortcut tokens can only add documents. The server refuses to start without these settings.
+- **Online mode** (`AUTOCRATICO_AUTH=prod`): a Cloudflare Access token comes first, then the masterpass session; browser writes must come from the app's own origin; shortcut tokens can only add documents. The first setup needs a one-time code printed by the server, so a fresh instance can't be claimed by whoever finds it. The server refuses to start without these settings.
 - **Constrained agent.** Chat runs `claude -p` with read-only tools, `WebFetch` limited to public-body domains (`gov.it`, `inps.it`, `europa.eu`, …). The background agent may edit only the data folder, with no web access and no access to secrets or server-owned files; its changes are commits you can undo. Content of emails and uploads is treated as data, never as instructions. Questions and file contents do go to Anthropic, as with any Claude Code session.
 - **Telegram sees redacted text only**: amounts, IBANs, tax codes and anything marked personal are masked before sending.
 - **Read-only Gmail.** The OAuth scope is `gmail.readonly`; tokens are stored with `0600` permissions and can be revoked with `gmail.py logout`.

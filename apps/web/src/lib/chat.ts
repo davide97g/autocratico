@@ -1,6 +1,6 @@
 import type { ChatEvent } from "@autocratico/core"
 
-import { API_BASE, NotPaired } from "@/lib/api"
+import { API_BASE, Unauthenticated } from "@/lib/api"
 
 export type { ChatEvent }
 
@@ -17,7 +17,7 @@ export async function ask(
     body: JSON.stringify(request),
     signal,
   })
-  if (r.status === 401) throw new NotPaired("not paired")
+  if (r.status === 401) throw new Unauthenticated("not logged in")
   if (!r.ok || !r.body) throw new Error(`HTTP ${r.status}`)
   const reader = r.body.pipeThrough(new TextDecoderStream()).getReader()
   let rest = ""

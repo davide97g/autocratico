@@ -7,7 +7,8 @@ import { Sidebar, TabBar, TopBar, type View, VIEWS } from "@/components/shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useI18n } from "@/i18n"
-import { type Data, loadData, markDone, NotPaired, type Occurrence, type Session, session as loadSession } from "@/lib/api"
+import { Tour } from "@/components/tour"
+import { type Data, loadData, markDone, type Occurrence, type Session, session as loadSession, Unauthenticated } from "@/lib/api"
 import { useLiveJobs } from "@/lib/live"
 import { level } from "@/lib/status"
 import { Activity } from "@/views/activity"
@@ -16,7 +17,8 @@ import { Catalog } from "@/views/catalog"
 import { Deadlines } from "@/views/deadlines"
 import { Inbox } from "@/views/inbox"
 import { Overview } from "@/views/overview"
-import { Pair } from "@/views/pair"
+import { Login } from "@/views/login"
+import { Onboarding } from "@/views/onboarding"
 import { Profile } from "@/views/profile"
 import { Settings } from "@/views/settings"
 
@@ -91,18 +93,44 @@ function viewFromHash(): View {
 export function App() {
   const [session, setSession] = React.useState<Session | null>(null)
   const [failed, setFailed] = React.useState<string | null>(null)
+  const [tour, setTour] = React.useState(false)
   const check = React.useCallback(() => {
     loadSession().then(setSession, (e: Error) => setFailed(e.message))
   }, [])
   React.useEffect(check, [check])
+  const signedOut = React.useCallback(() => setSession((s) => s && { ...s, authenticated: false, user: null }), [])
 
   if (failed) return <p className="p-6 text-sm text-status-overdue">{failed}</p>
   if (!session) return null
-  if (!session.paired) return <Pair onPaired={check} />
-  return <Main session={session} onUnpaired={() => setSession({ ...session, paired: false })} />
+  // First run (no owner), or an owner who never finished the onboarding.
+  if (!session.owner || (session.user && !session.user.onboarded)) {
+    return (
+      <Onboarding
+        session={session}
+        onDone={(withTour) => {
+          setTour(withTour)
+          check()
+        }}
+      />
+    )
+  }
+  if (!session.authenticated) return <Login onLoggedIn={check} />
+  return <Main session={session} onSignedOut={signedOut} onRenamed={check} tour={tour} onTour={setTour} />
 }
 
-function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => void }) {
+function Main({
+  session,
+  onSignedOut,
+  onRenamed,
+  tour,
+  onTour,
+}: {
+  session: Session
+  onSignedOut: () => void
+  onRenamed: () => void
+  tour: boolean
+  onTour: (open: boolean) => void
+}) {
   const { t } = useI18n()
   const { setEnabled: setPrivacy } = usePrivacy()
   const [data, setData] = React.useState<Data | null>(null)
@@ -124,8 +152,8 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
   }, [setChatOpen])
 
   const reload = React.useCallback(() => {
-    loadData().then(setData, (e: Error) => (e instanceof NotPaired ? onUnpaired() : setError(e.message)))
-  }, [onUnpaired])
+    loadData().then(setData, (e: Error) => (e instanceof Unauthenticated ? onSignedOut() : setError(e.message)))
+  }, [onSignedOut])
   // When the agent finishes, deadlines and cases may have changed.
   const live = useLiveJobs(reload)
 
@@ -181,8 +209,7 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
     go("cases")
   }
 
-  const person = data?.profile.person
-  const name = person && !Array.isArray(person) && person.name && person.name !== "TODO" ? String(person.name) : null
+  const name = session.user?.name || null
   const upcoming = data?.agenda.filter((o) => !o.done_on && o.days >= 0 && o.days <= 30).length ?? 0
   const title = t.views[view]
   const counts = {
@@ -268,7 +295,17 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
           {data && view === "catalog" && <Catalog entries={data.catalog} />}
           {view === "inbox" && <Inbox />}
           {view === "activity" && <Activity live={live} />}
-          {view === "settings" && <Settings session={session} />}
+          {view === "settings" && (
+            <Settings
+              session={session}
+              onRenamed={onRenamed}
+              onSignedOut={onSignedOut}
+              onTour={() => {
+                go("overview")
+                onTour(true)
+              }}
+            />
+          )}
           </div>
         </main>
 
@@ -291,6 +328,7 @@ function Main({ session, onUnpaired }: { session: Session; onUnpaired: () => voi
         </div>
       )}
       <p className="px-gutter py-5 text-xs text-muted-foreground lg:px-6">{t.app.footer}</p>
+      {tour && data && <Tour onClose={() => onTour(false)} />}
     </div>
   )
 }

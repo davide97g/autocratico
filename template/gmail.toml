@@ -1,0 +1,7 @@
+# Gmail accounts synced by `python3 scripts/gmail.py sync --all` (every 10 minutes on the server).
+# Each account signs in once: python3 scripts/gmail.py login --account NAME [--manual]
+# Query syntax: https://support.google.com/mail/answer/7190
+#
+# [[account]]
+# name = "personal"
+# query = "-in:spam -in:trash -category:promotions newer_than:1y"

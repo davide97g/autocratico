@@ -37,6 +37,7 @@ Personal instructions for every agent go in `data/notes/INSTRUCTIONS.md` (langua
 | `PUBLIC_ORIGIN` | `https://autocratico.<your domain>` |
 | `CF_ACCESS_TEAM` | Zero Trust → Settings → team name (`<team>.cloudflareaccess.com`) |
 | `CF_ACCESS_AUD` | Zero Trust → Access → Applications → autocratico → Application Audience (AUD) tag |
+| `BETTER_AUTH_SECRET` | optional: otherwise generated once into `data/secrets/auth.json` |
 
 Set them in Dokploy's Environment tab of the compose app (never in the repository).
 
@@ -62,15 +63,23 @@ No Traefik route is needed: the tunnel points straight at `http://localhost:8790
 
 The server rejects any request without a valid Access JWT, so the app is not reachable around Access even from the LAN.
 
-## 5. Pair your devices
+## 5. Set it up
+
+On first start an empty data folder gets the empty register, and the log prints a one-time **setup code** (8 digits, 10 minutes):
 
 ```bash
-docker exec -it $(docker ps -qf name=autocratico) node apps/server/src/cli.ts pair --name "Mac"
+docker logs $(docker ps -qf name=autocratico) | grep "setup code"
+# or a new one:
+docker exec -it $(docker ps -qf name=autocratico) node apps/server/src/cli.ts setup-code
 ```
 
-Open the site, enter the code. From then on, create codes for other devices in **Settings → Devices** (iPhone: open the site in Safari, pair, then Share → Add to Home Screen).
+Open the site: the onboarding asks for your name, the masterpass and the setup code, then your basics and first documents. Other devices just log in with the masterpass (iPhone: Safari, log in, then Share → Add to Home Screen); **Settings → Logged-in devices** lists them and logs them out.
 
-- Shortcut token: Settings → Devices → **Token for a shortcut** (see docs/ios-shortcut.md).
+Forgot the masterpass: `docker exec -it … node apps/server/src/cli.ts reset-password` (logs every browser out).
+
+Upgrading from a version with device pairing: the register is kept, old device cookies stop working, and the onboarding (with the setup code) runs once, prefilled from `profile.toml`. Shortcut tokens keep working.
+
+- Shortcut token: Settings → **Shortcut tokens** (see docs/ios-shortcut.md).
 - Telegram: Settings → Telegram → **Pair a chat**, send `/start <code>` to the bot.
 - Gmail: `docker exec -it … python3 scripts/gmail.py login --account personal --manual` (see docs/gmail.md).
 
@@ -82,7 +91,7 @@ Open the site, enter the code. From then on, create codes for other devices in *
 
 ## Without Cloudflare Access
 
-`CF_ACCESS=off` lets the server start with paired devices only (e.g. behind Tailscale Serve). Then every request still needs a device token, but nothing filters traffic before it reaches the server.
+`CF_ACCESS=off` lets the server start with the masterpass only (e.g. behind Tailscale Serve). Every request still needs the owner's session or a shortcut token, but nothing filters traffic before it reaches the server: choose a long masterpass.
 
 ## Landing page
 

@@ -15,7 +15,7 @@
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\" --ignore-path .prettierignore",
     "start": "node apps/server/src/main.ts",
-    "pair": "node apps/server/src/cli.ts pair"
+    "reset-password": "node apps/server/src/cli.ts reset-password"
   },
   "devDependencies": {
     "prettier": "^3.9.9",

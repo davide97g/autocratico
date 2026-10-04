@@ -1,32 +1,19 @@
 import { execFileSync } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { join, resolve } from "node:path"
+import { join } from "node:path"
 
 import { describe, expect, it } from "vitest"
 
-import { createApp } from "../src/app.ts"
-import { loadConfig } from "../src/config.ts"
 import { copiesOf } from "../src/images.ts"
 import { documentFile, Inbox } from "../src/inbox.ts"
-import { services } from "../src/services.ts"
-
-const ROOT = resolve(import.meta.dirname, "../../..")
-const LOCAL = { host: "127.0.0.1:8790" }
+import { owner, setup } from "./helpers.ts"
 
 // A 1x1 white PNG.
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4//8/AAX+Av4N70a4AAAAAElFTkSuQmCC",
   "base64"
 )
-
-function setup() {
-  const data = mkdtempSync(join(tmpdir(), "autocratico-"))
-  cpSync(join(ROOT, "example"), data, { recursive: true })
-  const config = loadConfig({ data, jobs: false, telegramToken: null, claude: null })
-  const s = services(config, { jobs: null, telegram: null, verifyAccess: null })
-  return { app: createApp(s), s, data }
-}
 
 describe("HEIC photos", () => {
   it("finds the JPEGs made from a photo", () => {
@@ -85,6 +72,7 @@ describe("original files", () => {
 
   it("shows images inline and serves everything else as a download", async () => {
     const { app, data } = setup()
+    const LOCAL = await owner(app)
     mkdirSync(join(data, "archive", "2026"), { recursive: true })
     writeFileSync(join(data, "archive", "2026", "photo.png"), PNG)
     writeFileSync(join(data, "archive", "2026", "page.html"), "<script>alert(1)</script>")

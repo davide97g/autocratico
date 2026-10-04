@@ -1,4 +1,5 @@
 import type {
+  AccountSession,
   Activity,
   Chat,
   Data,
@@ -7,11 +8,14 @@ import type {
   InboxItem,
   JobRun,
   LiveJobs,
+  ProfileInput,
   Reminder,
+  Session,
   Status,
 } from "@autocratico/core"
 
 export type {
+  AccountSession,
   Activity,
   Case,
   CatalogEntry,
@@ -27,7 +31,9 @@ export type {
   LiveJobs,
   Occurrence,
   Profile,
+  ProfileInput,
   Reminder,
+  Session,
   Status,
   Value,
 } from "@autocratico/core"
@@ -47,14 +53,28 @@ export type Area =
 /** Base address of the API: same origin for the web app; native shells can set it. */
 export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? ""
 
-/** The server answered 401: this browser is not paired yet. */
-export class NotPaired extends Error {}
+/** The server answered 401: not logged in (or the session was revoked). */
+export class Unauthenticated extends Error {}
+
+/** An error answer, with its status and, for 429, the seconds to wait. */
+export class ApiError extends Error {
+  readonly status: number
+  readonly retryAfter: number
+
+  constructor(message: string, status: number, retryAfter = 0) {
+    super(message)
+    this.status = status
+    this.retryAfter = retryAfter
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(API_BASE + path, { credentials: "same-origin", ...init })
   const body = await r.json().catch(() => ({}))
-  if (r.status === 401) throw new NotPaired(body.error ?? "not paired")
-  if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`)
+  if (r.status === 401 && !path.startsWith("/api/login") && !path.startsWith("/api/account/password")) {
+    throw new Unauthenticated(body.error ?? "not logged in")
+  }
+  if (!r.ok) throw new ApiError(body.error ?? `HTTP ${r.status}`, r.status, body.retryAfter ?? 0)
   return body as T
 }
 
@@ -66,10 +86,19 @@ function post<T>(path: string, body?: unknown, method = "POST"): Promise<T> {
   })
 }
 
-export type Session = { paired: boolean; auth: "dev" | "prod"; device: Device | null }
+type Ok = { ok: boolean }
 
 export const session = () => request<Session>("/api/session")
-export const pair = (code: string, name?: string) => post<{ device: Device }>("/api/pair", { code, name })
+export const setup = (n: { name: string; password: string; code?: string }) => post<Ok>("/api/setup", n)
+export const login = (password: string) => post<Ok>("/api/login", { password })
+export const logout = () => post<Ok>("/api/logout")
+export const changePassword = (current: string, next: string, revokeOthers: boolean) =>
+  post<Ok>("/api/account/password", { current, next, revokeOthers })
+export const rename = (name: string) => post<Ok>("/api/account/name", { name })
+export const setOnboarded = (onboarded: boolean) => post<Ok>("/api/account/onboarded", { onboarded })
+export const sessions = () => request<AccountSession[]>("/api/account/sessions")
+export const revokeSession = (id: string) => post<Ok>(`/api/account/sessions/${id}`, undefined, "DELETE")
+export const saveProfile = (p: ProfileInput) => post<Ok>("/api/profile", p, "PUT")
 
 export const loadData = () => request<Data>("/api/data")
 
@@ -105,8 +134,7 @@ export const liveJobs = () => request<LiveJobs>("/api/jobs/live")
 
 export const status = () => request<Status>("/api/status")
 export const devices = () => request<Device[]>("/api/devices")
-export const createDevice = (name: string, scope: "full" | "ingest") =>
-  post<{ code?: string; token?: string }>("/api/devices", { name, scope })
+export const createDevice = (name: string) => post<{ token: string }>("/api/devices", { name })
 export const revokeDevice = (id: string) => post<{ ok: boolean }>(`/api/devices/${id}`, undefined, "DELETE")
 
 export type TelegramChat = { id: number; name: string; paired: string }

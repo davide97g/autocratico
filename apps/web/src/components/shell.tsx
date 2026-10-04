@@ -52,6 +52,7 @@ export const VIEWS: { id: View; icon: LucideIcon; group: "agenda" | "archive" | 
 export type Counts = Partial<Record<View, number>> & { urgent: number; busy: boolean }
 
 function NavItem({
+  id,
   active,
   compact,
   name,
@@ -61,6 +62,7 @@ function NavItem({
   busy,
   onClick,
 }: {
+  id: View
   active: boolean
   compact: boolean
   name: string
@@ -78,6 +80,7 @@ function NavItem({
       aria-current={active ? "page" : undefined}
       aria-label={compact ? name : undefined}
       onClick={onClick}
+      data-tour={id}
     />
   )
   const content = (
@@ -113,7 +116,7 @@ function NavItem({
   )
 }
 
-function LanguageSwitch({ compact, touch = false }: { compact: boolean; touch?: boolean }) {
+export function LanguageSwitch({ compact, touch = false }: { compact: boolean; touch?: boolean }) {
   const { locale, setLocale, t } = useI18n()
   if (compact) {
     const next = LOCALES.find((l) => l.id !== locale)!
@@ -221,6 +224,7 @@ export function Sidebar({
             {VIEWS.filter((v) => v.group === g).map((v) => (
               <NavItem
                 key={v.id}
+                id={v.id}
                 active={view === v.id}
                 compact={compact}
                 name={t.views[v.id]}
@@ -390,6 +394,7 @@ export function TopBar({
               onClick={() => setEnabled(!enabled)}
               aria-pressed={enabled}
               aria-label={t.topbar.privacy}
+              data-tour="privacy"
             />
           }
         >
@@ -408,6 +413,7 @@ export function TopBar({
               onClick={onChat}
               aria-pressed={chatOpen}
               aria-label={t.sidebar.askClaude}
+              data-tour="chat"
             />
           }
         >
@@ -435,6 +441,7 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
       type="button"
       onClick={onClick}
       aria-current={active ? "page" : undefined}
+      data-tour={id}
       className={cn(
         "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[0.68rem] font-medium transition-[background-color,color,scale] duration-150 outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-95",
         active ? "bg-primary text-primary-foreground" : "text-muted-foreground"

@@ -1,4 +1,5 @@
 /** Wires the server's parts together; shared by main.ts and the tests. */
+import { Account } from "./account.ts"
 import { createApp, type Services } from "./app.ts"
 import { Devices } from "./auth.ts"
 import { Claude } from "./claude.ts"
@@ -22,6 +23,7 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     store,
     inbox,
     devices: new Devices(config.data),
+    account: overrides.account ?? new Account(config),
     claude,
     repo,
     jobs: null,

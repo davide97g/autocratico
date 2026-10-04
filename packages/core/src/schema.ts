@@ -79,6 +79,20 @@ export const Profile = z.record(
 )
 export type Profile = z.infer<typeof Profile>
 
+/**
+ * Sections of profile.toml edited from the web app (onboarding, profile view). Each section sent
+ * replaces the one on disk, so clients send whole rows, unknown keys included. Empty strings are
+ * left out; YYYY-MM-DD strings become TOML dates. `person.name` belongs to the account.
+ */
+const ProfileRow = z.record(z.string().max(60), z.union([z.string().max(500), z.number(), z.boolean(), z.null()]))
+export const ProfileInput = z.object({
+  person: ProfileRow.optional(),
+  work: ProfileRow.optional(),
+  property: z.array(ProfileRow).max(20).optional(),
+  vehicle: z.array(ProfileRow).max(20).optional(),
+})
+export type ProfileInput = z.infer<typeof ProfileInput>
+
 export const Data = z.object({
   today: IsoDate,
   agenda: z.array(Occurrence),
@@ -139,7 +153,8 @@ export type Reminder = z.infer<typeof Reminder>
 
 // ---------- Devices, jobs, chats ----------
 
-export const SCOPES = ["full", "ingest"] as const
+/** Bearer tokens for shortcuts: they can only add documents to the inbox. */
+export const SCOPES = ["ingest"] as const
 export const Scope = z.enum(SCOPES)
 export type Scope = z.infer<typeof Scope>
 
@@ -230,9 +245,36 @@ export const Chat = z.object({
 })
 export type Chat = z.infer<typeof Chat>
 
+// ---------- Account: the one user of this instance ----------
+
+export const AUTH_MODES = ["dev", "prod"] as const
+
+/** GET /api/session: what the web app shows first (onboarding, login or the register). */
+export const Session = z.object({
+  auth: z.enum(AUTH_MODES),
+  /** The owner exists: the masterpass has been set. */
+  owner: z.boolean(),
+  authenticated: z.boolean(),
+  user: z.object({ name: z.string(), onboarded: z.boolean() }).nullable(),
+  /** The first setup needs the one-time code printed by the server (prod). */
+  needsCode: z.boolean(),
+})
+export type Session = z.infer<typeof Session>
+
+/** A browser logged in with the masterpass. */
+export const AccountSession = z.object({
+  id: z.string(),
+  /** Guessed from the browser: iPhone, iPad, Mac, Windows, Android, browser. */
+  name: z.string(),
+  created: z.string(),
+  last_seen: z.string(),
+  current: z.boolean(),
+})
+export type AccountSession = z.infer<typeof AccountSession>
+
 export const Status = z.object({
   version: z.string(),
-  auth: z.enum(["dev", "prod"]),
+  auth: z.enum(AUTH_MODES),
   claude: z.boolean(),
   /** Local speech to text for voice messages. */
   speech: z.boolean(),

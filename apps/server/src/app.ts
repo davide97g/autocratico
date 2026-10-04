@@ -2,15 +2,15 @@
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, extname, join, resolve, sep } from "node:path"
 
-import { type ChatEvent, JobRun, parseToml, type Status, stripActions } from "@autocratico/core"
-import { Hono } from "hono"
+import { type ChatEvent, JobRun, parseToml, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
+import { type Context, Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
-import { setCookie } from "hono/cookie"
 import { secureHeaders } from "hono/secure-headers"
 import { stream } from "hono/streaming"
 import { z } from "zod"
 
-import { authMiddleware, type Caller, COOKIE, type Devices } from "./auth.ts"
+import { type Account, AccountError, MAX_PASSWORD } from "./account.ts"
+import { authMiddleware, type Caller, type Devices } from "./auth.ts"
 import { type Claude, friendlyError } from "./claude.ts"
 import type { Config } from "./config.ts"
 import type { DataRepo } from "./git.ts"
@@ -18,6 +18,7 @@ import { IMAGE_TYPES, thumbnail } from "./images.ts"
 import { documentFile, type Inbox, MAX_UPLOAD, type Upload } from "./inbox.ts"
 import { JOB_NAMES, type JobName, type Jobs } from "./jobs.ts"
 import { openapi } from "./openapi.ts"
+import { setPersonName, writeProfile } from "./profile.ts"
 import type { Store } from "./store.ts"
 import { finishAnswer } from "./chat-actions.ts"
 import type { Reminders } from "./reminders.ts"
@@ -31,6 +32,7 @@ export type Services = {
   store: Store
   inbox: Inbox
   devices: Devices
+  account: Account
   claude: Claude
   repo: DataRepo
   jobs: Jobs | null
@@ -62,13 +64,19 @@ const ChatBody = z.object({
   view: z.string().max(80).optional(),
   locale: z.string().max(8).optional(),
 })
-const PairBody = z.object({ code: z.string().max(20), name: z.string().max(60).optional(), token: z.boolean().optional() })
-const DeviceBody = z.object({ name: z.string().trim().min(1).max(60), scope: z.enum(["full", "ingest"]) })
+type Env = { Variables: { caller: Caller } }
+
+const Name = z.string().trim().min(1).max(60)
+const Password = z.string().max(MAX_PASSWORD)
+const SetupBody = z.object({ name: Name, password: Password, code: z.string().max(20).optional() })
+const LoginBody = z.object({ password: Password })
+const PasswordBody = z.object({ current: Password, next: Password, revokeOthers: z.boolean().default(false) })
+const DeviceBody = z.object({ name: Name })
 const IngestJson = z.object({ text: z.string().max(200_000).optional(), title: z.string().max(200).optional() })
 
 export function createApp(s: Services) {
-  const { config, store, inbox, devices, claude, repo } = s
-  const app = new Hono<{ Variables: { caller: Caller } }>()
+  const { config, store, inbox, devices, account, claude, repo } = s
+  const app = new Hono<Env>()
 
   app.use(
     secureHeaders({
@@ -93,38 +101,119 @@ export function createApp(s: Services) {
     await next()
     c.header("Cache-Control", "no-store")
   })
-  app.use("*", authMiddleware(config, devices, s.verifyAccess === undefined ? undefined : s.verifyAccess))
+  app.use("*", authMiddleware(config, devices, account, s.verifyAccess === undefined ? undefined : s.verifyAccess))
   app.use("/api/ingest", bodyLimit({ maxSize: MAX_UPLOAD + 1024 * 1024, onError: (c) => c.json({ error: "too large (25 MB max)" }, 413) }))
   app.use("/api/*", async (c, next) => {
     if (c.req.path === "/api/ingest") return next()
     return bodyLimit({ maxSize: 1024 * 1024, onError: (x) => x.json({ error: "too large" }, 413) })(c, next)
   })
   app.onError((e, c) => {
+    if (e instanceof AccountError) {
+      if (e.retryAfter) c.header("Retry-After", String(e.retryAfter))
+      return c.json({ error: e.message, ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}) }, e.status)
+    }
     console.error(`${c.req.method} ${c.req.path}: ${e.message}`)
     return c.json({ error: `${e.name}: ${e.message}` }, 500)
   })
 
-  // ---------- session and pairing ----------
+  // ---------- session and account ----------
 
   app.get("/api/health", (c) => c.json({ ok: true }))
   app.get("/api/openapi.json", (c) => c.json(openapi(VERSION)))
 
-  app.get("/api/session", (c) => {
-    const caller = c.get("caller")
-    return c.json({ paired: config.auth === "dev" || caller.device !== null, auth: config.auth, device: caller.device })
+  const sessionInfo = async (caller: Caller): Promise<Session> => {
+    const owner = (await account.owner()) !== null
+    return {
+      auth: config.auth,
+      owner,
+      authenticated: caller.via !== "none",
+      user: caller.user ? { name: caller.user.name, onboarded: caller.user.onboarded } : null,
+      needsCode: !owner && config.auth === "prod",
+    }
+  }
+  /** Better Auth's Set-Cookie headers, passed on to the browser. */
+  const cookies = (c: Context<Env>, headers: Headers) => {
+    for (const cookie of headers.getSetCookie()) c.header("set-cookie", cookie, { append: true })
+  }
+  const userOf = (c: Context<Env>) => {
+    const user = c.get("caller").user
+    if (!user) throw new AccountError(403, "only the owner can do this")
+    return user
+  }
+  const commit = (message: string) => void repo.commit(message).catch((e: Error) => console.error(`git: ${e.message}`))
+
+  app.get("/api/session", async (c) => c.json(await sessionInfo(c.get("caller"))))
+
+  app.post("/api/setup", async (c) => {
+    const body = SetupBody.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    if (await account.owner()) return c.json({ error: "already set up" }, 409)
+    // On a server reachable from outside, the first setup proves access to the server itself.
+    if (config.auth === "prod" && !(await account.checkSetupCode(body.data.code ?? ""))) {
+      return c.json({ error: "invalid or expired setup code" }, 403)
+    }
+    const headers = await account.setup(body.data.name, body.data.password, c.req.raw.headers)
+    cookies(c, headers)
+    await setPersonName(config.data, body.data.name)
+    commit("Profile: name")
+    return c.json({ ok: true })
   })
 
-  app.post("/api/pair", async (c) => {
-    if (config.auth === "dev") return c.json({ error: "no pairing needed in dev mode" }, 400)
-    const body = PairBody.safeParse(await c.req.json().catch(() => null))
+  app.post("/api/login", async (c) => {
+    const body = LoginBody.safeParse(await c.req.json().catch(() => null))
     if (!body.success) return c.json({ error: "invalid request" }, 400)
-    const ua = c.req.header("user-agent") ?? ""
-    const guess = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Macintosh/.test(ua) ? "Mac" : "browser"
-    const paired = await devices.pair(body.data.code, body.data.name, guess)
-    if (!paired) return c.json({ error: "invalid or expired code" }, 401)
-    if (body.data.token) return c.json({ device: paired.device, token: paired.token })
-    setCookie(c, COOKIE, paired.token, { httpOnly: true, secure: true, sameSite: "Strict", path: "/", maxAge: 400 * 86400 })
-    return c.json({ device: paired.device })
+    if (!(await account.owner())) return c.json({ error: "not set up yet" }, 409)
+    cookies(c, await account.login(body.data.password, c.req.raw.headers))
+    return c.json({ ok: true })
+  })
+
+  app.post("/api/logout", async (c) => {
+    cookies(c, await account.logout(c.req.raw.headers))
+    return c.json({ ok: true })
+  })
+
+  app.post("/api/account/password", async (c) => {
+    userOf(c)
+    const body = PasswordBody.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    cookies(c, await account.changePassword(c.req.raw.headers, body.data.current, body.data.next, body.data.revokeOthers))
+    return c.json({ ok: true })
+  })
+
+  app.post("/api/account/name", async (c) => {
+    const user = userOf(c)
+    const body = z.object({ name: Name }).safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    await account.rename(user.id, body.data.name)
+    await setPersonName(config.data, body.data.name)
+    commit("Profile: name")
+    return c.json({ ok: true })
+  })
+
+  app.post("/api/account/onboarded", async (c) => {
+    const user = userOf(c)
+    const body = z.object({ onboarded: z.boolean() }).safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    await account.setOnboarded(user.id, body.data.onboarded)
+    return c.json({ ok: true })
+  })
+
+  app.get("/api/account/sessions", async (c) => {
+    const user = userOf(c)
+    return c.json(await account.sessions(user.id, c.get("caller").session ?? ""))
+  })
+  app.delete("/api/account/sessions/:id", async (c) => {
+    const user = userOf(c)
+    return c.json({ ok: await account.revokeSession(user.id, c.req.param("id")) })
+  })
+
+  app.put("/api/profile", async (c) => {
+    userOf(c)
+    const body = ProfileInput.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    await writeProfile(config.data, body.data)
+    commit("Profile: edited in the web app")
+    return c.json({ ok: true })
   })
 
   // ---------- register ----------
@@ -186,7 +275,7 @@ export function createApp(s: Services) {
           if (e.type === "end") {
             // Act on the reminder/inbox blocks, then tell the user what was done (the web app hides the blocks).
             const raw = answer.text
-            answer.text = await finishAnswer(raw, "web", caller.device?.name ?? "web", {
+            answer.text = await finishAnswer(raw, "web", caller.user?.name ?? "web", {
               reminders: s.reminders,
               inbox,
               jobs: s.jobs,
@@ -210,7 +299,7 @@ export function createApp(s: Services) {
   app.post("/api/ingest", async (c) => {
     const type = c.req.header("content-type")?.split(";")[0]
     const caller = c.get("caller")
-    const account = caller.device?.name ?? "local"
+    const account = caller.device?.name ?? "web"
     const source = caller.via === "bearer" ? "shortcut" : "upload"
     let item
     if (type === "application/json") {
@@ -315,23 +404,21 @@ export function createApp(s: Services) {
     return c.json(status)
   })
 
-  // ---------- devices and Telegram ----------
+  // ---------- ingest tokens and Telegram ----------
 
-  const fullOnly = (caller: Caller) => config.auth === "dev" || caller.device?.scope === "full"
-
-  app.get("/api/devices", (c) => c.json(devices.list()))
+  app.get("/api/devices", (c) => {
+    userOf(c)
+    return c.json(devices.list())
+  })
   app.post("/api/devices", async (c) => {
-    if (!fullOnly(c.get("caller"))) return c.json({ error: "forbidden" }, 403)
+    userOf(c)
     const body = DeviceBody.safeParse(await c.req.json().catch(() => null))
     if (!body.success) return c.json({ error: "invalid request" }, 400)
-    if (body.data.scope === "ingest") {
-      const { token } = await devices.create(body.data.name, "ingest")
-      return c.json({ token })
-    }
-    return c.json({ code: await devices.startPairing(body.data.name, "full") })
+    const { token } = await devices.create(body.data.name, "ingest")
+    return c.json({ token })
   })
   app.delete("/api/devices/:id", async (c) => {
-    if (!fullOnly(c.get("caller"))) return c.json({ error: "forbidden" }, 403)
+    userOf(c)
     return c.json({ ok: await devices.revoke(c.req.param("id")) })
   })
 

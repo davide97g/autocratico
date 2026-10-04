@@ -19,13 +19,14 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 ## Layout (pnpm monorepo)
 - `packages/core/` — TypeScript shared by server and web: zod schemas (`schema.ts`), deadlines and recurrence (`deadlines.ts`, mirrors `scripts/store.py`), status levels, `redact()`, WhatsApp export parser, safe names. `core/node` reads the data folder from disk.
 - `apps/server/` — Hono server, Node 24 running TypeScript directly (no build):
-  - `app.ts` routes (listed with shapes in `openapi.ts`, served at `/api/openapi.json`), `auth.ts` access control, `store.ts` state and chats, `inbox.ts` ingestion, `claude.ts` headless Claude Code runner, `jobs.ts` scheduler, `telegram.ts` bot, `git.ts` history of the data folder, `transcribe.ts` local speech to text (ffmpeg + `parakeet-cli`), `reminders.ts` and `chat-actions.ts` (the read-only chat agent asks for reminders and inbox notes with fenced blocks the server validates; parsing in `core/actions.ts`), `cli.ts` admin commands.
+  - `app.ts` routes (listed with shapes in `openapi.ts`, served at `/api/openapi.json`), `auth.ts` access control, `account.ts` the one owner and its masterpass (Better Auth on `node:sqlite`, `secrets/auth.db`), `profile.ts` profile.toml writes from the web app, `store.ts` state and chats, `inbox.ts` ingestion, `claude.ts` headless Claude Code runner, `jobs.ts` scheduler, `telegram.ts` bot, `git.ts` history of the data folder, `transcribe.ts` local speech to text (ffmpeg + `parakeet-cli`), `reminders.ts` and `chat-actions.ts` (the read-only chat agent asks for reminders and inbox notes with fenced blocks the server validates; parsing in `core/actions.ts`), `cli.ts` admin commands.
 - `apps/web/` — React + Vite + Tailwind v4 + shadcn/ui (`base-ui`, lucide icons), installable PWA. Personal data is rendered only through `<Sensitive>` (`src/components/privacy.tsx`).
 - `apps/site/` — public landing page with a scripted demo (Vite, vanilla TypeScript, static HTML for SEO; Italian copy, made-up data, screenshots of the example register). Google Analytics only after cookie consent (`src/analytics.ts`, `GA_MEASUREMENT_ID` at build time), waitlist form posting to `apps/waitlist`, `privacy.html`. `pnpm --filter @autocratico/site build` → `apps/site/dist/`, served at https://get-autocratico.davideghiotto.it (override with `SITE_URL`).
 - `apps/waitlist/` — public waitlist API for the landing page (Hono + Postgres, Node runs TypeScript directly): syntax and DNS checks, then Jev (TypeSafe) to reject placeholder, disposable and misspelled addresses. Deployed with the site (`deploy/compose.site.yml`); no register data.
 - `scripts/` — Python 3.11+, standard library only: `store.py` (loading and recurrence for the CLIs), `init.py`, `upcoming.py`, `ics.py`, `gmail.py`, `when.py` (current time and date arithmetic for the agents).
 - `deploy/` — Dockerfile and compose file for the homelab; `docs/` — architecture, deploy, Gmail, Telegram, iOS shortcut.
-- `example/` — made-up dataset with the same layout as `data/`; `scripts/init.py` copies it. Never put real data there.
+- `example/` — made-up dataset with the same layout as `data/`; `scripts/init.py --example` copies it. Never put real data there.
+- `template/` — the empty register a new install starts from (`scripts/init.py`, or the server on an empty data folder); the web app's onboarding fills it in.
 - Native apps (later) go in `apps/ios`, `apps/macos`, against the same API.
 
 ## Data files
@@ -37,14 +38,14 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 - `data/inbox/<date>-<source>-<slug>-<id6>/` — everything that arrives (email, upload, iOS shortcut, Telegram, WhatsApp export): `item.json` (server-owned), `content.md`, attachments. HEIC photos are replaced by a JPEG on arrival. Paths to `inbox/` or `archive/` written in a case show up as its Documents, and a deadline's `source` may be such a path.
 - `data/archive/` — PDFs and scans in `archive/<year>/<area>/`; emails in `archive/email/<date>-<subject>-<id>/message.md` + attachments.
 - `data/chats/`, `data/jobs/`, `data/reminders.json` — conversations, job log and reminders, server-owned. `data/.git` — local history of the register (never pushed).
-- `data/gmail.toml` — Gmail accounts (`[[account]] name, query`). `data/secrets/` — OAuth credentials and tokens, device and Telegram pairings: never read them, print them or copy them anywhere.
+- `data/gmail.toml` — Gmail accounts (`[[account]] name, query`). `data/secrets/` — masterpass hash and sessions (`auth.db`), OAuth credentials and tokens, shortcut tokens, Telegram pairings: never read them, print them or copy them anywhere.
 
 ## Commands
-- Setup: `./setup.sh` (or `./setup.sh --start`); first run by hand: `python3 scripts/init.py`
+- Setup: `./setup.sh [--example] [--start]`; first run by hand: `python3 scripts/init.py [--example]`. First open: onboarding (name, masterpass, basics, documents, tour)
 - Server + web app: `pnpm build` once, then `pnpm start` → http://127.0.0.1:8790
 - Development: `pnpm dev` → http://localhost:5173 (also starts the server on 127.0.0.1:8790)
 - Checks: `pnpm lint && pnpm typecheck && pnpm test` (core tests include parity with `scripts/store.py`)
-- Admin: `node apps/server/src/cli.ts pair | token --name N | devices | revoke ID | telegram | job NAME`
+- Admin: `node apps/server/src/cli.ts setup-code | reset-password | token --name N | devices | revoke ID | telegram | job NAME`
 - Date and time: `python3 scripts/when.py [+90m, tomorrow 09:00, monday, 2026-10-16 …]` (now, date arithmetic, DST-aware; the chat and background agents use it)
 - Upcoming deadlines: `python3 scripts/upcoming.py [days]`; calendar: `python3 scripts/ics.py` → `data/out/autocratico.ics`
 - Gmail: `python3 scripts/gmail.py accounts | login [--account N] [--manual] | search "Q" | sync [--account N | --all] | logout` (read-only, setup in `docs/gmail.md`)
@@ -65,9 +66,9 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 - Python: standard library only, no new dependencies. Paths come from `store.py`, never hard-coded to `data/`.
 - TypeScript: dependencies allowed in `apps/*` and `packages/*` when they earn their place. Erasable syntax only (Node strips types at runtime): no enums, no parameter properties, `.ts` extensions in relative imports. Shapes go in `packages/core/src/schema.ts`; recurrence changes must land in both `core` and `scripts/store.py` (the parity test enforces it).
 - UI: shadcn components from `src/components/ui/`, Tailwind design tokens (no raw colors), every string through `useI18n()`.
-- Keep the `example/` dataset in sync with schema changes, so `init.py` always produces a working app.
+- Keep `example/` and `template/` in sync with schema changes, so `init.py` always produces a working app.
 - Security-sensitive spots — don't loosen them without saying so:
-  - `apps/server/src/auth.ts`: loopback-only dev mode; in prod, Cloudflare Access JWT + paired device, Origin check on writes, ingest-only tokens.
+  - `apps/server/src/auth.ts` and `account.ts`: one owner per instance with a masterpass (no second user), session required in both modes; dev is loopback-only, prod puts the Cloudflare Access JWT first; Origin required and checked on browser writes; login throttle; first setup in prod needs the one-time setup code; ingest-only bearer tokens.
   - `apps/server/src/claude.ts`: tool profiles (`read` for chat, `triage` for the background agent: edits only inside the data folder, no web, no secrets, no server-owned files).
   - `apps/server/src/telegram.ts`: paired chats only, every outgoing text redacted.
   - `apps/waitlist/src/app.ts`: the only unauthenticated endpoint. Origin allowlist, consent required, honeypot, body limit, rate limits (nginx and in-process), same answer for new and known addresses; logs show the domain, never the address.

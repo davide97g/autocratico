@@ -4,7 +4,7 @@ Safari does not support the Web Share Target API, so the PWA cannot appear in th
 
 ## What you need
 
-- From the web app: Settings → Devices → **Token for a shortcut** (name it e.g. "iPhone shortcut"). It can only call `/api/ingest`.
+- From the web app: Settings → Shortcut tokens → **New token** (name it e.g. "iPhone shortcut"). It can only call `/api/ingest`.
 - From Cloudflare Zero Trust: the service token's **Client ID** and **Client Secret** (docs/deploy-homelab.md, step 4).
 
 ## Build it (Shortcuts app)
@@ -35,4 +35,4 @@ Forwarding is simpler for email: forward to a Gmail account that autocratico syn
 
 ## Revoke
 
-Settings → Devices → Revoke. Rotate the Cloudflare service token from Zero Trust if the phone is lost.
+Settings → Shortcut tokens → Revoke. Rotate the Cloudflare service token from Zero Trust if the phone is lost.

@@ -1,0 +1,19 @@
+# Deadlines: source of truth for the web app, the .ics export and upcoming.py.
+#
+# Fields:
+#   id            unique, kebab-case
+#   title         short
+#   area          tax | home | vehicles | documents | health | social-security | bank | family | business
+#   date          first occurrence (YYYY-MM-DD) or "TODO" when unknown
+#   repeat        "none" | "yearly" | "monthly" | "every N years" | "every N months"
+#   severity      high (payment or deadline with penalties) | medium (default) | low (reminder)
+#   remind_days   calendar reminders, days before
+#   amount        optional, euro (hidden in privacy mode)
+#   sensitive     true when the date reveals personal data (e.g. a birthday)
+#   case          optional, folder in cases/
+#   notes, source optional (source: path relative to the data folder, e.g. archive/...)
+#
+# Recurring dates are indicative: holidays and weekends can shift the actual deadline.
+# "Done" state of single occurrences lives in state.json (written by the web app).
+
+# Add deadlines below, one [[deadline]] block each (or let the agent file them from documents).

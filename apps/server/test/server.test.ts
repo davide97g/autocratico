@@ -1,52 +1,142 @@
 import { execFileSync } from "node:child_process"
-import { cpSync, mkdtempSync, readFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 
 import type { JobRun } from "@autocratico/core"
 import { strToU8, zipSync } from "fflate"
 import { beforeEach, describe, expect, it } from "vitest"
 
-import { createApp } from "../src/app.ts"
 import { tools } from "../src/claude.ts"
 import { type Config, loadConfig } from "../src/config.ts"
 import { cleanSteps, parseTriage, recorder } from "../src/jobs.ts"
-import { services } from "../src/services.ts"
 import { outgoing } from "../src/telegram.ts"
+import { cookieOf, LOCAL, LOCAL_WRITE, owner, PASSWORD, post, setup } from "./helpers.ts"
 
 const ROOT = resolve(import.meta.dirname, "../../..")
 
-function setup(overrides: Partial<Config> = {}, access: ((t: string | undefined) => Promise<boolean>) | null = null) {
-  const data = mkdtempSync(join(tmpdir(), "autocratico-"))
-  cpSync(join(ROOT, "example"), data, { recursive: true })
-  const config = loadConfig({ data, jobs: false, telegramToken: null, claude: null, ...overrides })
-  const s = services(config, { jobs: null, telegram: null, verifyAccess: access })
-  return { app: createApp(s), s, data }
-}
-
-const LOCAL = { host: "127.0.0.1:8790" }
-
 describe("dev mode", () => {
-  it("serves the data to local pages only", async () => {
+  it("serves the data to local pages only, after login", async () => {
     const { app } = setup()
-    expect((await app.request("/api/data", { headers: LOCAL })).status).toBe(200)
-    expect((await app.request("/api/data", { headers: { host: "evil.example" } })).status).toBe(403)
-    expect((await app.request("/api/data", { headers: { ...LOCAL, origin: "https://evil.example" } })).status).toBe(403)
+    expect((await app.request("/api/data", { headers: LOCAL })).status).toBe(401)
+    const me = await owner(app)
+    expect((await app.request("/api/data", { headers: me })).status).toBe(200)
+    expect((await app.request("/api/data", { headers: { ...me, host: "evil.example" } })).status).toBe(403)
+    expect((await app.request("/api/data", { headers: { ...me, origin: "https://evil.example" } })).status).toBe(403)
   })
 
   it("marks an occurrence as done", async () => {
     const { app, data } = setup()
-    const r = await app.request("/api/done", {
-      method: "POST",
-      headers: { ...LOCAL, "content-type": "application/json" },
-      body: JSON.stringify({ key: "car-tax@2027-01-31", done: true }),
-    })
+    const me = await owner(app)
+    const r = await post(app, "/api/done", { key: "car-tax@2027-01-31", done: true }, me)
     expect(r.status).toBe(200)
     expect(JSON.parse(readFileSync(join(data, "state.json"), "utf8")).done["car-tax@2027-01-31"]).toBeTruthy()
+    // Writes must name their origin.
+    const { origin: _, ...noOrigin } = me
+    expect((await post(app, "/api/done", { key: "car-tax@2027-01-31", done: false }, noOrigin)).status).toBe(403)
   })
 
   it("refuses to listen on other interfaces", () => {
     expect(() => loadConfig({ host: "0.0.0.0" })).toThrow(/loopback/)
+  })
+})
+
+describe("account", () => {
+  it("is set up once, with the name in profile.toml", async () => {
+    const { app, data } = setup()
+    const before = (await (await app.request("/api/session", { headers: LOCAL })).json()) as any
+    expect(before).toMatchObject({ auth: "dev", owner: false, authenticated: false, user: null, needsCode: false })
+    expect((await post(app, "/api/setup", { name: "Maria", password: "short" })).status).toBe(400)
+    const me = await owner(app)
+    const after = (await (await app.request("/api/session", { headers: me })).json()) as any
+    expect(after).toMatchObject({ owner: true, authenticated: true, user: { name: "Maria", onboarded: false } })
+    expect(readFileSync(join(data, "profile.toml"), "utf8")).toMatch(/\[person\]\nname = "Maria"/)
+    // Only one user.
+    expect((await post(app, "/api/setup", { name: "Eve", password: PASSWORD })).status).toBe(409)
+    expect((await post(app, "/api/setup", { name: "Eve", password: PASSWORD }, me)).status).toBe(409)
+  })
+
+  it("logs in with the masterpass and locks out after five wrong tries", async () => {
+    const { app } = setup()
+    await owner(app)
+    const ok = await post(app, "/api/login", { password: PASSWORD })
+    expect(ok.status).toBe(200)
+    const cookie = ok.headers.getSetCookie().join("\n")
+    expect(cookie).toMatch(/autocratico\.session_token=/)
+    expect(cookie).toMatch(/HttpOnly/)
+    expect(cookie).toMatch(/SameSite=Strict/)
+    for (let i = 0; i < 5; i++) expect((await post(app, "/api/login", { password: "wrong password" })).status).toBe(401)
+    const locked = await post(app, "/api/login", { password: PASSWORD })
+    expect(locked.status).toBe(429)
+    expect(Number(locked.headers.get("retry-after"))).toBeGreaterThan(0)
+  })
+
+  it("logs out", async () => {
+    const { app } = setup()
+    const me = await owner(app)
+    expect((await post(app, "/api/logout", {}, me)).status).toBe(200)
+    expect((await app.request("/api/data", { headers: me })).status).toBe(401)
+  })
+
+  it("changes the masterpass and logs the other browsers out", async () => {
+    const { app } = setup()
+    const me = await owner(app)
+    const other = { ...LOCAL_WRITE, cookie: cookieOf(await post(app, "/api/login", { password: PASSWORD })) }
+    const sessions = (await (await app.request("/api/account/sessions", { headers: me })).json()) as any[]
+    expect(sessions).toHaveLength(2)
+    expect(sessions.filter((x) => x.current)).toHaveLength(1)
+
+    expect((await post(app, "/api/account/password", { current: "wrong password", next: "another long one" }, me)).status).toBe(401)
+    const r = await post(app, "/api/account/password", { current: PASSWORD, next: "another long one", revokeOthers: true }, me)
+    expect(r.status).toBe(200)
+    const renewed = { ...me, cookie: cookieOf(r) || me.cookie }
+    expect((await app.request("/api/data", { headers: renewed })).status).toBe(200)
+    expect((await app.request("/api/data", { headers: other })).status).toBe(401)
+    expect((await post(app, "/api/login", { password: PASSWORD })).status).toBe(401)
+    expect((await post(app, "/api/login", { password: "another long one" })).status).toBe(200)
+  })
+
+  it("revokes a session", async () => {
+    const { app } = setup()
+    const me = await owner(app)
+    const other = { ...LOCAL_WRITE, cookie: cookieOf(await post(app, "/api/login", { password: PASSWORD })) }
+    const list = (await (await app.request("/api/account/sessions", { headers: me })).json()) as any[]
+    const id = list.find((x) => !x.current).id
+    expect((await app.request(`/api/account/sessions/${id}`, { method: "DELETE", headers: me })).status).toBe(200)
+    expect((await app.request("/api/data", { headers: other })).status).toBe(401)
+  })
+
+  it("resets a forgotten masterpass from the command line", async () => {
+    const { app, s } = setup()
+    const me = await owner(app)
+    await s.account.resetPassword("from the terminal")
+    expect((await app.request("/api/data", { headers: me })).status).toBe(401)
+    expect((await post(app, "/api/login", { password: "from the terminal" })).status).toBe(200)
+  })
+
+  it("renames the owner and edits the profile, keeping what it does not know", async () => {
+    const { app, data } = setup()
+    const me = await owner(app)
+    expect((await post(app, "/api/account/name", { name: "Maria Bianchi" }, me)).status).toBe(200)
+    const r = await app.request("/api/profile", {
+      method: "PUT",
+      headers: { ...me, "content-type": "application/json" },
+      body: JSON.stringify({ person: { name: "Eve", birth_date: "1990-04-12", municipality: "" }, vehicle: [{ type: "car", plate: "AB123CD", registration_date: "2019-03-31" }] }),
+    })
+    expect(r.status).toBe(200)
+    const toml = readFileSync(join(data, "profile.toml"), "utf8")
+    expect(toml).toMatch(/^# Profile \(EXAMPLE/)
+    expect(toml).toContain('name = "Maria Bianchi"')
+    expect(toml).toContain("birth_date = 1990-04-12")
+    expect(toml).not.toContain("municipality = \"Example town (XX)\"\n\n[work]")
+    expect(toml).toContain("registration_date = 2019-03-31")
+    expect(toml).toContain("[[property]]") // not sent: kept
+    const profile = ((await (await app.request("/api/data", { headers: me })).json()) as any).profile
+    expect(profile.person).toEqual({ name: "Maria Bianchi", birth_date: "1990-04-12" })
+    expect(profile.vehicle).toEqual([{ type: "car", plate: "AB123CD", registration_date: "2019-03-31" }])
+    const session = (await (await app.request("/api/session", { headers: me })).json()) as any
+    expect(session.user.name).toBe("Maria Bianchi")
+    expect((await post(app, "/api/account/onboarded", { onboarded: true }, me)).status).toBe(200)
+    expect(((await (await app.request("/api/session", { headers: me })).json()) as any).user.onboarded).toBe(true)
   })
 })
 
@@ -58,44 +148,49 @@ describe("prod mode", () => {
     env = setup(prod, async (t) => t === "good-jwt")
   })
   const jwt = { "cf-access-jwt-assertion": "good-jwt" }
+  const write = { ...jwt, host: "app.example", origin: ORIGIN }
 
-  it("needs Cloudflare Access and a paired device", async () => {
+  async function prodOwner() {
+    const code = await env.s.account.startSetupCode()
+    const r = await post(env.app, "/api/setup", { name: "Maria", password: PASSWORD, code }, write)
+    expect(r.status).toBe(200)
+    return { ...write, cookie: cookieOf(r) }
+  }
+
+  it("needs Cloudflare Access and a session", async () => {
     expect((await env.app.request("/api/data")).status).toBe(401)
     expect((await env.app.request("/api/data", { headers: jwt })).status).toBe(401)
     expect((await env.app.request("/api/health")).status).toBe(200)
     expect((await env.app.request("/api/session", { headers: jwt })).status).toBe(200)
+    expect((await env.app.request("/api/session")).status).toBe(401)
   })
 
-  it("pairs a browser with a one-time code", async () => {
-    const code = await env.s.devices.startPairing("phone")
-    const bad = await env.app.request("/api/pair", { method: "POST", headers: { ...jwt, origin: ORIGIN, "content-type": "application/json" }, body: JSON.stringify({ code: "00000000" }) })
-    expect(bad.status).toBe(401)
-    const r = await env.app.request("/api/pair", { method: "POST", headers: { ...jwt, origin: ORIGIN, "content-type": "application/json" }, body: JSON.stringify({ code }) })
-    expect(r.status).toBe(200)
-    const cookie = r.headers.get("set-cookie") ?? ""
-    expect(cookie).toMatch(/HttpOnly/)
-    expect(cookie).toMatch(/SameSite=Strict/)
-    const token = cookie.split(";")[0]
-    expect((await env.app.request("/api/data", { headers: { ...jwt, cookie: token } })).status).toBe(200)
-    // The code works once.
-    const again = await env.app.request("/api/pair", { method: "POST", headers: { ...jwt, origin: ORIGIN, "content-type": "application/json" }, body: JSON.stringify({ code }) })
-    expect(again.status).toBe(401)
+  it("needs the setup code printed by the server for the first setup", async () => {
+    const session = (await (await env.app.request("/api/session", { headers: jwt })).json()) as any
+    expect(session.needsCode).toBe(true)
+    expect((await post(env.app, "/api/setup", { name: "Eve", password: PASSWORD }, write)).status).toBe(403)
+    const code = await env.s.account.startSetupCode()
+    for (let i = 0; i < 5; i++) expect((await post(env.app, "/api/setup", { name: "Eve", password: PASSWORD, code: "12345678" }, write)).status).toBe(403)
+    // Voided after five wrong codes.
+    expect((await post(env.app, "/api/setup", { name: "Eve", password: PASSWORD, code }, write)).status).toBe(403)
+    const me = await prodOwner()
+    expect((await env.app.request("/api/data", { headers: me })).status).toBe(200)
   })
 
-  it("voids a pairing code after five wrong attempts", async () => {
-    const code = await env.s.devices.startPairing("phone")
-    for (let i = 0; i < 5; i++) expect(await env.s.devices.pair("12345678")).toBeNull()
-    expect(await env.s.devices.pair(code)).toBeNull()
+  it("sets a secure session cookie", async () => {
+    await prodOwner()
+    const r = await post(env.app, "/api/login", { password: PASSWORD }, write)
+    expect(r.headers.getSetCookie().join("\n")).toMatch(/__Secure-autocratico\.session_token=.*Secure/)
   })
 
-  it("blocks cross-site writes with the cookie", async () => {
-    const { token } = await env.s.devices.create("mac", "full")
-    const cookie = `autocratico_device=${token}`
-    const body = JSON.stringify({ key: "car-tax@2027-01-31", done: true })
-    const headers = { ...jwt, cookie, "content-type": "application/json" }
-    expect((await env.app.request("/api/done", { method: "POST", headers: { ...headers, origin: "https://evil.example" }, body })).status).toBe(403)
-    expect((await env.app.request("/api/done", { method: "POST", headers, body })).status).toBe(403)
-    expect((await env.app.request("/api/done", { method: "POST", headers: { ...headers, origin: ORIGIN }, body })).status).toBe(200)
+  it("blocks cross-site and origin-less writes with the cookie", async () => {
+    const me = await prodOwner()
+    const body = { key: "car-tax@2027-01-31", done: true }
+    expect((await post(env.app, "/api/done", body, { ...me, origin: "https://evil.example" })).status).toBe(403)
+    const { origin: _, ...noOrigin } = me
+    expect((await post(env.app, "/api/done", body, noOrigin)).status).toBe(403)
+    expect((await post(env.app, "/api/login", { password: PASSWORD }, noOrigin)).status).toBe(403)
+    expect((await post(env.app, "/api/done", body, me)).status).toBe(200)
   })
 
   it("limits ingest tokens to /api/ingest", async () => {
@@ -115,10 +210,11 @@ describe("prod mode", () => {
 describe("inbox", () => {
   it("stores uploads with safe names and reads WhatsApp exports", async () => {
     const { app, s } = setup()
+    const me = await owner(app)
     const form = new FormData()
     form.append("file", new File([new Uint8Array([37, 80, 68, 70])], "../../bolletta.pdf"))
     form.append("text", "Bolletta luce")
-    const r = await app.request("/api/ingest", { method: "POST", headers: LOCAL, body: form })
+    const r = await app.request("/api/ingest", { method: "POST", headers: me, body: form })
     expect(r.status).toBe(200)
     const item = (await r.json()) as any
     expect(item.files).toEqual(["_.._bolletta.pdf"])
@@ -132,17 +228,17 @@ describe("inbox", () => {
     })
     const wa = new FormData()
     wa.append("file", new File([zip], "WhatsApp Chat - Mario.zip"))
-    const w = (await (await app.request("/api/ingest", { method: "POST", headers: LOCAL, body: wa })).json()) as any
+    const w = (await (await app.request("/api/ingest", { method: "POST", headers: me, body: wa })).json()) as any
     expect(w.source).toBe("whatsapp")
     expect(w.files).toEqual(["00000012-PHOTO.jpg"])
-    const detail = (await (await app.request(`/api/inbox/${w.id}`, { headers: LOCAL })).json()) as any
+    const detail = (await (await app.request(`/api/inbox/${w.id}`, { headers: me })).json()) as any
     expect(detail.content).toContain("Ti giro la multa")
   })
 
   it("serves attachments as downloads only", async () => {
     const { app, s } = setup()
     const item = await s.inbox.add({ source: "upload", files: [{ name: "x.html", data: new TextEncoder().encode("<script>alert(1)</script>") }] })
-    const r = await app.request(`/api/inbox/${item.id}/files/x.html`, { headers: LOCAL })
+    const r = await app.request(`/api/inbox/${item.id}/files/x.html`, { headers: await owner(app) })
     expect(r.headers.get("content-type")).toBe("application/octet-stream")
     expect(r.headers.get("content-disposition")).toMatch(/^attachment/)
   })
@@ -190,7 +286,7 @@ describe("agent", () => {
 
   it("reports no live job when the scheduler is off", async () => {
     const { app } = setup()
-    const r = await app.request("/api/jobs/live", { headers: LOCAL })
+    const r = await app.request("/api/jobs/live", { headers: await owner(app) })
     expect(await r.json()).toEqual({ current: null, waiting: [], triage: null })
   })
 })

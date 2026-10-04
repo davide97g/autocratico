@@ -1,14 +1,16 @@
 /**
  * Admin commands, run on the server machine (or `docker exec` in the container):
- *   node apps/server/src/cli.ts pair [--name NAME]            one-time code to pair a browser
+ *   node apps/server/src/cli.ts setup-code                    one-time code for the first setup (prod)
+ *   node apps/server/src/cli.ts reset-password                set a new masterpass, log every browser out
  *   node apps/server/src/cli.ts token --name NAME             token for an iOS/macOS shortcut (ingest only)
- *   node apps/server/src/cli.ts devices                       list paired devices
- *   node apps/server/src/cli.ts revoke ID                     revoke a device
+ *   node apps/server/src/cli.ts devices                       list shortcut tokens
+ *   node apps/server/src/cli.ts revoke ID                     revoke a shortcut token
  *   node apps/server/src/cli.ts telegram                      one-time code to pair a Telegram chat (/start CODE)
  *   node apps/server/src/cli.ts job NAME                      run a job now (gmail, triage, reminders, digest, backup)
  */
 import { parseArgs } from "node:util"
 
+import { Account } from "./account.ts"
 import { Devices } from "./auth.ts"
 import { loadConfig } from "./config.ts"
 import { JOB_NAMES, type JobName } from "./jobs.ts"
@@ -20,9 +22,19 @@ const config = loadConfig({ jobs: false })
 const devices = new Devices(config.data)
 
 switch (command) {
-  case "pair": {
-    const code = await devices.startPairing(values.name ?? "browser", "full")
-    console.log(`Pairing code: ${code} (valid 10 minutes)\nOpen ${config.publicOrigin ?? "the web app"} and enter it.`)
+  case "setup-code": {
+    const account = new Account(config)
+    if (await account.owner()) throw new Error("already set up: use reset-password for a forgotten masterpass")
+    const code = await account.startSetupCode()
+    console.log(`Setup code: ${code} (valid 10 minutes)\nOpen ${config.publicOrigin ?? "the web app"} and enter it with your masterpass.`)
+    break
+  }
+  case "reset-password": {
+    const account = new Account(config)
+    const password = await readPassword("New masterpass: ")
+    if (process.stdin.isTTY && (await readPassword("Again: ")) !== password) throw new Error("the two passwords differ")
+    await account.resetPassword(password)
+    console.log("Masterpass changed. Every browser has been logged out.")
     break
   }
   case "token": {
@@ -57,4 +69,37 @@ switch (command) {
     console.log(doc.replace(/^\s*\* ?/gm, "").trim())
     process.exitCode = 2
   }
+}
+
+/** A line from the terminal without echo, or from stdin when piped. */
+async function readPassword(prompt: string): Promise<string> {
+  const { stdin, stdout } = process
+  if (!stdin.isTTY) {
+    let text = ""
+    for await (const chunk of stdin) text += chunk
+    return text.split("\n")[0]
+  }
+  stdout.write(prompt)
+  stdin.setRawMode(true)
+  stdin.resume()
+  stdin.setEncoding("utf8")
+  return new Promise((resolve, reject) => {
+    let value = ""
+    const done = (fn: () => void) => {
+      stdin.setRawMode(false)
+      stdin.pause()
+      stdin.off("data", onData)
+      stdout.write("\n")
+      fn()
+    }
+    const onData = (chunk: string) => {
+      for (const ch of chunk) {
+        if (ch === "\r" || ch === "\n") return done(() => resolve(value))
+        if (ch === "\u0003") return done(() => reject(new Error("cancelled")))
+        if (ch === "\u007f") value = value.slice(0, -1)
+        else value += ch
+      }
+    }
+    stdin.on("data", onData)
+  })
 }
