@@ -15,6 +15,8 @@ export const Deadline = z.object({
   /** First occurrence; null when the date is still "TODO". */
   date: IsoDate.nullable(),
   repeat: z.string(),
+  /** Last day that still counts: no occurrences after it (a deadline that ended, kept for history). */
+  until: IsoDate.nullable(),
   severity: Severity,
   remind_days: z.array(z.number().int()),
   amount: z.number().nullable(),

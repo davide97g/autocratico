@@ -58,6 +58,21 @@ id = "todo"
 title = "Unknown"
 area = "home"
 date = "TODO"
+
+[[deadline]]
+id = "ended"
+title = "Ended"
+area = "tax"
+date = 2025-06-16
+repeat = "yearly"
+until = 2026-06-30
+
+[[deadline]]
+id = "dropped"
+title = "Dropped"
+area = "home"
+date = "TODO"
+until = 2026-01-01
 `
     )
     expect(JSON.parse(JSON.stringify(loadData(dir, "2026-10-03")))).toEqual(python(dir, "2026-10-03"))

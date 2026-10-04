@@ -16,6 +16,7 @@ import type { Config } from "./config.ts"
 import { locks, readJson, writeSecret } from "./files.ts"
 import type { Inbox, Upload } from "./inbox.ts"
 import type { Button, Jobs, Notifier } from "./jobs.ts"
+import type { Changes } from "./changes.ts"
 import { finishAnswer } from "./chat-actions.ts"
 import type { Reminders } from "./reminders.ts"
 import type { Store } from "./store.ts"
@@ -156,6 +157,7 @@ type Deps = {
   claude: Claude
   reminders: Reminders
   transcriber: Transcriber
+  changes: Changes
   jobs: () => Jobs | null
 }
 
@@ -481,6 +483,7 @@ export class Telegram implements Notifier {
         jobs: this.#d.jobs(),
         telegram: true,
         locale: this.#d.config.locale,
+        changes: this.#d.changes,
       })
       const parts = outgoing(answer)
       if (parts[0] !== shown) await ctx.api.editMessageText(chatId, sent.message_id, parts[0]).catch(() => undefined)

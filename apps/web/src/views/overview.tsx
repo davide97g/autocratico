@@ -1,4 +1,5 @@
 import * as React from "react"
+import { caseOpen } from "@autocratico/core"
 import {
   AlarmClockIcon,
   ArrowUpRightIcon,
@@ -97,7 +98,7 @@ export function Overview({
   const { filled, total } = profileFields(profile)
   const caseUrgency = (slug: string) => Math.min(...upcoming.filter((o) => o.case === slug).map((o) => o.days), Infinity)
   const openCases = cases
-    .filter((c) => c.total === 0 || c.done < c.total)
+    .filter(caseOpen)
     .sort((a, b) => caseUrgency(a.slug) - caseUrgency(b.slug))
   const highlighted = compactAgenda
     .filter((o) => !o.done_on)

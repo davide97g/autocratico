@@ -5,6 +5,7 @@ import { cn } from "cn"
 import { TOOL_ICONS } from "@/components/chat"
 import { Documents } from "@/components/documents"
 import { Sensitive, usePrivacy } from "@/components/privacy"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -46,6 +47,9 @@ function useNow(active: boolean) {
   }, [active])
   return now
 }
+
+/** Commits made by the server for a change confirmed in the chat (apps/server/src/changes.ts). */
+const CHAT = "Chat: "
 
 /** Agent text: `||...||` marks personal data. */
 function AgentText({ text }: { text: string }) {
@@ -224,6 +228,7 @@ function CommitRow({ c, onReverted }: { c: Commit; onReverted: (msg: string) => 
   const { enabled: privacy } = usePrivacy()
   const [patch, setPatch] = React.useState<string | null>(null)
   const [open, setOpen] = React.useState(false)
+  const chat = c.subject.startsWith(CHAT)
 
   async function toggle() {
     if (!patch) setPatch((await commitPatch(c.hash)).patch)
@@ -239,9 +244,16 @@ function CommitRow({ c, onReverted }: { c: Commit; onReverted: (msg: string) => 
   return (
     <li className="flex flex-col gap-2 rounded-lg bg-muted/50 p-3">
       <div className="flex items-start gap-3">
-        <GitCommitHorizontalIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        {chat ? (
+          <MessageSquareTextIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <GitCommitHorizontalIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        )}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="text-sm font-medium">{c.subject}</span>
+          <span className="text-sm font-medium">
+            {chat && <Badge variant="secondary" className="mr-2 align-middle">{t.activity.fromChat}</Badge>}
+            <AgentText text={chat ? c.subject.slice(CHAT.length) : c.subject} />
+          </span>
           <span className="font-mono text-xs text-muted-foreground">
             {c.hash} · {when(c.date, locale)} · {c.files.join(", ")}
           </span>

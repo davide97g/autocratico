@@ -122,6 +122,8 @@ export const it: Messages = {
     emptyAfter: " con un README.md, o chiedi a Claude di aprirla.",
     file: (slug) => `Fascicolo ${slug}`,
     closedItems: "Punti chiusi",
+    showClosed: (n) => `Mostra chiuse (${n})`,
+    hideClosed: (n) => `Nascondi chiuse (${n})`,
   },
   profile: {
     toFill: "da compilare",
@@ -325,6 +327,7 @@ export const it: Messages = {
     running: "in corso",
     showPatch: "Mostra modifiche",
     hidePatch: "Nascondi modifiche",
+    fromChat: "dalla chat",
     revert: "Annulla",
     reverted: (hash) => `Annullata con il commit ${hash}.`,
     confirmRevert: "Annullare questa modifica? Un nuovo commit riporta i file com'erano prima.",

@@ -20,6 +20,11 @@ export function parseCase(slug: string, md: string): Case {
   }
 }
 
+/** Still open: some checklist item left, or no checklist yet. Closed cases are hidden by default. */
+export function caseOpen(c: Pick<Case, "done" | "total">): boolean {
+  return c.total === 0 || c.done < c.total
+}
+
 // ---------- Original files: what arrived (inbox/) and what was filed (archive/) ----------
 
 /** Server-owned or derived files that are not documents. */

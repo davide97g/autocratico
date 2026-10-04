@@ -1,11 +1,12 @@
 import { execFileSync } from "node:child_process"
-import { readFileSync } from "node:fs"
+import { readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 
 import type { JobRun } from "@autocratico/core"
 import { strToU8, zipSync } from "fflate"
 import { beforeEach, describe, expect, it } from "vitest"
 
+import { ChangeError } from "../src/changes.ts"
 import { tools } from "../src/claude.ts"
 import { type Config, loadConfig } from "../src/config.ts"
 import { cleanSteps, parseTriage, recorder } from "../src/jobs.ts"
@@ -353,11 +354,11 @@ describe("reminders", () => {
     const reminders = new Reminders(data, "Europe/Rome")
     const at = new Date(Date.now() + 90 * 60_000).toISOString()
     const answer = `Ok, te lo ricordo.\n\n\`\`\`reminder\n{"at":"${at}","text":"Inserire i dati della TARI"}\n\`\`\`\n\`\`\`inbox\n{"title":"TARI 2026","text":"Avviso TARI ricevuto, scadenza 16 ottobre"}\n\`\`\``
-    const out = await finishAnswer(answer, "telegram", "Mario", { reminders, inbox: s.inbox, jobs: null, telegram: true, locale: "it" })
+    const out = await finishAnswer(answer, "telegram", "Mario", { reminders, inbox: s.inbox, jobs: null, telegram: true, locale: "it", changes: null })
     expect(out).toMatch(/^Ok, te lo ricordo\.\n\n⏰ Promemoria per .+: Inserire i dati della TARI\n📥 Aggiunto all'inbox: TARI 2026/)
     expect(reminders.pending()).toHaveLength(1)
     expect(s.inbox.list().find((i) => i.source === "chat")?.title).toBe("TARI 2026")
-    const off = await finishAnswer(answer, "web", "Mac", { reminders, inbox: s.inbox, jobs: null, telegram: false, locale: "it" })
+    const off = await finishAnswer(answer, "web", "Mac", { reminders, inbox: s.inbox, jobs: null, telegram: false, locale: "it", changes: null })
     expect(off).toMatch(/Telegram non è configurato/)
   })
 })
@@ -378,5 +379,103 @@ describe("date and time tool", () => {
   it("is allowed to both agents", () => {
     expect(tools("read", "/data").allowed).toContain("Bash(python3 scripts/when.py:*)")
     expect(tools("triage", "/data").allowed).toContain("Bash(python3 scripts/when.py:*)")
+  })
+})
+
+describe("changes from the chat", () => {
+  async function env() {
+    const e = setup()
+    await e.s.repo.init()
+    return { ...e, file: join(e.data, "deadlines.toml") }
+  }
+  const occurrences = (e: { s: { store: { data: () => { agenda: { id: string; date: string }[] } } } }, id: string) =>
+    e.s.store
+      .data()
+      .agenda.filter((o) => o.id === id)
+      .map((o) => o.date)
+
+  it("closes a deadline in place, as one commit that can be undone", async () => {
+    const e = await env()
+    const before = readFileSync(e.file, "utf8")
+    expect(occurrences(e, "imu-first")).toContain("2027-06-16")
+    const { hash } = await e.s.changes.apply({ summary: "IMU: one-off", ops: [{ op: "close", id: "imu-first", until: "2026-06-16" }] }, "web")
+    expect(hash).toMatch(/^[0-9a-f]+$/)
+    const after = readFileSync(e.file, "utf8")
+    // Only one line added, inside the right table; comments and layout untouched.
+    expect(after.split("\n").length).toBe(before.split("\n").length + 1)
+    expect(after).toContain('notes = "Example: second home. A main residence outside categories A/1, A/8, A/9 is exempt."\nuntil = 2026-06-16\n\n[[deadline]]\nid = "imu-balance"')
+    expect(occurrences(e, "imu-first")).toEqual(["2026-06-16"])
+    const [commit] = await e.s.repo.log(1)
+    expect(commit).toMatchObject({ subject: "Chat: IMU: one-off", files: ["deadlines.toml"] })
+    expect(await e.s.repo.show(hash!)).toContain("- close imu-first (until 2026-06-16)")
+    await e.s.repo.revert(hash!)
+    expect(readFileSync(e.file, "utf8")).toBe(before)
+  })
+
+  it("updates, adds, reopens and marks occurrences done", async () => {
+    const e = await env()
+    const { hash } = await e.s.changes.apply(
+      {
+        summary: "",
+        ops: [
+          { op: "update", id: "tari", set: { date: "2026-12-16", amount: 250, notes: null, remind_days: [7] } },
+          { op: "add", deadline: { id: "fine-2021", title: "Old fine", area: "home", date: "2026-11-30", severity: "high", amount: 120.5 } },
+          { op: "close", id: "passport" },
+          { op: "reopen", id: "passport" },
+          { op: "done", key: "tari@2026-12-16" },
+        ],
+      },
+      "telegram"
+    )
+    const tari = e.s.store.data().agenda.find((o) => o.id === "tari")!
+    expect(tari).toMatchObject({ date: "2026-12-16", amount: 250, notes: "", done_on: expect.any(String) })
+    expect(occurrences(e, "fine-2021")).toEqual(["2026-11-30"])
+    expect(readFileSync(e.file, "utf8")).not.toMatch(/^until =/m)
+    expect(JSON.parse(readFileSync(join(e.data, "state.json"), "utf8")).done["tari@2026-12-16"]).toBeTruthy()
+    const [commit] = await e.s.repo.log(1)
+    expect(commit.subject).toMatch(/^Chat: update tari: [a-z_, ]+; add fine-2021; close passport; reopen passport; done tari@2026-12-16$/)
+    expect(commit.files.sort()).toEqual(["deadlines.toml", "state.json"])
+    expect(hash).toBe(commit.hash)
+  })
+
+  it("edits multi-line values and leaves the rest alone", async () => {
+    const e = await env()
+    writeFileSync(
+      e.file,
+      `# header\n\n[[deadline]]\nid = "a"\ntitle = "A"\narea = "tax"\ndate = 2026-01-31\nrepeat = "yearly"\nremind_days = [\n  30,\n  7,\n]\nnotes = """\nline one\nline two\n"""\n\n# --- next ---\n\n[[deadline]]\nid = "b"\ntitle = "B"\narea = "tax"\ndate = "TODO"\n`
+    )
+    await e.s.changes.apply({ summary: "x", ops: [{ op: "update", id: "a", set: { remind_days: [1], notes: "short" } }, { op: "update", id: "b", set: { date: "2027-02-01" } }] }, "web")
+    expect(readFileSync(e.file, "utf8")).toBe(
+      `# header\n\n[[deadline]]\nid = "a"\ntitle = "A"\narea = "tax"\ndate = 2026-01-31\nrepeat = "yearly"\nremind_days = [ 1 ]\nnotes = "short"\n\n# --- next ---\n\n[[deadline]]\nid = "b"\ntitle = "B"\narea = "tax"\ndate = 2027-02-01\n`
+    )
+  })
+
+  it("refuses invalid changes and writes nothing", async () => {
+    const e = await env()
+    const before = readFileSync(e.file, "utf8")
+    const bad = [
+      [{ op: "close", id: "nope" }],
+      [{ op: "update", id: "tari", set: { repeat: "every week" } }],
+      [{ op: "update", id: "tari", set: { title: null } }],
+      [{ op: "update", id: "tari", set: { owner: "x" } }],
+      [{ op: "add", deadline: { id: "tari", title: "T", area: "home", date: "2026-01-01" } }],
+      [{ op: "delete", id: "tari" }],
+      [{ op: "done", key: "nope@2026-01-01" }],
+      [{ op: "update", id: "tari", set: { amount: 1 } }, { op: "close", id: "nope" }],
+    ]
+    for (const ops of bad) await expect(e.s.changes.apply({ summary: "x", ops }, "web")).rejects.toThrow()
+    await expect(e.s.changes.apply({ summary: "x", ops: [{ op: "close", id: "nope" }] }, "web")).rejects.toBeInstanceOf(ChangeError)
+    expect(readFileSync(e.file, "utf8")).toBe(before)
+    expect((await e.s.repo.log(5)).every((c) => !c.subject.startsWith("Chat:"))).toBe(true)
+  })
+
+  it("is applied from a confirmed answer", async () => {
+    const { finishAnswer } = await import("../src/chat-actions.ts")
+    const e = await env()
+    const answer = 'Fatto.\n\n```change\n{"summary": "IMU chiusa", "ops": [{"op": "close", "id": "imu-first", "until": "2026-06-16"}]}\n```'
+    const deps = { reminders: e.s.reminders, inbox: e.s.inbox, jobs: null, telegram: false, locale: "it" as const, changes: e.s.changes }
+    expect(await finishAnswer(answer, "web", "Maria", deps)).toMatch(/^Fatto\.\n\n✏️ Registro aggiornato: IMU chiusa \(modifica [0-9a-f]+, annullabile da Attività\)$/)
+    const failed = await finishAnswer('```change\n{"summary": "x", "ops": [{"op": "close", "id": "nope"}]}\n```', "web", "Maria", deps)
+    expect(failed).toBe('⚠️ Modifica non applicata: no deadline with id "nope"')
   })
 })

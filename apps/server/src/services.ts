@@ -2,6 +2,7 @@
 import { Account } from "./account.ts"
 import { createApp, type Services } from "./app.ts"
 import { Devices } from "./auth.ts"
+import { Changes } from "./changes.ts"
 import { Claude } from "./claude.ts"
 import type { Config } from "./config.ts"
 import { DataRepo } from "./git.ts"
@@ -24,6 +25,7 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     inbox,
     devices: new Devices(config.data),
     account: overrides.account ?? new Account(config),
+    changes: new Changes(store, repo),
     claude,
     repo,
     jobs: null,
@@ -33,7 +35,7 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     ...overrides,
   }
   if (config.telegramToken && overrides.telegram === undefined) {
-    s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, reminders, transcriber: s.transcriber, jobs: () => s.jobs })
+    s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, reminders, transcriber: s.transcriber, changes: s.changes, jobs: () => s.jobs })
   }
   if (overrides.jobs === undefined) {
     s.jobs = new Jobs({ config, store, inbox, claude, repo, reminders, notifier: () => s.telegram })

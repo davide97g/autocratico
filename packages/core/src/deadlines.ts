@@ -58,7 +58,9 @@ export function parseDeadlines(text: string): Deadline[] {
     if (seen.has(id)) throw new DataError(`duplicate id in deadlines.toml: ${id}`)
     seen.add(id)
     if (typeof r.title !== "string") throw new DataError(`${id}: missing title`)
-    const date = r.date instanceof TomlDate && r.date.isDate() ? r.date.toISOString().slice(0, 10) : null
+    const date = isoDate(r.date)
+    const until = isoDate(r.until)
+    if (r.until !== undefined && until === null) throw new DataError(`${id}: until must be a date (YYYY-MM-DD)`)
     const severity = str(r.severity, "medium")
     if (!(SEVERITIES as readonly string[]).includes(severity)) {
       throw new DataError(`${id}: invalid severity: ${JSON.stringify(severity)} (allowed: ${SEVERITIES.join(", ")})`)
@@ -69,6 +71,7 @@ export function parseDeadlines(text: string): Deadline[] {
       area: str(r.area, "other"),
       date,
       repeat: str(r.repeat, "none"),
+      until,
       severity: severity as Severity,
       remind_days: Array.isArray(r.remind_days) ? r.remind_days.map(Number) : [],
       amount: typeof r.amount === "number" ? r.amount : typeof r.amount === "bigint" ? Number(r.amount) : null,
@@ -82,15 +85,20 @@ export function parseDeadlines(text: string): Deadline[] {
   })
 }
 
-/** Dates of `d` within [start, end]. */
+function isoDate(v: unknown): string | null {
+  return v instanceof TomlDate && v.isDate() ? v.toISOString().slice(0, 10) : null
+}
+
+/** Dates of `d` within [start, end], and not after its `until`. */
 export function occurrences(d: Deadline, start: string, end: string): string[] {
   if (d.date === null) return []
+  const last = d.until !== null && d.until < end ? d.until : end
   const step = stepMonths(d)
-  if (step === null) return start <= d.date && d.date <= end ? [d.date] : []
+  if (step === null) return start <= d.date && d.date <= last ? [d.date] : []
   const found: string[] = []
   for (let i = 0; ; i++) {
     const o = addMonths(d.date, step * i)
-    if (o > end) break
+    if (o > last) break
     if (o >= start) found.push(o)
   }
   return found
@@ -133,7 +141,7 @@ function cmp(a: string, b: string): number {
 
 export function incomplete(deadlines: Deadline[]): Incomplete[] {
   return deadlines
-    .filter((d) => d.date === null)
+    .filter((d) => d.date === null && d.until === null)
     .map(({ id, title, area, severity, notes }) => ({ id, title, area, severity, notes }))
 }
 

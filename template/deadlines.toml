@@ -6,6 +6,8 @@
 #   area          tax | home | vehicles | documents | health | social-security | bank | family | business
 #   date          first occurrence (YYYY-MM-DD) or "TODO" when unknown
 #   repeat        "none" | "yearly" | "monthly" | "every N years" | "every N months"
+#   until         optional, last day that counts: no occurrences after it (an ended deadline,
+#                 kept for history instead of being deleted)
 #   severity      high (payment or deadline with penalties) | medium (default) | low (reminder)
 #   remind_days   calendar reminders, days before
 #   amount        optional, euro (hidden in privacy mode)

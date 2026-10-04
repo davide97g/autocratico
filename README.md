@@ -12,7 +12,7 @@
 - **Inbox for everything**: upload or photograph documents, share from the iOS/macOS share sheet, forward to Telegram, sync several Gmail accounts, import WhatsApp chat exports. The agent files each item within a minute.
 - **Always-on agent** with an **Activity** log: every change it makes to your files is a git commit you can review and undo.
 - **Telegram bot**: reminders with a "done" button, digests, agent summaries (personal data masked), and chat with the agent.
-- **Chat with Claude** in the side panel: read-only Claude Code sessions on your files, shared across your devices.
+- **Chat with Claude** in the side panel: read-only Claude Code sessions on your files, shared across your devices. Ask it to correct the register ("the IMU was a one-off fine, stop it"): it proposes the change, and once you confirm the server applies it as one commit you can undo from Activity.
 - **Privacy mode** (`P` key): hides names, amounts, document numbers and sensitive dates, for screenshots and demos.
 - **Italian and English** interface, **.ics** export for any calendar app, optional read-only **Gmail** sync.
 

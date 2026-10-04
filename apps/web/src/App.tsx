@@ -1,4 +1,5 @@
 import * as React from "react"
+import { caseOpen } from "@autocratico/core"
 import { cn } from "cn"
 
 import { Chat } from "@/components/chat"
@@ -214,7 +215,7 @@ function Main({
   const title = t.views[view]
   const counts = {
     deadlines: upcoming,
-    cases: data?.cases.filter((c) => c.done < c.total).length,
+    cases: data?.cases.filter(caseOpen).length,
     catalog: data?.catalog.length,
     busy: Boolean(live?.current),
     urgent:

@@ -8,22 +8,28 @@
  * ```inbox
  * {"title": "TARI 2026", "text": "Notice received, first instalment due 16 October"}
  * ```
+ * ```change
+ * {"summary": "IMU: one-off fine, no more yearly payments", "ops": [{"op": "close", "id": "imu", "until": "2026-06-16"}]}
+ * ```
+ * A change block is validated and applied by the server (apps/server/src/changes.ts) as one commit.
  */
 
 export type ReminderAction = { at: string; text: string }
 export type InboxAction = { title: string; text: string }
-export type Actions = { reminders: ReminderAction[]; inbox: InboxAction[] }
+/** Operations are checked by the server: here they are only carried as objects. */
+export type ChangeAction = { summary: string; ops: Record<string, unknown>[] }
+export type Actions = { reminders: ReminderAction[]; inbox: InboxAction[]; changes: ChangeAction[] }
 
-const BLOCK = /```(reminder|inbox)[ \t]*\n([\s\S]*?)```/g
+const BLOCK = /```(reminder|inbox|change)[ \t]*\n([\s\S]*?)```/g
 // While streaming: a block that has started but not ended yet.
-const OPEN = /```(reminder|inbox)[\s\S]*$/
+const OPEN = /```(reminder|inbox|change)[\s\S]*$/
 
 function str(v: unknown, max: number): string {
   return typeof v === "string" ? v.trim().slice(0, max) : ""
 }
 
 export function extractActions(answer: string): { text: string; actions: Actions } {
-  const actions: Actions = { reminders: [], inbox: [] }
+  const actions: Actions = { reminders: [], inbox: [], changes: [] }
   const text = answer.replace(BLOCK, (_, kind: string, body: string) => {
     let values: unknown[] = []
     try {
@@ -35,7 +41,10 @@ export function extractActions(answer: string): { text: string; actions: Actions
     for (const v of values) {
       if (!v || typeof v !== "object") continue
       const o = v as Record<string, unknown>
-      if (kind === "reminder") {
+      if (kind === "change") {
+        const ops = Array.isArray(o.ops) ? o.ops.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object") : []
+        if (ops.length) actions.changes.push({ summary: str(o.summary, 200), ops })
+      } else if (kind === "reminder") {
         const at = str(o.at, 40)
         const what = str(o.text, 300)
         if (at && what) actions.reminders.push({ at, text: what })

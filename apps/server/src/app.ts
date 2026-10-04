@@ -11,6 +11,7 @@ import { z } from "zod"
 
 import { type Account, AccountError, MAX_PASSWORD } from "./account.ts"
 import { authMiddleware, type Caller, type Devices } from "./auth.ts"
+import type { Changes } from "./changes.ts"
 import { type Claude, friendlyError } from "./claude.ts"
 import type { Config } from "./config.ts"
 import type { DataRepo } from "./git.ts"
@@ -33,6 +34,7 @@ export type Services = {
   inbox: Inbox
   devices: Devices
   account: Account
+  changes: Changes
   claude: Claude
   repo: DataRepo
   jobs: Jobs | null
@@ -281,6 +283,7 @@ export function createApp(s: Services) {
               jobs: s.jobs,
               telegram: s.telegram !== null,
               locale: lang,
+              changes: s.changes,
             })
             const extra = answer.text.slice(stripLength(raw))
             if (extra.trim() && !out.aborted) await send({ type: "text", text: extra })

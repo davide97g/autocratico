@@ -29,6 +29,7 @@ class Deadline:
     area: str
     date: date | None
     repeat: str = "none"
+    until: date | None = None
     severity: str = "medium"
     remind_days: tuple[int, ...] = ()
     amount: float | None = None
@@ -77,6 +78,9 @@ def load_deadlines() -> list[Deadline]:
             raise ValueError(f"duplicate id in deadlines.toml: {did}")
         seen.add(did)
         d = r.get("date")
+        until = r.get("until")
+        if until is not None and not isinstance(until, date):
+            raise ValueError(f"{did}: until must be a date (YYYY-MM-DD)")
         result.append(
             Deadline(
                 id=did,
@@ -84,6 +88,7 @@ def load_deadlines() -> list[Deadline]:
                 area=r.get("area", "other"),
                 date=d if isinstance(d, date) else None,
                 repeat=r.get("repeat", "none"),
+                until=until,
                 severity=r.get("severity", "medium"),
                 remind_days=tuple(r.get("remind_days", [])),
                 amount=r.get("amount"),
@@ -101,9 +106,11 @@ def load_deadlines() -> list[Deadline]:
 
 
 def occurrences(d: Deadline, start: date, end: date) -> list[date]:
-    """Dates of d within [start, end]."""
+    """Dates of d within [start, end], and not after its until."""
     if d.date is None:
         return []
+    if d.until is not None and d.until < end:
+        end = d.until
     step = d.step()
     if step is None:
         return [d.date] if start <= d.date <= end else []
@@ -170,7 +177,7 @@ def incomplete() -> list[dict]:
     return [
         {"id": d.id, "title": d.title, "area": d.area, "severity": d.severity, "notes": d.notes}
         for d in load_deadlines()
-        if not d.complete
+        if not d.complete and d.until is None
     ]
 
 

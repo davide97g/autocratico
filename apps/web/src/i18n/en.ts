@@ -120,6 +120,8 @@ export const en = {
     emptyAfter: " with a README.md, or ask Claude to open one.",
     file: (slug: string) => `Case ${slug}`,
     closedItems: "Items closed",
+    showClosed: (n: number) => `Show closed (${n})`,
+    hideClosed: (n: number) => `Hide closed (${n})`,
   },
   profile: {
     toFill: "to fill in",
@@ -323,6 +325,7 @@ export const en = {
     running: "running",
     showPatch: "Show changes",
     hidePatch: "Hide changes",
+    fromChat: "from the chat",
     revert: "Undo",
     reverted: (hash: string) => `Undone with commit ${hash}.`,
     confirmRevert: "Undo this change? A new commit restores the files as they were before.",

@@ -68,6 +68,16 @@ export class DataRepo {
     return (await this.#git("rev-parse", "--short", "HEAD")).trim()
   }
 
+  /** Commit only `paths` (relative to the data folder), so unrelated edits stay out of an undoable change. */
+  async commitPaths(message: string, paths: string[]): Promise<string | null> {
+    if (!existsSync(join(this.dir, ".git")) || !paths.length) return null
+    await this.#git("add", "--", ...paths)
+    const status = await this.#git("status", "--porcelain", "--", ...paths)
+    if (!status.trim()) return null
+    await this.#git("commit", "-q", "-m", message, "--", ...paths)
+    return (await this.#git("rev-parse", "--short", "HEAD")).trim()
+  }
+
   async log(limit = 30): Promise<Commit[]> {
     if (!existsSync(join(this.dir, ".git"))) return []
     const out = await this.#git("log", `-n${limit}`, "--name-only", "--format=%x1e%h%x1f%aI%x1f%s")
@@ -84,7 +94,7 @@ export class DataRepo {
   async show(hash: string): Promise<string | null> {
     if (!/^[0-9a-f]{4,40}$/.test(hash) || !existsSync(join(this.dir, ".git"))) return null
     try {
-      return (await this.#git("show", "--format=%h %aI%n%s%n", "--stat", "--patch", hash)).slice(0, 200_000)
+      return (await this.#git("show", "--format=%h %aI%n%B", "--stat", "--patch", hash)).slice(0, 200_000)
     } catch {
       return null
     }
