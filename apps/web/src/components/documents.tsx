@@ -42,9 +42,16 @@ export function Documents({ paths, className }: { paths: string[]; className?: s
       {others.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {others.map((p) => (
-            <Button key={p} variant="outline" size="xs" render={<a href={fileUrl(p)} download aria-label={t.documents.download(base(p))} />} nativeButton={false}>
+            <Button
+              key={p}
+              variant="outline"
+              size="xs"
+              className="max-w-full"
+              render={<a href={fileUrl(p)} download aria-label={t.documents.download(base(p))} />}
+              nativeButton={false}
+            >
               <FileIcon data-icon="inline-start" />
-              <Sensitive>{base(p)}</Sensitive>
+              <Sensitive className="min-w-0 truncate">{base(p)}</Sensitive>
             </Button>
           ))}
         </div>

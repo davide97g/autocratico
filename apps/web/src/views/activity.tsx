@@ -22,6 +22,7 @@ import {
   type LiveJobs,
   revertCommit,
 } from "@/lib/api"
+import { unlessChanged } from "@/lib/utils"
 
 function when(iso: string, locale: string) {
   return new Date(iso).toLocaleString(locale === "it" ? "it-IT" : "en-GB", { dateStyle: "short", timeStyle: "short" })
@@ -297,7 +298,7 @@ export function Activity({ live }: { live: LiveJobs | null }) {
   const [error, setError] = React.useState<string | null>(null)
 
   const refresh = React.useCallback(() => {
-    activity().then(setData, (e: Error) => setError(e.message))
+    activity().then((d) => setData(unlessChanged(d)), (e: Error) => setError(e.message))
   }, [])
   React.useEffect(refresh, [refresh])
   // A run started or finished: the list and the changes are out of date.

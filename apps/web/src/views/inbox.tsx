@@ -29,6 +29,7 @@ import {
   inboxItem,
   setInboxStatus,
 } from "@/lib/api"
+import { unlessChanged } from "@/lib/utils"
 
 const SOURCE_ICON: Record<string, LucideIcon> = {
   email: MailIcon,
@@ -145,7 +146,7 @@ export function Inbox() {
   const [error, setError] = React.useState<string | null>(null)
 
   const refresh = React.useCallback(() => {
-    loadInbox().then(setItems, (e: Error) => setError(e.message))
+    loadInbox().then((i) => setItems(unlessChanged(i)), (e: Error) => setError(e.message))
   }, [])
 
   React.useEffect(() => {

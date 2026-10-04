@@ -14,9 +14,10 @@ const KIND_ICON: Record<SourceInfo["kind"], LucideIcon> = { email: MailIcon, inb
 
 /**
  * Where something comes from: the email (text, attachments, a link to it in Gmail), the inbox item,
- * the file, or the web page. `path` is a deadline's `source` or an archive path.
+ * the file, or the web page. `path` is a deadline's `source` or an archive path. `large` shows the
+ * whole text at reading size, for a page of its own.
  */
-export function SourcePreview({ path, className }: { path: string; className?: string }) {
+export function SourcePreview({ path, large = false, className }: { path: string; large?: boolean; className?: string }) {
   const { t, locale } = useI18n()
   const { enabled: privacy } = usePrivacy()
   const web = /^https?:\/\//i.test(path)
@@ -61,7 +62,7 @@ export function SourcePreview({ path, className }: { path: string; className?: s
   const Icon = KIND_ICON[info.kind]
   const when = info.date && !Number.isNaN(Date.parse(info.date)) ? new Date(info.date).toLocaleString(locale === "it" ? "it-IT" : "en-GB", { dateStyle: "medium", timeStyle: "short" }) : null
   return (
-    <div className={cn("flex flex-col gap-3 rounded-lg bg-muted/50 p-3", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-3 rounded-lg bg-muted/50 p-3", className)}>
       <div className="flex items-start gap-3">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-card">
           <Icon className="size-4" />
@@ -93,7 +94,12 @@ export function SourcePreview({ path, className }: { path: string; className?: s
         (privacy ? (
           <p className="text-xs text-muted-foreground">{t.sources.textHidden}</p>
         ) : (
-          <pre className="max-h-72 overflow-auto rounded-md bg-card p-3 font-sans text-xs leading-relaxed whitespace-pre-wrap">
+          <pre
+            className={cn(
+              "overflow-auto rounded-md bg-card font-sans leading-relaxed whitespace-pre-wrap",
+              large ? "p-4 text-sm" : "max-h-72 p-3 text-xs"
+            )}
+          >
             {info.text}
             {info.truncated && `\n\n${t.sources.truncated}`}
           </pre>

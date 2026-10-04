@@ -43,7 +43,7 @@ export const ROUTES: Route[] = [
   { method: "put", path: "/api/profile", summary: "Replace the sections sent of profile.toml (person.name excluded)", body: ProfileInput, response: Ok },
   { method: "get", path: "/api/data", summary: "Agenda, cases, profile and catalog", response: Data },
   { method: "post", path: "/api/done", summary: "Mark an occurrence as done or not", body: z.object({ key: z.string(), done: z.boolean() }), response: z.object({ key: z.string(), done_on: z.string().nullable() }) },
-  { method: "post", path: "/api/chat", summary: "Ask the agent; streams NDJSON ChatEvent lines, first {type:'chat', id}", body: z.object({ message: z.string(), chat: z.string().nullable().optional(), view: z.string().optional(), locale: z.string().optional() }) },
+  { method: "post", path: "/api/chat", summary: "Ask the agent; streams NDJSON ChatEvent lines, first {type:'chat', id}", body: z.object({ message: z.string(), chat: z.string().nullable().optional(), view: z.string().optional(), locale: z.string().optional(), about: z.string().optional() }) },
   { method: "get", path: "/api/chats", summary: "Conversations, newest first", response: z.array(Chat) },
   { method: "delete", path: "/api/chats/{id}", summary: "Delete a conversation", response: Ok },
   { method: "post", path: "/api/ingest", summary: "Add documents to the inbox: multipart (file fields, text, title) or JSON {text, title}", scope: "ingest", response: InboxItem },

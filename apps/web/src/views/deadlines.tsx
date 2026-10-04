@@ -3,6 +3,8 @@ import {
   CheckIcon,
   ChevronDownIcon,
   FolderOpenIcon,
+  Maximize2Icon,
+  SparklesIcon,
   Undo2Icon,
 } from "lucide-react"
 import { cn } from "cn"
@@ -34,16 +36,22 @@ import { level, STYLE } from "@/lib/status"
 
 const ALL = "*"
 
-export function Deadlines({
+export const Deadlines = React.memo(function Deadlines({
   data,
   search,
   onDone,
   onOpenCase,
+  onOpen,
+  onAsk,
 }: {
   data: Data
   search: string
   onDone: (o: Occurrence, done: boolean) => void
   onOpenCase: (slug: string) => void
+  /** Opens the occurrence on a page of its own. */
+  onOpen: (key: string) => void
+  /** Opens the chat about the occurrence. */
+  onAsk: (o: Occurrence) => void
 }) {
   const { t, fmt } = useI18n()
   const [filter, setFilter] = React.useState(ALL)
@@ -130,6 +138,8 @@ export function Deadlines({
                   o={o}
                   onDone={onDone}
                   onOpenCase={onOpenCase}
+                  onOpen={onOpen}
+                  onAsk={onAsk}
                 />
               ))}
             </CardContent>
@@ -172,20 +182,40 @@ export function Deadlines({
       )}
     </div>
   )
-}
+})
 
 /** Everything about one occurrence: full notes, repeat, the case, and where it comes from. */
 function Details({
   o,
   onOpenCase,
+  onOpen,
+  onAsk,
 }: {
   o: Occurrence
   onOpenCase: (slug: string) => void
+  onOpen: (key: string) => void
+  onAsk: (o: Occurrence) => void
 }) {
   const { t, fmt } = useI18n()
   const repeat = t.deadlines.repeats[o.repeat.trim().toLowerCase()] ?? o.repeat
   return (
     <div className="flex flex-col gap-3 pb-4 text-sm @lg:pl-16">
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" size="sm" onClick={() => onOpen(o.key)}>
+          <Maximize2Icon data-icon="inline-start" />
+          {t.deadlines.open}
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => onAsk(o)}>
+          <SparklesIcon data-icon="inline-start" />
+          {t.deadlines.ask}
+        </Button>
+        {o.case && (
+          <Button variant="secondary" size="sm" onClick={() => onOpenCase(o.case!)}>
+            <FolderOpenIcon data-icon="inline-start" />
+            {t.deadlines.openCase}
+          </Button>
+        )}
+      </div>
       {o.notes && (
         <p className="leading-relaxed whitespace-pre-line text-muted-foreground">
           {o.notes}
@@ -202,16 +232,6 @@ function Details({
           </span>
         )}
         <span className="font-mono">{o.key}</span>
-        {o.case && (
-          <Button
-            variant="secondary"
-            size="xs"
-            onClick={() => onOpenCase(o.case!)}
-          >
-            <FolderOpenIcon data-icon="inline-start" />
-            {t.deadlines.openCase}
-          </Button>
-        )}
       </div>
       <span className="text-xs font-medium">{t.deadlines.source}</span>
       {o.source ? (
@@ -227,10 +247,14 @@ function Row({
   o,
   onDone,
   onOpenCase,
+  onOpen,
+  onAsk,
 }: {
   o: Occurrence
   onDone: (o: Occurrence, done: boolean) => void
   onOpenCase: (slug: string) => void
+  onOpen: (key: string) => void
+  onAsk: (o: Occurrence) => void
 }) {
   const { t, fmt } = useI18n()
   const d = parseDate(o.date)
@@ -355,7 +379,7 @@ function Row({
           )}
         </div>
       </div>
-      {open && <Details o={o} onOpenCase={onOpenCase} />}
+      {open && <Details o={o} onOpenCase={onOpenCase} onOpen={onOpen} onAsk={onAsk} />}
     </div>
   )
 }

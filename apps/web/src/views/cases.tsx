@@ -16,7 +16,7 @@ import type { Case } from "@/lib/api"
 // Header lines already shown as title, badge and progress.
 const HEADER_LINES = /^\*\*(Status|Due|Area):\*\*.*$/gm
 
-export function Cases({ cases, open }: { cases: Case[]; open: string | null }) {
+export const Cases = React.memo(function Cases({ cases, open }: { cases: Case[]; open: string | null }) {
   const { t } = useI18n()
   if (!cases.length) {
     return (
@@ -51,7 +51,7 @@ export function Cases({ cases, open }: { cases: Case[]; open: string | null }) {
       {closed.length > 0 && <Closed cases={closed} initiallyOpen={closed.some((c) => c.slug === open)} />}
     </div>
   )
-}
+})
 
 /** Cases whose checklist is all done: folded away below the open ones. */
 function Closed({ cases, initiallyOpen }: { cases: Case[]; initiallyOpen: boolean }) {
@@ -68,7 +68,7 @@ function Closed({ cases, initiallyOpen }: { cases: Case[]; initiallyOpen: boolea
   )
 }
 
-function CaseCard({ c }: { c: Case }) {
+export function CaseCard({ c }: { c: Case }) {
   const { t } = useI18n()
   return (
     <Card id={`case-${c.slug}`} className={cn("rounded-xl", !caseOpen(c) && "opacity-80")}>

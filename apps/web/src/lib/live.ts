@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { type LiveJobs, liveJobs } from "@/lib/api"
+import { unlessChanged } from "@/lib/utils"
 
 const BUSY_MS = 2_000
 const IDLE_MS = 15_000
@@ -28,7 +29,7 @@ export function useLiveJobs(onFinished?: () => void): LiveJobs | null {
       try {
         const l = await liveJobs()
         if (stopped) return
-        setLive(l)
+        setLive(unlessChanged(l))
         const now = isBusy(l)
         if (busy && !now) finished.current?.()
         busy = now

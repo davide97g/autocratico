@@ -66,6 +66,8 @@ const ChatBody = z.object({
   chat: z.string().regex(/^[\w-]{1,64}$/).nullable().optional(),
   view: z.string().max(80).optional(),
   locale: z.string().max(8).optional(),
+  /** Occurrence key (`<id>@<date>`) the conversation is about, from "Ask Claude" on a deadline. */
+  about: DoneBody.shape.key.max(200).optional(),
 })
 type Env = { Variables: { caller: Caller } }
 
@@ -250,7 +252,7 @@ export function createApp(s: Services) {
     if (c.req.header("content-type")?.split(";")[0] !== "application/json") return c.json({ error: "expected application/json" }, 415)
     const body = ChatBody.safeParse(await c.req.json().catch(() => null))
     if (!body.success) return c.json({ error: "empty message" }, 400)
-    const { message, view, locale } = body.data
+    const { message, view, locale, about } = body.data
     const caller = c.get("caller")
     const chat = (body.data.chat && store.chat(body.data.chat)) || store.newChat("web")
     chat.messages.push({ role: "user", text: message, tools: [] })
@@ -263,7 +265,7 @@ export function createApp(s: Services) {
       const send = (e: ChatEvent) => out.write(JSON.stringify(e) + "\n")
       await send({ type: "chat", id: chat.id })
       const answer = { role: "assistant" as const, text: "", tools: [] as { name: string; detail: string }[], error: undefined as string | undefined }
-      const instructions = view ? `The user is looking at the «${view}» section of the web app.` : undefined
+      const instructions = [view && `The user is looking at the «${view}» section of the web app.`, aboutDeadline(about)].filter(Boolean).join("\n") || undefined
       const lang = locale === "en" ? "en" : "it"
       try {
         for await (const e of claude.run({ prompt: message, profile: "read", session: chat.session, locale, instructions, signal, actions: true })) {
@@ -297,6 +299,14 @@ export function createApp(s: Services) {
       }
     })
   })
+
+  /** Points the agent at the deadline a chat was opened from; unknown keys add nothing. */
+  function aboutDeadline(key: string | undefined) {
+    const o = key ? store.data().agenda.find((x) => x.key === key) : undefined
+    if (!o) return null
+    const where = [o.source && `its source is \`${o.source}\``, o.case && `its case is \`cases/${o.case}/\``].filter(Boolean).join(", ")
+    return `This conversation is about the deadline \`${o.id}\` in deadlines.toml, occurrence of ${o.date}${o.done_on ? ` (done on ${o.done_on})` : ""}${where ? `; ${where}` : ""}. Read ${where ? "it and those files" : "it"} before answering; "it" or "this" means that deadline.`
+  }
 
   // ---------- inbox ----------
 

@@ -1,6 +1,7 @@
 import * as React from "react"
 import {
   ArrowUpIcon,
+  CalendarClockIcon,
   FilePenIcon,
   FilePlusIcon,
   FileTextIcon,
@@ -35,11 +36,23 @@ type ClaudeMessage = {
   duration_ms?: number | null
 }
 type Message = { role: "user"; text: string } | ClaudeMessage
+/** A deadline occurrence the conversation is about: its key goes to the server with every question. */
+export type Topic = { key: string; title: string }
 /** `chat` is the conversation saved on the server, shared by every device. */
-type Conversation = { chat: string | null; messages: Message[] }
+type Conversation = { chat: string | null; messages: Message[]; about?: Topic }
 
 const STORAGE_KEY = "autocratico.chat"
+const TOPIC_EVENT = "autocratico:chat-about"
 const EMPTY: Conversation = { chat: null, messages: [] }
+
+/**
+ * Starts a new conversation about a deadline. Saved first, so a chat that mounts afterwards
+ * (the sheet on phones) opens on it; one already on screen hears the event.
+ */
+export function chatAbout(topic: Topic) {
+  save({ chat: null, messages: [], about: topic })
+  window.dispatchEvent(new Event(TOPIC_EVENT))
+}
 
 export const TOOL_ICONS: Record<string, LucideIcon> = {
   Read: FileTextIcon,
@@ -158,7 +171,7 @@ function Answer({ m }: { m: ClaudeMessage }) {
   )
 }
 
-export function Chat({
+export const Chat = React.memo(function Chat({
   view,
   onClose,
   className,
@@ -188,10 +201,30 @@ export function Chat({
     if (autoFocus) input.current?.focus()
     // The latest web conversation, possibly started on another device.
     chats("web").then(
-      ([latest]) => setConversation((c) => (latest && !c.messages.some((m) => m.role === "claude" && m.status === "running") ? fromServer(latest) : c)),
+      ([latest]) =>
+        setConversation((c) => {
+          if (!latest || c.messages.some((m) => m.role === "claude" && m.status === "running")) return c
+          // A conversation about a deadline that has not reached the server yet stays.
+          if (c.about && c.chat !== latest.id) return c
+          return { ...fromServer(latest), about: c.about }
+        }),
       () => undefined
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- on mount only
+  }, [])
+  // "Ask Claude" on a deadline while the chat is open.
+  const abortRef = React.useRef(abort)
+  React.useEffect(() => {
+    abortRef.current = abort
+  }, [abort])
+  React.useEffect(() => {
+    const onTopic = () => {
+      abortRef.current?.abort()
+      setConversation(read())
+      input.current?.focus()
+    }
+    window.addEventListener(TOPIC_EVENT, onTopic)
+    return () => window.removeEventListener(TOPIC_EVENT, onTopic)
   }, [])
 
   async function send(text: string) {
@@ -202,6 +235,7 @@ export function Chat({
     setAbort(controller)
     setDraft("")
     const chat = conversation.chat
+    const about = conversation.about?.key
     setConversation((c) => ({
       ...c,
       messages: [
@@ -211,7 +245,7 @@ export function Chat({
       ],
     }))
     try {
-      await ask({ message, chat, view, locale }, (e) => setConversation((c) => apply(c, e)), controller.signal)
+      await ask({ message, chat, view, locale, about }, (e) => setConversation((c) => apply(c, e)), controller.signal)
       setConversation((c) => apply(c, { type: "end", cost: null, duration_ms: null }))
     } catch (e) {
       const aborted = controller.signal.aborted
@@ -264,11 +298,11 @@ export function Chat({
         {conversation.messages.length === 0 ? (
           <div className="flex h-full flex-col justify-end gap-5">
             <div className="flex flex-col gap-2">
-              <p className="text-lg font-medium tracking-tight">{t.chat.emptyTitle}</p>
-              <p className="text-sm text-muted-foreground">{t.chat.emptyBody}</p>
+              <p className="text-lg font-medium tracking-tight">{conversation.about ? t.chat.aboutTitle : t.chat.emptyTitle}</p>
+              <p className="text-sm text-muted-foreground">{conversation.about ? t.chat.aboutBody : t.chat.emptyBody}</p>
             </div>
             <div className="flex flex-col gap-2">
-              {t.chat.suggestions.map((s) => (
+              {(conversation.about ? t.chat.aboutSuggestions : t.chat.suggestions).map((s) => (
                 <Button
                   key={s}
                   variant="secondary"
@@ -303,6 +337,22 @@ export function Chat({
           send(draft)
         }}
       >
+        {conversation.about && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 py-1 pr-1 pl-2.5 text-xs">
+            <CalendarClockIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="shrink-0 text-muted-foreground">{t.chat.about}</span>
+            <span className="min-w-0 flex-1 truncate font-medium">{conversation.about.title}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => setConversation((c) => ({ ...c, about: undefined }))}
+              aria-label={t.chat.aboutRemove}
+            >
+              <XIcon />
+            </Button>
+          </div>
+        )}
         <div className="flex items-end gap-2 rounded-lg bg-muted p-1.5 pl-3 focus-within:ring-3 focus-within:ring-ring/50">
           <textarea
             ref={input}
@@ -334,4 +384,4 @@ export function Chat({
       </form>
     </aside>
   )
-}
+})

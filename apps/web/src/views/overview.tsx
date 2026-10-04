@@ -48,6 +48,9 @@ function profileFields(profile: Data["profile"]) {
 // Dot color for missing dates: the more severe, the more visible.
 const SEVERITY_DOT = { high: "bg-status-urgent", medium: "bg-status-soon", low: "bg-muted-foreground" } as const
 const WEIGHT = { high: 0, medium: 1, low: 2 } as const
+// Chart props as constants: Recharts copies them into its store whenever their identity changes.
+const CHART_MARGIN = { left: 0, right: 0, top: 4, bottom: 0 }
+const TICK = { fontSize: 10, fill: "var(--muted-foreground)" }
 
 function SquareIcon({ icon: Icon, className }: { icon: React.ElementType; className?: string }) {
   return (
@@ -62,7 +65,7 @@ function SquareIcon({ icon: Icon, className }: { icon: React.ElementType; classN
   )
 }
 
-export function Overview({
+export const Overview = React.memo(function Overview({
   data,
   onDone,
   onOpenCase,
@@ -81,17 +84,20 @@ export function Overview({
     .filter((o) => o.days >= 0)
     .sort((a, b) => a.days - b.days || WEIGHT[severity(a.severity)] - WEIGHT[severity(b.severity)])
   const next = upcoming[0]
-  // Monthly deadlines crowd the calendar and the charts: only the next one is shown.
-  const monthlySeen = new Set<string>()
-  const compactAgenda = agenda.filter((o) => {
-    if (o.repeat !== "monthly" || o.done_on || o.days < 0) return true
-    if (monthlySeen.has(o.id)) return false
-    monthlySeen.add(o.id)
-    return true
-  })
-  const year = compactAgenda.filter((o) => !o.done_on && o.days >= 0 && o.days <= 365)
+  // Memoized: a new array would make the charts replay their animation (and the calendar lay out again).
+  const { compactAgenda, year, load } = React.useMemo(() => {
+    // Monthly deadlines crowd the calendar and the charts: only the next one is shown.
+    const monthlySeen = new Set<string>()
+    const compactAgenda = agenda.filter((o) => {
+      if (o.repeat !== "monthly" || o.done_on || o.days < 0) return true
+      if (monthlySeen.has(o.id)) return false
+      monthlySeen.add(o.id)
+      return true
+    })
+    const year = compactAgenda.filter((o) => !o.done_on && o.days >= 0 && o.days <= 365)
+    return { compactAgenda, year, load: perMonth(year, today, 12, fmt.monthShort) }
+  }, [agenda, today, fmt])
   const count = (l: string) => agenda.filter((o) => level(o) === l).length
-  const load = perMonth(year, today, 12, fmt.monthShort)
   const byArea = [...new Set(year.map((o) => o.area))]
     .map((a) => ({ a, n: year.filter((o) => o.area === a).length }))
     .sort((x, y) => y.n - x.n)
@@ -107,8 +113,14 @@ export function Overview({
   const missing = [...incomplete].sort(
     (a, b) => SEVERITIES.indexOf(severity(a.severity)) - SEVERITIES.indexOf(severity(b.severity))
   )
-  const loadConfig = { deadlines: { label: t.overview.chartLabel, color: "var(--primary)" } } satisfies ChartConfig
-  const barsConfig = { deadlines: { label: t.overview.chartLabel, color: "var(--foreground)" } } satisfies ChartConfig
+  const loadConfig = React.useMemo(
+    () => ({ deadlines: { label: t.overview.chartLabel, color: "var(--primary)" } }) satisfies ChartConfig,
+    [t]
+  )
+  const barsConfig = React.useMemo(
+    () => ({ deadlines: { label: t.overview.chartLabel, color: "var(--foreground)" } }) satisfies ChartConfig,
+    [t]
+  )
 
   return (
     <div className="grid grid-cols-1 gap-6 @2xl:grid-cols-2 @4xl:grid-cols-12">
@@ -232,7 +244,7 @@ export function Overview({
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           <ChartContainer config={loadConfig} className="aspect-auto h-24 w-full">
-            <AreaChart data={load} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
+            <AreaChart data={load} margin={CHART_MARGIN}>
               <defs>
                 <linearGradient id="load-fill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="var(--color-deadlines)" stopOpacity={0.16} />
@@ -326,13 +338,13 @@ export function Overview({
               <div className="relative flex flex-col gap-3">
                 <div className="text-sm font-medium">{t.overview.next12}</div>
                 <ChartContainer config={barsConfig} className="aspect-auto h-28 w-full">
-                  <BarChart data={load} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
+                  <BarChart data={load} margin={CHART_MARGIN}>
                     <ChartTooltip content={<ChartTooltipContent hideIndicator />} cursor={false} />
                     <XAxis
                       dataKey="month"
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                      tick={TICK}
                       interval={1}
                     />
                     <Bar dataKey="deadlines" fill="var(--color-deadlines)" radius={2} />
@@ -345,7 +357,7 @@ export function Overview({
       </Card>
     </div>
   )
-}
+})
 
 function Stat({
   icon: Icon,

@@ -323,6 +323,24 @@ describe("agent errors", () => {
     expect(friendlyError("API Error: 401 OAuth token has expired", "en")).toMatch(/setup-token/)
   })
 
+  it("points the chat at the deadline it was opened from", async () => {
+    const { app, s } = setup()
+    const me = await owner(app)
+    const seen: (string | undefined)[] = []
+    s.claude.run = async function* (o) {
+      seen.push(o.instructions)
+      yield { type: "end", cost: null, duration_ms: 1 }
+    }
+    const o = s.store.data().agenda.find((x) => x.case)!
+    await (await post(app, "/api/chat", { message: "?", about: o.key }, me)).text()
+    expect(seen[0]).toContain(`deadline \`${o.id}\``)
+    expect(seen[0]).toContain(`cases/${o.case}/`)
+    // Keys that are not in the agenda add nothing; malformed ones are refused.
+    await (await post(app, "/api/chat", { message: "?", about: "nothing@2026-01-01" }, me)).text()
+    expect(seen[1]).toBeUndefined()
+    expect((await post(app, "/api/chat", { message: "?", about: "../secrets" }, me)).status).toBe(400)
+  })
+
   it("does not resume a session that is gone", async () => {
     const { Claude } = await import("../src/claude.ts")
     const c = new Claude(loadConfig({ jobs: false, claude: null }))

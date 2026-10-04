@@ -2,7 +2,7 @@ import * as React from "react"
 import { caseOpen } from "@autocratico/core"
 import { cn } from "cn"
 
-import { Chat } from "@/components/chat"
+import { Chat, chatAbout } from "@/components/chat"
 import { usePrivacy } from "@/components/privacy"
 import { Sidebar, TabBar, TopBar, type View, VIEWS } from "@/components/shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -11,11 +11,13 @@ import { useI18n } from "@/i18n"
 import { Tour } from "@/components/tour"
 import { type Data, loadData, markDone, type Occurrence, type Session, session as loadSession, Unauthenticated } from "@/lib/api"
 import { useLiveJobs } from "@/lib/live"
+import { unlessChanged } from "@/lib/utils"
 import { level } from "@/lib/status"
 import { Activity } from "@/views/activity"
 import { Archive } from "@/views/archive"
 import { Cases } from "@/views/cases"
 import { Catalog } from "@/views/catalog"
+import { DeadlinePage } from "@/views/deadline"
 import { Deadlines } from "@/views/deadlines"
 import { Inbox } from "@/views/inbox"
 import { Overview } from "@/views/overview"
@@ -50,14 +52,16 @@ function usePreference(key: string, initial: boolean) {
 }
 
 function useMedia(query: string) {
-  return React.useSyncExternalStore(
-    (notify) => {
+  // Stable subscribe: a new one on every render would resubscribe on every render.
+  const subscribe = React.useCallback(
+    (notify: () => void) => {
       const m = window.matchMedia(query)
       m.addEventListener("change", notify)
       return () => m.removeEventListener("change", notify)
     },
-    () => window.matchMedia(query).matches
+    [query]
   )
+  return React.useSyncExternalStore(subscribe, () => window.matchMedia(query).matches)
 }
 
 /**
@@ -87,9 +91,19 @@ function useVisualViewport(active: boolean) {
   }, [active])
 }
 
-function viewFromHash(): View {
+const DEADLINE_HASH = "deadline/"
+
+/** `#<view>`, or `#deadline/<key>` for one occurrence on its own page (under Deadlines). */
+function routeFromHash(): { view: View; deadline: string | null } {
   const h = window.location.hash.slice(1)
-  return VIEWS.some((v) => v.id === h) ? (h as View) : "overview"
+  if (h.startsWith(DEADLINE_HASH)) {
+    try {
+      return { view: "deadlines", deadline: decodeURIComponent(h.slice(DEADLINE_HASH.length)) || null }
+    } catch {
+      return { view: "deadlines", deadline: null }
+    }
+  }
+  return { view: VIEWS.some((v) => v.id === h) ? (h as View) : "overview", deadline: null }
 }
 
 export function App() {
@@ -137,7 +151,8 @@ function Main({
   const { setEnabled: setPrivacy } = usePrivacy()
   const [data, setData] = React.useState<Data | null>(null)
   const [error, setError] = React.useState<string | null>(null)
-  const [view, setView] = React.useState<View>(viewFromHash)
+  const [view, setView] = React.useState<View>(() => routeFromHash().view)
+  const [deadline, setDeadline] = React.useState<string | null>(() => routeFromHash().deadline)
   const [search, setSearch] = React.useState("")
   const [openCase, setOpenCase] = React.useState<string | null>(null)
   const [compact, setCompact] = usePreference("autocratico.sidebar-compact", false)
@@ -154,14 +169,18 @@ function Main({
   }, [setChatOpen])
 
   const reload = React.useCallback(() => {
-    loadData().then(setData, (e: Error) => (e instanceof Unauthenticated ? onSignedOut() : setError(e.message)))
+    loadData().then((d) => setData(unlessChanged(d)), (e: Error) => (e instanceof Unauthenticated ? onSignedOut() : setError(e.message)))
   }, [onSignedOut])
   // When the agent finishes, deadlines and cases may have changed.
   const live = useLiveJobs(reload)
 
   React.useEffect(() => {
     reload()
-    const onHash = () => setView(viewFromHash())
+    const onHash = () => {
+      const r = routeFromHash()
+      setView(r.view)
+      setDeadline(r.deadline)
+    }
     window.addEventListener("hashchange", onHash)
     return () => window.removeEventListener("hashchange", onHash)
   }, [reload])
@@ -186,30 +205,53 @@ function Main({
     return () => window.removeEventListener("keydown", onKey)
   }, [setChatOpen, setCompact, setPrivacy])
 
-  const go = (v: View) => {
+  // Stable callbacks: the views are memoized, so a live poll re-renders the shell but not them.
+  const go = React.useCallback((v: View) => {
     window.location.hash = v
     setView(v)
+    setDeadline(null)
     window.scrollTo({ top: 0 })
-  }
+  }, [])
+  const openDeadlines = React.useCallback(() => go("deadlines"), [go])
+  const openDeadline = React.useCallback((key: string) => {
+    window.location.hash = DEADLINE_HASH + encodeURIComponent(key)
+    setView("deadlines")
+    setDeadline(key)
+    window.scrollTo({ top: 0 })
+  }, [])
+  const closeChat = React.useCallback(() => setChatOpen(false), [setChatOpen])
+  const askAbout = React.useCallback(
+    (o: Occurrence) => {
+      chatAbout({ key: o.key, title: o.title })
+      setChatOpen(true)
+    },
+    [setChatOpen]
+  )
 
   const onSearch = (s: string) => {
     setSearch(s)
-    if (s && view !== "deadlines") go("deadlines")
+    if (s && (view !== "deadlines" || deadline)) go("deadlines")
   }
 
-  const onDone = async (o: Occurrence, done: boolean) => {
-    try {
-      const done_on = await markDone(o.key, done)
-      setData((d) => d && { ...d, agenda: d.agenda.map((x) => (x.key === o.key ? { ...x, done_on } : x)) })
-    } catch (e) {
-      setError(t.app.saveFailed((e as Error).message))
-    }
-  }
+  const onDone = React.useCallback(
+    async (o: Occurrence, done: boolean) => {
+      try {
+        const done_on = await markDone(o.key, done)
+        setData((d) => d && { ...d, agenda: d.agenda.map((x) => (x.key === o.key ? { ...x, done_on } : x)) })
+      } catch (e) {
+        setError(t.app.saveFailed((e as Error).message))
+      }
+    },
+    [t]
+  )
 
-  const onOpenCase = (slug: string) => {
-    setOpenCase(slug)
-    go("cases")
-  }
+  const onOpenCase = React.useCallback(
+    (slug: string) => {
+      setOpenCase(slug)
+      go("cases")
+    },
+    [go]
+  )
 
   const name = session.user?.name || null
   const upcoming = data?.agenda.filter((o) => !o.done_on && o.days >= 0 && o.days <= 30).length ?? 0
@@ -230,7 +272,7 @@ function Main({
   const chat = (
     <Chat
       view={title}
-      onClose={() => setChatOpen(false)}
+      onClose={closeChat}
       className={cn(chatDocked ? "sticky top-6 h-[calc(100svh-6rem)]" : "h-full shadow-2xl")}
       autoFocus={chatDocked || !touch}
     />
@@ -285,12 +327,23 @@ function Main({
             </div>
           )}
 
-          <div key={view} className="view-in flex min-w-0 flex-col gap-8">
+          <div key={deadline ? `deadline:${deadline}` : view} className="view-in flex min-w-0 flex-col gap-8">
           {data && view === "overview" && (
-            <Overview data={data} onDone={onDone} onOpenCase={onOpenCase} onOpenDeadlines={() => go("deadlines")} />
+            <Overview data={data} onDone={onDone} onOpenCase={onOpenCase} onOpenDeadlines={openDeadlines} />
           )}
-          {data && view === "deadlines" && (
-            <Deadlines data={data} search={search} onDone={onDone} onOpenCase={onOpenCase} />
+          {data && view === "deadlines" && !deadline && (
+            <Deadlines data={data} search={search} onDone={onDone} onOpenCase={onOpenCase} onOpen={openDeadline} onAsk={askAbout} />
+          )}
+          {data && view === "deadlines" && deadline && (
+            <DeadlinePage
+              data={data}
+              occurrence={deadline}
+              onBack={openDeadlines}
+              onOpen={openDeadline}
+              onDone={onDone}
+              onOpenCase={onOpenCase}
+              onAsk={askAbout}
+            />
           )}
           {data && view === "cases" && <Cases cases={data.cases} open={openCase} />}
           {data && view === "profile" && <Profile profile={data.profile} />}
