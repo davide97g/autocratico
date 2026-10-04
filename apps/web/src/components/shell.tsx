@@ -1,5 +1,6 @@
 import * as React from "react"
 import {
+  ArchiveIcon,
   BellIcon,
   BookOpenIcon,
   CalendarClockIcon,
@@ -35,7 +36,7 @@ import { LOCALES, type Locale, useI18n } from "@/i18n"
 import { capitalize, parseDate } from "@/lib/format"
 import { STYLE } from "@/lib/status"
 
-export type View = "overview" | "deadlines" | "cases" | "inbox" | "profile" | "catalog" | "activity" | "settings"
+export type View = "overview" | "deadlines" | "cases" | "inbox" | "profile" | "archive" | "catalog" | "activity" | "settings"
 
 export const VIEWS: { id: View; icon: LucideIcon; group: "agenda" | "archive" | "system" }[] = [
   { id: "overview", icon: LayoutDashboardIcon, group: "agenda" },
@@ -43,6 +44,7 @@ export const VIEWS: { id: View; icon: LucideIcon; group: "agenda" | "archive" | 
   { id: "cases", icon: FolderOpenIcon, group: "agenda" },
   { id: "inbox", icon: InboxIcon, group: "agenda" },
   { id: "profile", icon: UserRoundIcon, group: "archive" },
+  { id: "archive", icon: ArchiveIcon, group: "archive" },
   { id: "catalog", icon: BookOpenIcon, group: "archive" },
   { id: "activity", icon: HistoryIcon, group: "system" },
   { id: "settings", icon: SettingsIcon, group: "system" },

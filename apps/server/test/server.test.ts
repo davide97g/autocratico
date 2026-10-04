@@ -479,3 +479,55 @@ describe("changes from the chat", () => {
     expect(failed).toBe('⚠️ Modifica non applicata: no deadline with id "nope"')
   })
 })
+
+describe("sources and archive", () => {
+  async function withEmail() {
+    const e = setup()
+    const me = await owner(e.app)
+    const folder = join(e.data, "archive/email/2026-04-29-chiusura-pratica-abc123")
+    const { mkdirSync } = await import("node:fs")
+    mkdirSync(folder, { recursive: true })
+    writeFileSync(
+      join(folder, "message.md"),
+      `---\nid: 18f0a1b2c3d4e5f6\naccount: personal\nthread: 18f0a1b2c3d4e5f0\ndate: 2026-04-29T10:00:00+02:00\nfrom: "Agenzia Entrate <noreply@agenziaentrate.it>"\nto: "Maria <maria@example.com>"\nsubject: "Chiusura pratica"\nlabels: []\nattachments: ["esito.pdf"]\n---\n\nLa pratica è stata chiusa.\n`
+    )
+    writeFileSync(join(folder, "esito.pdf"), "%PDF")
+    return { ...e, me }
+  }
+
+  it("describes an email source with its text, files and Gmail link", async () => {
+    const { app, me } = await withEmail()
+    const r = await app.request("/api/source?path=archive/email/2026-04-29-chiusura-pratica-abc123", { headers: me })
+    expect(await r.json()).toMatchObject({
+      kind: "email",
+      title: "Chiusura pratica",
+      from: "Agenzia Entrate <noreply@agenziaentrate.it>",
+      account: "personal",
+      text: "La pratica è stata chiusa.",
+      files: ["archive/email/2026-04-29-chiusura-pratica-abc123/esito.pdf"],
+      link: "https://mail.google.com/mail/u/?authuser=maria%40example.com#all/18f0a1b2c3d4e5f0",
+    })
+    const file = await (await app.request("/api/source?path=archive/email/2026-04-29-chiusura-pratica-abc123/esito.pdf", { headers: me })).json()
+    expect(file).toMatchObject({ kind: "email", path: "archive/email/2026-04-29-chiusura-pratica-abc123/esito.pdf" })
+  })
+
+  it("follows an inbox item to its email and lists the archive", async () => {
+    const { app, me, s } = await withEmail()
+    const item = await s.inbox.add({ source: "email", title: "Chiusura pratica", text: "pointer" })
+    const { writeFileSync: write } = await import("node:fs")
+    const json = JSON.parse(readFileSync(join(s.config.data, "inbox", item.folder, "item.json"), "utf8"))
+    write(join(s.config.data, "inbox", item.folder, "item.json"), JSON.stringify({ ...json, ref: "archive/email/2026-04-29-chiusura-pratica-abc123" }))
+    const viaInbox = await (await app.request(`/api/source?path=inbox/${item.folder}/`, { headers: me })).json()
+    expect(viaInbox).toMatchObject({ kind: "email", title: "Chiusura pratica" })
+    const list = (await (await app.request("/api/archive", { headers: me })).json()) as any[]
+    expect(list[0]).toMatchObject({ kind: "email", title: "Chiusura pratica", files: 1, path: "archive/email/2026-04-29-chiusura-pratica-abc123" })
+  })
+
+  it("never reads outside inbox/ and archive/", async () => {
+    const { app, me } = await withEmail()
+    for (const path of ["secrets/devices.json", "archive/../secrets", "inbox/x/item.json", "deadlines.toml", "archive/.hidden", ""]) {
+      expect((await app.request(`/api/source?path=${encodeURIComponent(path)}`, { headers: me })).status).toBe(404)
+    }
+    expect((await app.request("/api/archive", { headers: LOCAL })).status).toBe(401)
+  })
+})

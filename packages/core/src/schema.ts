@@ -138,6 +138,42 @@ export type InboxItem = z.infer<typeof InboxItem>
 export const InboxDetail = InboxItem.extend({ content: z.string() })
 export type InboxDetail = z.infer<typeof InboxDetail>
 
+/**
+ * Where a deadline (or a case line) comes from, for the details view: the email, inbox item or
+ * file behind a `source` path, with its text and its files.
+ */
+export const SourceInfo = z.object({
+  path: z.string(),
+  kind: z.enum(["email", "inbox", "file", "folder"]),
+  title: z.string(),
+  from: z.string(),
+  /** ISO date-time when it was sent or arrived, when known. */
+  date: z.string().nullable(),
+  /** Gmail mailbox name (gmail.toml) or the device/chat it came from. */
+  account: z.string(),
+  /** Opens the original outside the app (the message in Gmail). */
+  link: z.string().nullable(),
+  /** The email body or the item's text, cut at 20 000 characters. */
+  text: z.string(),
+  truncated: z.boolean(),
+  /** Original files (data-relative), openable through /api/file. */
+  files: z.array(z.string()),
+})
+export type SourceInfo = z.infer<typeof SourceInfo>
+
+/** One entry of the Archive view: a filed email (archive/email/<folder>) or a document. */
+export const ArchiveEntry = z.object({
+  path: z.string(),
+  kind: z.enum(["email", "file"]),
+  title: z.string(),
+  from: z.string(),
+  date: z.string().nullable(),
+  account: z.string(),
+  /** Attachments of an email; 0 for a document. */
+  files: z.number().int(),
+})
+export type ArchiveEntry = z.infer<typeof ArchiveEntry>
+
 // ---------- Reminders ----------
 
 /** A one-off reminder, set from the chat; sent on Telegram when due. Stored in reminders.json. */

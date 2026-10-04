@@ -13,6 +13,7 @@ import { type Data, loadData, markDone, type Occurrence, type Session, session a
 import { useLiveJobs } from "@/lib/live"
 import { level } from "@/lib/status"
 import { Activity } from "@/views/activity"
+import { Archive } from "@/views/archive"
 import { Cases } from "@/views/cases"
 import { Catalog } from "@/views/catalog"
 import { Deadlines } from "@/views/deadlines"
@@ -295,6 +296,7 @@ function Main({
           {data && view === "profile" && <Profile profile={data.profile} />}
           {data && view === "catalog" && <Catalog entries={data.catalog} />}
           {view === "inbox" && <Inbox />}
+          {view === "archive" && <Archive />}
           {view === "activity" && <Activity live={live} />}
           {view === "settings" && (
             <Settings

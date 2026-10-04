@@ -19,6 +19,7 @@ import { IMAGE_TYPES, thumbnail } from "./images.ts"
 import { documentFile, type Inbox, MAX_UPLOAD, type Upload } from "./inbox.ts"
 import { JOB_NAMES, type JobName, type Jobs } from "./jobs.ts"
 import { openapi } from "./openapi.ts"
+import { describeSource, listArchive } from "./sources.ts"
 import { setPersonName, writeProfile } from "./profile.ts"
 import type { Store } from "./store.ts"
 import { finishAnswer } from "./chat-actions.ts"
@@ -363,6 +364,12 @@ export function createApp(s: Services) {
     c.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(basename(file))}`)
     return c.body(readFileSync(file))
   })
+  // What a deadline's source is: email (with its Gmail link), inbox item or file, as plain data.
+  app.get("/api/source", (c) => {
+    const info = describeSource(config.data, c.req.query("path") ?? "")
+    return info ? c.json(info) : c.json({ error: "not found" }, 404)
+  })
+  app.get("/api/archive", (c) => c.json(listArchive(config.data)))
   app.post("/api/inbox/:id/status", async (c) => {
     const body = z.object({ status: z.enum(["new", "ignored"]) }).safeParse(await c.req.json().catch(() => null))
     if (!body.success || !inbox.get(c.req.param("id"))) return c.json({ error: "invalid request" }, 400)

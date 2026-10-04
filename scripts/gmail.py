@@ -373,6 +373,8 @@ def sync(query: str, limit: int = 5000, account: str = "default") -> None:
     index = json.loads(INDEX.read_text()) if INDEX.exists() else {}
     ids = [i for i in _list(query, limit) if i not in index]
     print(f"{len(ids)} new messages to download.")
+    # The mailbox address, so the web app can open each message in the right Gmail account.
+    mailbox = _get(f"{API}/profile").get("emailAddress", "") if ids else ""
     for i in ids:
         m = _get(f"{API}/messages/{i}", {"format": "full"})
         h = _headers(m)
@@ -403,6 +405,7 @@ def sync(query: str, limit: int = 5000, account: str = "default") -> None:
             "---",
             f"id: {i}",
             f"account: {account}",
+            f"mailbox: {mailbox}",
             f"thread: {m['threadId']}",
             f"date: {sent}",
             f"from: {json.dumps(h.get('from', ''), ensure_ascii=False)}",

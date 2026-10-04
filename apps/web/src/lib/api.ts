@@ -1,6 +1,7 @@
 import type {
   AccountSession,
   Activity,
+  ArchiveEntry,
   Chat,
   Data,
   Device,
@@ -11,12 +12,14 @@ import type {
   ProfileInput,
   Reminder,
   Session,
+  SourceInfo,
   Status,
 } from "@autocratico/core"
 
 export type {
   AccountSession,
   Activity,
+  ArchiveEntry,
   Case,
   CatalogEntry,
   Chat,
@@ -34,6 +37,7 @@ export type {
   ProfileInput,
   Reminder,
   Session,
+  SourceInfo,
   Status,
   Value,
 } from "@autocratico/core"
@@ -116,6 +120,9 @@ export const inboxItem = (id: string) => request<InboxDetail>(`/api/inbox/${id}`
 export const fileUrl = (path: string, as?: "view" | "thumb") =>
   `${API_BASE}/api/file?path=${encodeURIComponent(path)}${as ? `&as=${as}` : ""}`
 export const isImage = (path: string) => /\.(jpe?g|png|webp|gif)$/i.test(path)
+/** What a source path is (email, inbox item, file) with its text and files. */
+export const source = (path: string) => request<SourceInfo>(`/api/source?path=${encodeURIComponent(path)}`)
+export const archive = () => request<ArchiveEntry[]>("/api/archive")
 export const setInboxStatus = (id: string, status: "new" | "ignored") => post<{ ok: boolean }>(`/api/inbox/${id}/status`, { status })
 
 export function ingest(n: { files: File[]; text: string; title?: string }): Promise<InboxItem> {
