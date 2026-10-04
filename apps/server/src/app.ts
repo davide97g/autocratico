@@ -409,7 +409,7 @@ export function createApp(s: Services) {
   app.post("/api/jobs/:name", async (c) => {
     const name = c.req.param("name") as JobName
     if (!s.jobs || !JOB_NAMES.includes(name)) return c.json({ error: "unknown job" }, 404)
-    const run = await s.jobs.trigger(name)
+    const run = await s.jobs.trigger(name, true)
     return c.json(JobRun.parse(run))
   })
 

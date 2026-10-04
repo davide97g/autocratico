@@ -98,6 +98,8 @@ function Item({ item, onChange }: { item: InboxItem; onChange: () => void }) {
               </span>
             )}
             <span>· {fmt.short.format(new Date(item.received))}</span>
+            {item.important && <span>· {t.inbox.important}</span>}
+            {item.marketing && <span>· {t.inbox.marketing}</span>}
           </span>
           {item.outcome && (
             <span className="text-xs">

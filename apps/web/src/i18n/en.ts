@@ -357,6 +357,8 @@ export const en = {
     hide: "Hide",
     files: "Files",
     outcome: "Outcome",
+    important: "Important",
+    marketing: "Marketing: not sent to the agent",
   },
   activity: {
     now: "Now",

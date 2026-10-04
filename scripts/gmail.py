@@ -13,7 +13,10 @@ is the account "default". QUERY uses Gmail search syntax (e.g. 'label:paperwork 
 without it, sync uses the account's query.
 
 New messages from the last INBOX_DAYS days also get an item in data/inbox/, so that the
-autocratico server's agent files them (deadlines, cases).
+autocratico server's agent files them (deadlines, cases). Gmail's own markers sort them: Important
+ones first (the agent reads them right away), promotions, social, forums and bulk mail (a
+List-Unsubscribe header, not marked Important) are archived without going to the agent. A sync
+downloads at most PER_RUN messages per account, Important first; the next run goes on.
 
 Requires data/secrets/credentials.json: an OAuth client created on Google Cloud with the Gmail
 API enabled ("Web application" from Settings in the web app, or "Desktop app" for `login` here).
@@ -51,6 +54,8 @@ DESTINATION = DATA_DIR / "archive" / "email"
 INDEX = DESTINATION / "index.json"
 INBOX = DATA_DIR / "inbox"
 INBOX_DAYS = 14
+PER_RUN = 300  # messages per account per sync: a first sync of a busy mailbox spreads over several runs
+MARKETING_LABELS = {"CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_FORUMS"}
 
 SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 API = "https://gmail.googleapis.com/gmail/v1/users/me"
@@ -342,17 +347,25 @@ def search(query: str, limit: int = 50) -> None:
     print(f"\n{len(ids)} messages.")
 
 
-def _inbox_item(account: str, folder: str, h: dict, when: datetime, attachments: list[str]) -> None:
+def signals(labels: list[str], h: dict) -> tuple[bool, bool]:
+    """(important, marketing) from Gmail's labels and headers. Important wins: it is never marketing."""
+    important = "IMPORTANT" in labels
+    marketing = not important and (bool(MARKETING_LABELS & set(labels)) or "list-unsubscribe" in h)
+    return important, marketing
+
+
+def _inbox_item(account: str, folder: str, h: dict, when: datetime, attachments: list[str], labels: list[str]) -> None:
     """Pointer item in data/inbox for the server's agent (same layout as apps/server/src/inbox.ts)."""
     item_id = secrets.token_hex(8)
     subject = h.get("subject", "") or "(no subject)"
     name = f"{when:%Y-%m-%d}-email-{_slug(subject)[:40].rstrip('-') or 'untitled'}-{item_id[-6:]}"
     path = INBOX / name
     path.mkdir(parents=True, exist_ok=True)
+    important, marketing = signals(labels, h)
     item = {
         "id": item_id,
         "source": "email",
-        "status": "new",
+        "status": "ignored" if marketing else "new",
         "received": datetime.now().astimezone().isoformat(),
         "title": subject[:200],
         "from": h.get("from", ""),
@@ -360,6 +373,8 @@ def _inbox_item(account: str, folder: str, h: dict, when: datetime, attachments:
         "files": [],
         "ref": f"archive/email/{folder}",
         "outcome": "",
+        "important": important,
+        "marketing": marketing,
     }
     (path / "content.md").write_text(
         f"Email in archive/email/{folder}/message.md" + (f" with attachments: {', '.join(attachments)}" if attachments else "") + "\n",
@@ -381,11 +396,15 @@ def _remember_mailbox(account: str, address: str) -> None:
         path.write_text(json.dumps(known, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def sync(query: str, limit: int = 5000, account: str = "default") -> None:
+def sync(query: str, limit: int = 5000, account: str = "default", per_run: int = PER_RUN) -> None:
     DESTINATION.mkdir(parents=True, exist_ok=True)
     index = json.loads(INDEX.read_text()) if INDEX.exists() else {}
-    ids = [i for i in _list(query, limit) if i not in index]
-    print(f"{len(ids)} new messages to download.")
+    important = [i for i in _list(f"({query}) is:important", limit) if i not in index]
+    seen = set(important)
+    rest = [i for i in _list(query, limit) if i not in index and i not in seen]
+    ids = (important + rest)[:per_run]
+    left = len(important) + len(rest) - len(ids)
+    print(f"{len(important) + len(rest)} new messages ({len(important)} important), downloading {len(ids)}" + (f", {left} left for the next runs." if left else "."))
     # The mailbox address, so the web app can open each message in the right Gmail account.
     mailbox = _get(f"{API}/profile").get("emailAddress", "")
     _remember_mailbox(account, mailbox)
@@ -434,7 +453,7 @@ def sync(query: str, limit: int = 5000, account: str = "default") -> None:
         ]
         (folder / "message.md").write_text("\n".join(lines), encoding="utf-8")
         if (datetime.now() - when).days <= INBOX_DAYS:
-            _inbox_item(account, folder.name, h, when, attachments)
+            _inbox_item(account, folder.name, h, when, attachments, m.get("labelIds", []))
         index[i] = folder.name
         INDEX.write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"  {folder.relative_to(DATA_DIR)}  ({len(attachments)} attachments)")

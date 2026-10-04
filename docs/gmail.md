@@ -48,7 +48,11 @@ the accounts in `gmail.toml` (versioned with the register, no secrets in it).
 ## Sync
 
 The server runs `gmail.py sync --all` every 10 minutes. New messages from the last 14 days also
-become inbox items that the agent files.
+become inbox items that the agent files. Gmail's own markers sort them: messages marked Important
+go to the agent right away; the others one batch of 10 every 30 minutes; promotions, social,
+forums and bulk mail (a `List-Unsubscribe` header, not Important) are archived without going to
+the agent (the Inbox shows them, "Process again" sends one anyway). Each run downloads at most
+300 messages per account, Important first, so a first sync of a busy mailbox spreads over a few runs.
 
 In "testing" mode Google expires refresh tokens after 7 days, which breaks unattended sync
 every week (the server tells you on Telegram when a sync fails). For the always-on server,

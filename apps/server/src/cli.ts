@@ -68,7 +68,7 @@ switch (command) {
   case "job": {
     if (!JOB_NAMES.includes(arg as JobName)) throw new Error(`job: one of ${JOB_NAMES.join(", ")}`)
     const s = services(config)
-    const run = await s.jobs!.trigger(arg as JobName)
+    const run = await s.jobs!.trigger(arg as JobName, true)
     console.log(`${run.ok ? "ok" : "failed"}: ${run.summary}`)
     break
   }

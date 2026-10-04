@@ -359,6 +359,8 @@ export const it: Messages = {
     hide: "Nascondi",
     files: "File",
     outcome: "Esito",
+    important: "Importante",
+    marketing: "Marketing: non passato all'agente",
   },
   activity: {
     now: "Adesso",

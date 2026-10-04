@@ -148,6 +148,10 @@ export const InboxItem = z.object({
   ref: z.string().default(""),
   /** What the agent did with it, one line. */
   outcome: z.string().default(""),
+  /** Email only: marked Important in Gmail. Triaged first; other emails are paced. */
+  important: z.boolean().default(false),
+  /** Email only: newsletters and promotions, archived without going to the agent. */
+  marketing: z.boolean().default(false),
 })
 export type InboxItem = z.infer<typeof InboxItem>
 

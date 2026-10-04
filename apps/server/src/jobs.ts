@@ -40,6 +40,8 @@ const SCHEDULES: Record<JobName, string | null> = {
 }
 const TRIAGE_BATCH = 10
 const TRIAGE_DELAY_MS = 60_000
+/** Emails not marked important reach the agent one batch at a time, this far apart. */
+const PACE_MS = 30 * 60_000
 const KEEP_BACKUPS = 14
 const AGENT_TIMEOUT_MS = 15 * 60_000
 const MAX_STEPS = 200
@@ -100,6 +102,11 @@ const TRIAGE_INSTRUCTIONS = `You are the background agent of autocratico, runnin
 - After editing deadlines.toml run \`python3 scripts/upcoming.py 30\` (it must not fail), then \`python3 scripts/ics.py\`. Type them exactly like that: AUTOCRATICO_DATA is already set, and any prefix, \`cd\`, absolute path or pipe is denied. For date arithmetic (e.g. "within 30 days of the notice") use \`python3 scripts/when.py\`.
 - Add a short section to notes/JOURNAL.md: today's date, "background agent", what changed.
 - Wrap personal data in ||...|| in case files and in your summary.`
+
+/** Uploads, chats and important emails go to the agent right away; other emails are paced. */
+function urgent(i: InboxItem): boolean {
+  return i.source !== "email" || i.important
+}
 
 function triagePrompt(items: InboxItem[], locale: string) {
   const list = items
@@ -180,6 +187,7 @@ export class Jobs {
   #waiting: JobName[] = []
   #tick: NodeJS.Timeout | null = null
   #gmailFailing = false
+  #pacedAt = 0
 
   constructor(context: Context) {
     this.#c = context
@@ -234,6 +242,9 @@ export class Jobs {
   /** Triage soon, after a short pause so that several uploads end up in one run. */
   queueTriage(delay = TRIAGE_DELAY_MS) {
     if (!this.#c.config.jobs) return
+    // Only paced emails waiting: no run before their turn.
+    const fresh = this.#c.inbox.list().filter((i) => i.status === "new")
+    if (fresh.length && !fresh.some(urgent)) delay = Math.max(delay, this.#pacedAt + PACE_MS - Date.now())
     if (this.#triageTimer) clearTimeout(this.#triageTimer)
     this.#triageAt = new Date(Date.now() + delay).toISOString()
     this.#triageTimer = setTimeout(() => {
@@ -254,8 +265,8 @@ export class Jobs {
     }
   }
 
-  /** Run a job now. Jobs run one at a time, since most of them write to the data folder. */
-  trigger(name: JobName): Promise<JobRun> {
+  /** Run a job now. Jobs run one at a time, since most of them write to the data folder. `manual`: asked by the user, not paced. */
+  trigger(name: JobName, manual = false): Promise<JobRun> {
     this.#waiting.push(name)
     return locks.run("jobs", async () => {
       this.#waiting.splice(this.#waiting.indexOf(name), 1)
@@ -269,7 +280,7 @@ export class Jobs {
       }
       this.#current = run
       try {
-        run.summary = await this.#run(name, run)
+        run.summary = await this.#run(name, run, manual)
         run.ok = true
       } catch (e) {
         run.ok = false
@@ -284,12 +295,12 @@ export class Jobs {
     })
   }
 
-  #run(name: JobName, run: JobRun): Promise<string> {
+  #run(name: JobName, run: JobRun, manual: boolean): Promise<string> {
     switch (name) {
       case "gmail":
         return this.#gmail()
       case "triage":
-        return this.#triage(run)
+        return this.#triage(run, manual)
       case "reminders":
         return this.#reminders()
       case "digest":
@@ -305,6 +316,12 @@ export class Jobs {
     const { config } = this.#c
     if (!existsSync(join(config.data, "secrets", "credentials.json"))) return "skipped: Gmail not configured"
     const before = new Set(this.#c.inbox.list().map((i) => i.id))
+    // Also after a failure or a timeout: what was downloaded until then is in the inbox.
+    const arrived = () => {
+      const added = this.#c.inbox.list().filter((i) => !before.has(i.id))
+      if (added.some((i) => i.status === "new")) this.queueTriage(5_000)
+      return added
+    }
     try {
       const { stdout } = await exec(config.python, ["scripts/gmail.py", "sync", "--all"], {
         cwd: config.root,
@@ -313,10 +330,14 @@ export class Jobs {
         maxBuffer: 16 * 1024 * 1024,
       })
       this.#gmailFailing = false
-      const added = this.#c.inbox.list().filter((i) => !before.has(i.id)).length
-      if (added) this.queueTriage(5_000)
-      return `${added} new emails${stdout.includes("error") ? " (some accounts reported errors)" : ""}`
+      const added = arrived()
+      const important = added.filter((i) => i.important).length
+      const marketing = added.filter((i) => i.marketing).length
+      const sorted = added.length ? ` (${important} important, ${marketing} marketing)` : ""
+      const left = stdout.includes("left for the next runs") ? ", more next run" : ""
+      return `${added.length} new emails${sorted}${left}${stdout.includes("error") ? " (some accounts reported errors)" : ""}`
     } catch (e) {
+      arrived()
       const err = e as { stderr?: string; message: string }
       const reason = (err.stderr ?? "").trim().split("\n").at(-1) || err.message
       // One alert per failure streak, not one every 10 minutes.
@@ -326,13 +347,16 @@ export class Jobs {
     }
   }
 
-  async #triage(run: JobRun): Promise<string> {
+  async #triage(run: JobRun, manual: boolean): Promise<string> {
     const { inbox, claude, repo, config } = this.#c
-    const batch = inbox.list().filter((i) => i.status === "new").reverse().slice(0, TRIAGE_BATCH)
-    if (!batch.length) return "nothing new"
+    const fresh = inbox.list().filter((i) => i.status === "new").reverse()
+    const paced = manual || Date.now() >= this.#pacedAt + PACE_MS
+    const batch = [...fresh.filter(urgent), ...(paced ? fresh.filter((i) => !urgent(i)) : [])].slice(0, TRIAGE_BATCH)
+    if (!batch.length) return fresh.length ? `${fresh.length} emails waiting for their turn` : "nothing new"
     if (!claude.available) return "skipped: claude not available"
     const items: InboxItem[] = []
     for (const i of batch) items.push(await inbox.convertPhotos(i))
+    if (items.some((i) => !urgent(i))) this.#pacedAt = Date.now()
     const ids = items.map((i) => i.id)
     run.items = items.map((i) => ({ id: i.id, title: i.title }))
     await inbox.setStatus(ids, "processing")

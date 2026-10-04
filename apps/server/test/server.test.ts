@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process"
-import { readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 
 import type { JobRun } from "@autocratico/core"
@@ -7,9 +7,9 @@ import { strToU8, zipSync } from "fflate"
 import { beforeEach, describe, expect, it } from "vitest"
 
 import { ChangeError } from "../src/changes.ts"
-import { tools } from "../src/claude.ts"
+import { type Claude, tools } from "../src/claude.ts"
 import { type Config, loadConfig } from "../src/config.ts"
-import { cleanSteps, parseTriage, recorder } from "../src/jobs.ts"
+import { cleanSteps, Jobs, parseTriage, recorder } from "../src/jobs.ts"
 import { outgoing } from "../src/telegram.ts"
 import { cookieOf, LOCAL, LOCAL_WRITE, owner, PASSWORD, post, setup } from "./helpers.ts"
 
@@ -289,6 +289,45 @@ describe("agent", () => {
     const { app } = setup()
     const r = await app.request("/api/jobs/live", { headers: await owner(app) })
     expect(await r.json()).toEqual({ current: null, waiting: [], triage: null })
+  })
+})
+
+describe("triage order", () => {
+  it("sends important emails and uploads right away, other emails one batch per pace", async () => {
+    const { s, data } = setup()
+    const email = (n: number, important: boolean) => {
+      const folder = join(data, "inbox", `2026-10-0${n % 9}-email-m${n}-00000${n % 10}`)
+      mkdirSync(folder, { recursive: true })
+      writeFileSync(join(folder, "content.md"), "Email\n")
+      const item = { id: `m${n}`, source: "email", status: "new", received: `2026-10-04T10:00:${String(n).padStart(2, "0")}Z`, title: `m${n}`, important }
+      writeFileSync(join(folder, "item.json"), JSON.stringify(item))
+    }
+    email(0, true)
+    for (let n = 1; n <= 11; n++) email(n, false)
+    const seen: string[][] = []
+    const claude = {
+      available: true,
+      complete: async (o: { prompt: string }) => {
+        const ids = [...o.prompt.matchAll(/\bm\d+\b/g)].map((m) => m[0]).filter((x, i, a) => a.indexOf(x) === i)
+        seen.push(ids)
+        const items = ids.map((id) => ({ id, status: "processed", outcome: "ok" }))
+        return { text: "```json\n" + JSON.stringify({ items, summary: "", phishing: [] }) + "\n```", session: null, error: null }
+      },
+    } as unknown as Claude
+    const jobs = new Jobs({ config: s.config, store: s.store, inbox: s.inbox, claude, repo: s.repo, reminders: s.reminders, notifier: () => null })
+
+    // First batch: the important one, then others up to ten; that starts the pace.
+    expect((await jobs.trigger("triage")).ok).toBe(true)
+    expect(seen[0][0]).toBe("m0")
+    expect(seen[0]).toHaveLength(10)
+    // An important email arriving now goes ahead; the two others wait their turn.
+    email(12, true)
+    await jobs.trigger("triage")
+    expect(seen[1]).toEqual(["m12"])
+    expect((await jobs.trigger("triage")).summary).toBe("2 emails waiting for their turn")
+    // Asked by hand: no waiting.
+    await jobs.trigger("triage", true)
+    expect(seen[2]).toHaveLength(2)
   })
 })
 
