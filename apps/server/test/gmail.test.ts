@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import type { GmailSetup } from "@autocratico/core"
@@ -150,6 +150,22 @@ describe("Gmail setup", () => {
     expect((await post(app, "/api/gmail/complete", { url: `?state=${state}&code=c` }, h)).status).toBe(400)
     expect(google.calls.some((c) => c.url.endsWith("/revoke"))).toBe(true)
     expect(existsSync(join(data, "secrets", "gmail", "work.json"))).toBe(false)
+  })
+
+  it("marks tokens from scripts/gmail.py as needing a new sign-in when the client is replaced", async () => {
+    const { app, data } = withGmail()
+    const h = await owner(app)
+    const put = (c: unknown) => app.request("/api/gmail/client", { method: "PUT", headers: { ...h, "content-type": "application/json" }, body: JSON.stringify(c) })
+    await put({ installed: { ...CLIENT.web, client_id: "111-old.apps.googleusercontent.com" } })
+    mkdirSync(join(data, "secrets", "gmail"), { recursive: true })
+    writeFileSync(join(data, "secrets", "gmail", "personal.json"), JSON.stringify({ access_token: "a", refresh_token: "r" }))
+    let s = await json<GmailSetup>(app.request("/api/gmail", { headers: h }))
+    expect(s.accounts.find((a) => a.name === "personal")?.state).toBe("connected")
+
+    await put(CLIENT)
+    s = await json<GmailSetup>(app.request("/api/gmail", { headers: h }))
+    expect(s.accounts.find((a) => a.name === "personal")?.state).toBe("reconnect")
+    expect(statSync(join(data, "secrets", "gmail", "personal.json")).mode & 0o777).toBe(0o600)
   })
 
   it("asks to sign in again once the client is replaced, and removes accounts with their token", async () => {

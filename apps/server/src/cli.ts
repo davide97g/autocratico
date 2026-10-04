@@ -7,12 +7,15 @@
  *   node apps/server/src/cli.ts revoke ID                     revoke a shortcut token
  *   node apps/server/src/cli.ts telegram                      one-time code to pair a Telegram chat (/start CODE)
  *   node apps/server/src/cli.ts job NAME                      run a job now (gmail, triage, reminders, digest, backup)
+ *   node apps/server/src/cli.ts gmail-client FILE             install the OAuth client JSON from Google Cloud (as Settings does)
  */
+import { readFileSync } from "node:fs"
 import { parseArgs } from "node:util"
 
 import { Account } from "./account.ts"
 import { Devices } from "./auth.ts"
 import { loadConfig } from "./config.ts"
+import { Gmail } from "./gmail.ts"
 import { JOB_NAMES, type JobName } from "./jobs.ts"
 import { services } from "./services.ts"
 
@@ -22,6 +25,12 @@ const config = loadConfig({ jobs: false })
 const devices = new Devices(config.data)
 
 switch (command) {
+  case "gmail-client": {
+    if (!arg) throw new Error("usage: gmail-client FILE")
+    const client = new Gmail(config.data).saveClient(JSON.parse(readFileSync(arg, "utf8")))
+    console.log(`OAuth client saved (${client?.type}, ${client?.clientId}). Redirect URIs: ${client?.redirects.join(", ") || "none"}`)
+    break
+  }
   case "setup-code": {
     const account = new Account(config)
     if (await account.owner()) throw new Error("already set up: use reset-password for a forgotten masterpass")

@@ -157,6 +157,16 @@ export class Gmail {
       token_uri: TOKEN_URI,
       redirect_uris: redirects,
     }
+    // Tokens only refresh with the client that issued them. Those saved by scripts/gmail.py don't
+    // say which one: name the outgoing client, so they show "sign in again" instead of failing.
+    const previous = this.#client()?.client_id
+    if (previous && previous !== id) {
+      for (const name of this.#accounts().keys()) {
+        const file = existsSync(this.#token(name)) ? this.#token(name) : name === "default" && existsSync(this.#legacy) ? this.#legacy : null
+        const token = file && readJson<Token | null>(file, null)
+        if (file && token && !token.client_id) writeSecret(file, { ...token, client_id: previous })
+      }
+    }
     writeSecret(this.#credentials, { [type]: client })
     return { type, clientId: id, project: client.project_id ?? null, redirects }
   }
