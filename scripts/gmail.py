@@ -368,13 +368,25 @@ def _inbox_item(account: str, folder: str, h: dict, when: datetime, attachments:
     tmp.replace(path / "item.json")
 
 
+def _remember_mailbox(account: str, address: str) -> None:
+    """archive/email/.mailboxes.json: Gmail address of each account, for links to the messages."""
+    if not address:
+        return
+    path = DESTINATION / ".mailboxes.json"
+    known = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if known.get(account) != address:
+        known[account] = address
+        path.write_text(json.dumps(known, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def sync(query: str, limit: int = 5000, account: str = "default") -> None:
     DESTINATION.mkdir(parents=True, exist_ok=True)
     index = json.loads(INDEX.read_text()) if INDEX.exists() else {}
     ids = [i for i in _list(query, limit) if i not in index]
     print(f"{len(ids)} new messages to download.")
     # The mailbox address, so the web app can open each message in the right Gmail account.
-    mailbox = _get(f"{API}/profile").get("emailAddress", "") if ids else ""
+    mailbox = _get(f"{API}/profile").get("emailAddress", "")
+    _remember_mailbox(account, mailbox)
     for i in ids:
         m = _get(f"{API}/messages/{i}", {"format": "full"})
         h = _headers(m)

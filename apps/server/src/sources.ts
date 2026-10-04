@@ -51,7 +51,20 @@ export function parseMessage(md: string): { meta: Record<string, string>; body: 
     }
     meta[line.slice(0, at).trim()] = typeof value === "string" ? value : raw
   }
+  // Messages filed before the English schema used Italian keys.
+  for (const [it, en] of Object.entries(ITALIAN_KEYS)) if (meta[en] === undefined && meta[it] !== undefined) meta[en] = meta[it]
   return { meta, body: m[2].trim() }
+}
+
+const ITALIAN_KEYS: Record<string, string> = { data: "date", da: "from", a: "to", oggetto: "subject", etichette: "labels", allegati: "attachments", casella: "account" }
+
+/** Gmail addresses by mailbox name, written by scripts/gmail.py at each sync. */
+function mailboxes(data: string): Record<string, string> {
+  try {
+    return JSON.parse(read(join(data, "archive", "email", ".mailboxes.json"))) as Record<string, string>
+  } catch {
+    return {}
+  }
 }
 
 /** The single address in a header like `Name <a@b.it>`, else null. */
@@ -61,10 +74,11 @@ function address(header: string | undefined): string | null {
 }
 
 /** The message in Gmail's web app (or the Gmail app on a phone), in the mailbox that received it. */
-export function gmailLink(meta: Record<string, string>): string | null {
+export function gmailLink(meta: Record<string, string>, known: Record<string, string> = {}): string | null {
   const id = meta.thread || meta.id
   if (!id || !/^[0-9a-f]+$/i.test(id)) return null
-  const mailbox = meta.mailbox || address(meta.to)
+  const only = Object.values(known).length === 1 ? Object.values(known)[0] : null
+  const mailbox = meta.mailbox || (meta.account && known[meta.account]) || address(meta.to) || only
   return mailbox ? `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(mailbox)}#all/${id}` : `https://mail.google.com/mail/u/0/#all/${id}`
 }
 
@@ -81,7 +95,7 @@ function email(data: string, folder: string, path: string): SourceInfo {
     from: meta.from ?? "",
     date: meta.date || null,
     account: meta.account ?? "",
-    link: gmailLink(meta),
+    link: gmailLink(meta, mailboxes(data)),
     ...cut(body),
     files: listDocuments(data, [folder]).filter((f) => !f.endsWith("/message.md")),
   }

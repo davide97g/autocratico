@@ -531,3 +531,15 @@ describe("sources and archive", () => {
     expect((await app.request("/api/archive", { headers: LOCAL })).status).toBe(401)
   })
 })
+
+describe("older filed emails", () => {
+  it("reads Italian headers and finds the mailbox for the Gmail link", async () => {
+    const { parseMessage, gmailLink } = await import("../src/sources.ts")
+    const { meta, body } = parseMessage('---\nid: 19dd8297ba7a6af5\nthread: 19dd8297ba7a6af5\ndata: 2026-04-29T09:34:47+02:00\nda: "Agenzia <x@y.it>"\na: "Undisclosed recipients:;"\noggetto: "Chiusura Pratica Civis"\nallegati: []\n---\n\nTesto')
+    expect(meta).toMatchObject({ subject: "Chiusura Pratica Civis", from: "Agenzia <x@y.it>", date: "2026-04-29T09:34:47+02:00", attachments: "[]" })
+    expect(body).toBe("Testo")
+    expect(gmailLink(meta)).toBe("https://mail.google.com/mail/u/0/#all/19dd8297ba7a6af5")
+    expect(gmailLink(meta, { personal: "me@example.com" })).toBe("https://mail.google.com/mail/u/?authuser=me%40example.com#all/19dd8297ba7a6af5")
+    expect(gmailLink({ ...meta, account: "work" }, { personal: "me@example.com", work: "w@example.com" })).toContain("authuser=w%40example.com")
+  })
+})
