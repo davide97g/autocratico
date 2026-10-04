@@ -50,7 +50,7 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
     }
   }
   // Server-owned files stay out of the agent's reach.
-  const owned = ["state.json", "reminders.json", "chats/**", "jobs/**", "inbox/*/item.json", ".git/**"].flatMap((p) => [
+  const owned = ["state.json", "reminders.json", "chats/**", "jobs/**", "inbox/*/item.json", "finance/**", ".git/**"].flatMap((p) => [
     `Edit(${abs(data)}/${p})`,
     `Write(${abs(data)}/${p})`,
   ])
@@ -72,7 +72,7 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
 
 const CHAT_INSTRUCTIONS = `You are answering in the chat of autocratico, the user's personal register of Italian bureaucracy (web app or Telegram).
 - Be direct and brief; use simple Markdown (lists, bold, small tables).
-- Read the data files (deadlines.toml, state.json, profile.toml, cases/, catalog/, notes/, inbox/) before answering about facts and dates.
+- Read the data files (deadlines.toml, state.json, profile.toml, cases/, catalog/, notes/, inbox/) before answering about facts and dates. For spending and earnings read finance/summary.md (finance/mirror.json has each transaction); for investments, investments.toml.
 - Wrap every piece of personal data in ||...|| (amounts, birth dates, addresses, document numbers, names of people): the web app hides them in privacy mode and Telegram never shows them.
 - To read, use Read, Glob and Grep; the only commands you may run are \`python3 scripts/upcoming.py [days]\` and \`python3 scripts/when.py [WHEN ...]\`, typed exactly like that (AUTOCRATICO_DATA is already set): no prefixes, cd, absolute paths or pipes.
 - You do know the date and time: each message starts with when it was sent. For date arithmetic (reminder times, "in 90 minutes", "monday at 9", days left until a date, daylight saving changes) run \`python3 scripts/when.py\` with the expressions, e.g. \`python3 scripts/when.py +90m, monday 09:00, 2026-10-16\`, and use its iso values; never say you cannot read the clock.

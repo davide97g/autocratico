@@ -82,6 +82,7 @@ Upgrading from a version with device pairing: the register is kept, old device c
 - Shortcut token: Settings → **Shortcut tokens** (see docs/ios-shortcut.md).
 - Telegram: Settings → Telegram → **Pair a chat**, send `/start <code>` to the bot.
 - Gmail: `docker exec -it … python3 scripts/gmail.py login --account personal --manual` (see docs/gmail.md).
+- Finance app: Settings → **Finance app**, address `http://finance-api:3000` and a token from `bun run token create autocratico --scope write` on the finance server (see docs/finance.md).
 
 ## 6. Backups and updates
 

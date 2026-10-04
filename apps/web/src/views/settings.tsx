@@ -13,6 +13,7 @@ import {
   TabletIcon,
 } from "lucide-react"
 
+import { FinanceCard } from "@/components/finance"
 import { GmailCard } from "@/components/gmail"
 import { Sensitive } from "@/components/privacy"
 import { Button } from "@/components/ui/button"
@@ -519,6 +520,7 @@ export function Settings({
       </div>
       <div className="flex flex-col gap-6">
         <GmailCard />
+        <FinanceCard />
         <TelegramCard enabled={s.telegram.enabled} />
         <RemindersCard />
         <ShortcutsCard />

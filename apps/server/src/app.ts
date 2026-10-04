@@ -2,11 +2,11 @@
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, extname, join, resolve, sep } from "node:path"
 
-import { type ChatEvent, GmailAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
+import { type ChatEvent, FinanceConnectInput, FinanceExpenseInput, GmailAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
 import { type Context, Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
 import { secureHeaders } from "hono/secure-headers"
-import { stream } from "hono/streaming"
+import { stream, streamSSE } from "hono/streaming"
 import { z } from "zod"
 
 import { type Account, AccountError, MAX_PASSWORD } from "./account.ts"
@@ -14,6 +14,7 @@ import { authMiddleware, type Caller, type Devices } from "./auth.ts"
 import type { Changes } from "./changes.ts"
 import { type Claude, friendlyError } from "./claude.ts"
 import type { Config } from "./config.ts"
+import { type Finance, FinanceError } from "./finance.ts"
 import type { DataRepo } from "./git.ts"
 import { Gmail, GmailError } from "./gmail.ts"
 import { IMAGE_TYPES, thumbnail } from "./images.ts"
@@ -43,6 +44,8 @@ export type Services = {
   telegram: Telegram | null
   transcriber: Transcriber
   reminders: Reminders
+  /** The finance app's mirror (tests pass one with a fake finance app). */
+  finance: Finance
   /** Override for tests: Gmail setup with a fake Google. */
   gmail?: Gmail
   /** Override for tests: verifies the Cloudflare Access JWT. */
@@ -118,6 +121,7 @@ export function createApp(s: Services) {
   })
   app.onError((e, c) => {
     if (e instanceof GmailError) return c.json({ error: e.message }, e.status)
+    if (e instanceof FinanceError) return c.json({ error: e.message }, e.status)
     if (e instanceof AccountError) {
       if (e.retryAfter) c.header("Retry-After", String(e.retryAfter))
       return c.json({ error: e.message, ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}) }, e.status)
@@ -422,6 +426,7 @@ export function createApp(s: Services) {
       speech: s.transcriber.available,
       telegram: { enabled: s.telegram !== null, chats: s.telegram?.chats().length ?? 0 },
       gmail: gmail.setup().accounts.map((a) => ({ name: a.name, connected: a.state === "connected" })),
+      finance: { connected: s.finance.configured(), live: s.finance.live, synced_at: s.finance.setup().synced_at },
       inbox: { new: items.filter((i) => i.status === "new").length, failed: items.filter((i) => i.status === "failed").length },
       jobs: JOB_NAMES.map((job) => ({ job, last: s.jobs?.last(job) ?? null, next: s.jobs?.next(job) ?? null })),
     }
@@ -464,6 +469,57 @@ export function createApp(s: Services) {
   })
 
   // ---------- ingest tokens and Telegram ----------
+
+  // ---------- Finance app (mirror, change feed, paid occurrences recorded there; the token stays here) ----------
+
+  app.get("/api/finance", (c) => c.json(s.finance.setup()))
+  app.put("/api/finance", async (c) => {
+    userOf(c)
+    const body = FinanceConnectInput.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid address or token" }, 400)
+    const setup = await s.finance.connect(body.data)
+    commit("Finance: connected")
+    return c.json(setup)
+  })
+  app.delete("/api/finance", async (c) => {
+    userOf(c)
+    await s.finance.disconnect()
+    commit("Finance: disconnected")
+    return c.json({ ok: true })
+  })
+  app.get("/api/finance/data", (c) => c.json(s.finance.data()))
+  app.post("/api/finance/sync", async (c) => c.json(await s.finance.sync("full")))
+  app.post("/api/finance/transactions", async (c) => {
+    userOf(c)
+    const body = FinanceExpenseInput.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    return c.json(await s.finance.addExpense(body.data))
+  })
+  app.delete("/api/finance/transactions/:key", async (c) => {
+    userOf(c)
+    return c.json({ ok: await s.finance.removeExpense(c.req.param("key")) })
+  })
+
+  /** Server events for the open web app: `finance` with the mirror's revision when it changes. */
+  app.get("/api/events", (c) =>
+    streamSSE(c, async (sse) => {
+      let open = true
+      const send = (event: string, data: unknown) =>
+        sse.writeSSE({ event, data: JSON.stringify(data) }).catch(() => {
+          open = false
+        })
+      const off = s.finance.onChange((rev) => void send("finance", { rev }))
+      sse.onAbort(() => {
+        open = false
+      })
+      await send("ready", { finance: s.finance.rev })
+      while (open) {
+        await sse.sleep(25_000)
+        if (open) await send("ping", Date.now())
+      }
+      off()
+    })
+  )
 
   app.get("/api/devices", (c) => {
     userOf(c)

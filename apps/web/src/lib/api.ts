@@ -5,6 +5,10 @@ import type {
   Chat,
   Data,
   Device,
+  FinanceConnectInput,
+  FinanceData,
+  FinanceExpenseInput,
+  FinanceSetup,
   GmailAccountInput,
   GmailSetup,
   InboxDetail,
@@ -20,6 +24,10 @@ import type {
 
 export type {
   AccountSession,
+  FinanceCategory,
+  FinanceData,
+  FinanceSetup,
+  FinanceTransaction,
   GmailAccount,
   GmailSetup,
   Activity,
@@ -165,3 +173,12 @@ export const telegramUnpair = (id: number) => post<{ ok: boolean }>(`/api/telegr
 
 export const reminders = () => request<Reminder[]>("/api/reminders")
 export const cancelReminder = (id: string) => post<{ ok: boolean }>(`/api/reminders/${id}`, undefined, "DELETE")
+
+export const financeSetup = () => request<FinanceSetup>("/api/finance")
+/** Address and API token of the finance app: checked and kept on the server, the token never comes back. */
+export const connectFinance = (c: FinanceConnectInput) => post<FinanceSetup>("/api/finance", c, "PUT")
+export const disconnectFinance = () => post<Ok>("/api/finance", undefined, "DELETE")
+export const financeData = () => request<FinanceData>("/api/finance/data")
+export const syncFinance = () => post<{ changed: boolean; transactions: number }>("/api/finance/sync")
+export const recordExpense = (e: FinanceExpenseInput) => post<{ id: string }>("/api/finance/transactions", e)
+export const removeExpense = (key: string) => post<Ok>(`/api/finance/transactions/${encodeURIComponent(key)}`, undefined, "DELETE")

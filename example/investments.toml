@@ -1,0 +1,42 @@
+# Investments (EXAMPLE, made-up data): one [[snapshot]] per broker and day, from screenshots or
+# exports. Written by the agent when such a document arrives; the Finance view charts them.
+
+[[snapshot]]
+date = 2026-07-01
+broker = "Trade Republic"
+cash = 250.00
+source = ""
+  [[snapshot.position]]
+  name = "Vanguard FTSE All-World"
+  isin = "IE00BK5BQT80"
+  quantity = 30
+  value = 3510.00
+  cost = 3300.00
+
+[[snapshot]]
+date = 2026-08-01
+broker = "Degiro"
+cash = 40.00
+source = ""
+  [[snapshot.position]]
+  name = "iShares Core MSCI World"
+  isin = "IE00B4L5Y983"
+  quantity = 15
+  value = 1585.50
+  cost = 1500.00
+  [[snapshot.position]]
+  name = "Italian BTP 2030"
+  value = 1010.00
+  cost = 1000.00
+
+[[snapshot]]
+date = 2026-09-01
+broker = "Trade Republic"
+cash = 180.00
+source = ""
+  [[snapshot.position]]
+  name = "Vanguard FTSE All-World"
+  isin = "IE00BK5BQT80"
+  quantity = 32
+  value = 3820.80
+  cost = 3540.00

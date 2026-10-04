@@ -1,0 +1,15 @@
+# Investments: one [[snapshot]] per broker and day, from screenshots or exports (Trade Republic,
+# Degiro, ...). Written by the agent when such a document arrives; the Finance view charts them.
+# Never write account numbers here.
+#
+# [[snapshot]]
+# date = 2026-10-01          # day the screenshot or export refers to
+# broker = "Trade Republic"
+# cash = 120.50              # uninvested cash, euro
+# source = "inbox/<folder>/<file>"
+#   [[snapshot.position]]
+#   name = "MSCI World ETF"
+#   isin = "IE00B4L5Y983"    # optional
+#   quantity = 12.5          # optional
+#   value = 1340.20          # market value in euro
+#   cost = 1200.00           # optional, what was paid

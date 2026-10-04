@@ -1,5 +1,6 @@
 import {
   BanknoteIcon,
+  ChartLineIcon,
   BellRingIcon,
   BotIcon,
   DatabaseBackupIcon,
@@ -35,6 +36,7 @@ const AREA_ICONS: Record<string, LucideIcon> = {
 
 const JOB_ICONS: Record<string, LucideIcon> = {
   gmail: MailIcon,
+  finance: ChartLineIcon,
   triage: BotIcon,
   reminders: BellRingIcon,
   digest: NewspaperIcon,

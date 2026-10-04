@@ -80,6 +80,8 @@ export function parseDeadlines(text: string): Deadline[] {
       case: typeof r.case === "string" ? r.case : null,
       notes: str(r.notes),
       source: str(r.source),
+      finance_category: typeof r.finance_category === "string" && r.finance_category ? r.finance_category : null,
+      finance_recurring: typeof r.finance_recurring === "string" && r.finance_recurring ? r.finance_recurring : null,
     }
     stepMonths(d) // validate the repeat field right away
     return d

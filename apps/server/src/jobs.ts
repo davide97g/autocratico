@@ -15,6 +15,7 @@ import { Cron } from "croner"
 import type { Claude } from "./claude.ts"
 import type { Config } from "./config.ts"
 import { locks } from "./files.ts"
+import type { Finance } from "./finance.ts"
 import type { DataRepo } from "./git.ts"
 import type { Inbox } from "./inbox.ts"
 import type { Reminders } from "./reminders.ts"
@@ -28,11 +29,12 @@ export type Notifier = {
   notify(text: string, buttons?: Button[][]): Promise<void>
 }
 
-export const JOB_NAMES = ["gmail", "triage", "reminders", "digest", "backup"] as const
+export const JOB_NAMES = ["gmail", "finance", "triage", "reminders", "digest", "backup"] as const
 export type JobName = (typeof JOB_NAMES)[number]
 
 const SCHEDULES: Record<JobName, string | null> = {
   gmail: "*/10 * * * *",
+  finance: "0 * * * *", // full re-read; the change feed brings edits within seconds
   triage: null, // runs when new items arrive
   reminders: "30 8 * * *",
   digest: "0 8 * * 1",
@@ -54,6 +56,7 @@ type Context = {
   claude: Claude
   repo: DataRepo
   reminders: Reminders
+  finance: Finance
   notifier: () => Notifier | null
 }
 
@@ -68,6 +71,7 @@ const TEXT = {
     triageFailed: "Elaborazione dei nuovi documenti non riuscita",
     phishing: "Possibile phishing: non aprire link e non pagare",
     gmailFailed: "Sincronizzazione Gmail non riuscita",
+    financeFailed: "Sincronizzazione con l'app Finance non riuscita",
     digest: "Riepilogo settimanale",
     markedDone: "Segnate come fatte",
     snooze: "+1 h",
@@ -83,6 +87,7 @@ const TEXT = {
     triageFailed: "Processing new documents failed",
     phishing: "Possible phishing: do not open links or pay",
     gmailFailed: "Gmail sync failed",
+    financeFailed: "Sync with the finance app failed",
     digest: "Weekly digest",
     markedDone: "Marked as done",
     snooze: "+1 h",
@@ -99,6 +104,8 @@ const TRIAGE_INSTRUCTIONS = `You are the background agent of autocratico, runnin
 - Do not touch state.json, inbox/*/item.json, chats/, jobs/, secrets/. Never delete existing deadlines or cases: when a document shows that a recurring deadline no longer applies, set its \`until\` (the last day that still counts) and say why in its notes.
 - Amounts: when a document gives the amount of one occurrence (a bill, a notice, an F24, a receipt), record it in that deadline's \`amounts\` by occurrence date: \`amounts = { "YYYY-MM-DD" = euro, ... }\`, keeping the ones already there; they are how the app estimates future occurrences. Use \`amount\` only for an amount that is the same every time, and \`amount = "TODO"\` for a payment whose amount is not known yet.
 - When an item says a deadline was paid or done (a receipt, "I already paid X"), put its occurrence key in "done": the key is \`<id>@<YYYY-MM-DD>\`, the deadline id and the date of that occurrence (a recurring deadline has one key per year or month). The server marks it done; only list keys you are sure of.
+- Brokers (Trade Republic, Degiro, …): a screenshot, export or statement of a portfolio becomes one \`[[snapshot]]\` in investments.toml (schema at the top of the file): the day it refers to, broker, uninvested cash, one \`[[snapshot.position]]\` per holding with name, ISIN and quantity when shown, market value in euro, cost when shown; \`source\` = the file. Add, never rewrite older snapshots; no account numbers. Not a deadline: no case needed.
+- Do not touch finance/ (synced from the finance app by the server): read finance/summary.md if spending matters.
 - After editing deadlines.toml run \`python3 scripts/upcoming.py 30\` (it must not fail), then \`python3 scripts/ics.py\`. Type them exactly like that: AUTOCRATICO_DATA is already set, and any prefix, \`cd\`, absolute path or pipe is denied. For date arithmetic (e.g. "within 30 days of the notice") use \`python3 scripts/when.py\`.
 - Add a short section to notes/JOURNAL.md: today's date, "background agent", what changed.
 - Wrap personal data in ||...|| in case files and in your summary.`
@@ -187,6 +194,7 @@ export class Jobs {
   #waiting: JobName[] = []
   #tick: NodeJS.Timeout | null = null
   #gmailFailing = false
+  #financeFailing = false
   #pacedAt = 0
 
   constructor(context: Context) {
@@ -299,6 +307,8 @@ export class Jobs {
     switch (name) {
       case "gmail":
         return this.#gmail()
+      case "finance":
+        return this.#finance()
       case "triage":
         return this.#triage(run, manual)
       case "reminders":
@@ -311,6 +321,21 @@ export class Jobs {
   }
 
   // ---------- jobs ----------
+
+  async #finance(): Promise<string> {
+    const { finance } = this.#c
+    if (!finance.configured()) return "skipped: finance app not connected"
+    try {
+      const r = await finance.sync("full")
+      this.#financeFailing = false
+      return `${r.transactions} transactions${r.changed ? ", updated" : ", no changes"}`
+    } catch (e) {
+      // One alert per failure streak, not one an hour.
+      if (!this.#financeFailing) await this.#c.notifier()?.notify(`${this.#t.financeFailed}: ${(e as Error).message}`)
+      this.#financeFailing = true
+      throw e
+    }
+  }
 
   async #gmail(): Promise<string> {
     const { config } = this.#c

@@ -314,7 +314,7 @@ describe("triage order", () => {
         return { text: "```json\n" + JSON.stringify({ items, summary: "", phishing: [] }) + "\n```", session: null, error: null }
       },
     } as unknown as Claude
-    const jobs = new Jobs({ config: s.config, store: s.store, inbox: s.inbox, claude, repo: s.repo, reminders: s.reminders, notifier: () => null })
+    const jobs = new Jobs({ config: s.config, store: s.store, inbox: s.inbox, claude, repo: s.repo, reminders: s.reminders, finance: s.finance, notifier: () => null })
 
     // First batch: the important one, then others up to ten; that starts the pace.
     expect((await jobs.trigger("triage")).ok).toBe(true)

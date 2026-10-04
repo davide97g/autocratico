@@ -40,9 +40,12 @@ if (!(await s.account.owner())) {
 
 if (config.jobs) s.jobs?.start()
 s.telegram?.start()
+// The finance app's change feed (no-op until it is connected from Settings).
+s.finance.listen()
 
 async function shutdown() {
   s.jobs?.stop()
+  s.finance.stop()
   await s.telegram?.stop().catch(() => undefined)
   server.close()
   process.exit(0)

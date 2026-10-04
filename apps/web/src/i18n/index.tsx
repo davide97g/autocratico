@@ -34,6 +34,10 @@ function formats(tag: string) {
     long: new Intl.DateTimeFormat(tag, { day: "numeric", month: "long", year: "numeric" }),
     short: new Intl.DateTimeFormat(tag, { day: "2-digit", month: "2-digit", year: "2-digit" }),
     euro: new Intl.NumberFormat(tag, { style: "currency", currency: "EUR" }),
+    euroShort: new Intl.NumberFormat(tag, { style: "currency", currency: "EUR", notation: "compact", maximumFractionDigits: 1 }),
+    percent: new Intl.NumberFormat(tag, { style: "percent", maximumFractionDigits: 0 }),
+    monthShortYear: new Intl.DateTimeFormat(tag, { month: "short", year: "2-digit" }),
+    year: new Intl.DateTimeFormat(tag, { year: "numeric" }),
   }
 }
 

@@ -4,13 +4,15 @@ import { cn } from "cn"
 
 import { Chat, chatAbout } from "@/components/chat"
 import { DropToInbox } from "@/components/drop-to-inbox"
+import { type ExpenseAsk, ExpenseDialog } from "@/components/finance"
 import { usePrivacy } from "@/components/privacy"
 import { Sidebar, TabBar, TopBar, type View, VIEWS } from "@/components/shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useI18n } from "@/i18n"
 import { Tour } from "@/components/tour"
-import { type Data, loadData, markDone, type Occurrence, type Session, session as loadSession, Unauthenticated } from "@/lib/api"
+import { type Data, type FinanceData, financeData, loadData, markDone, type Occurrence, type Session, session as loadSession, Unauthenticated } from "@/lib/api"
+import { useServerEvents } from "@/lib/events"
 import { useLiveJobs } from "@/lib/live"
 import { unlessChanged } from "@/lib/utils"
 import { level } from "@/lib/status"
@@ -20,6 +22,7 @@ import { Cases } from "@/views/cases"
 import { Catalog } from "@/views/catalog"
 import { DeadlinePage } from "@/views/deadline"
 import { Deadlines } from "@/views/deadlines"
+import { Finance } from "@/views/finance"
 import { Inbox } from "@/views/inbox"
 import { Overview } from "@/views/overview"
 import { Login } from "@/views/login"
@@ -175,6 +178,24 @@ function Main({
   // When the agent finishes, deadlines and cases may have changed.
   const live = useLiveJobs(reload)
 
+  // The finance app's data: loaded once the Finance view opens, then kept fresh by the server's events.
+  const [finance, setFinance] = React.useState<FinanceData | null>(null)
+  const financeWanted = React.useRef(false)
+  const reloadFinance = React.useCallback(() => {
+    financeData().then((f) => setFinance(unlessChanged(f)), (e: Error) => (e instanceof Unauthenticated ? onSignedOut() : setError(e.message)))
+  }, [onSignedOut])
+  useServerEvents(
+    React.useCallback(() => {
+      if (financeWanted.current) reloadFinance()
+    }, [reloadFinance])
+  )
+  React.useEffect(() => {
+    if (view !== "finance") return
+    financeWanted.current = true
+    reloadFinance()
+  }, [view, reloadFinance])
+  const [expense, setExpense] = React.useState<ExpenseAsk | null>(null)
+
   React.useEffect(() => {
     reload()
     const onHash = () => {
@@ -240,6 +261,11 @@ function Main({
       try {
         const done_on = await markDone(o.key, done)
         setData((d) => d && { ...d, agenda: d.agenda.map((x) => (x.key === o.key ? { ...x, done_on } : x)) })
+        // A payment: offer to record it in the finance app, or to delete what was recorded for it.
+        if (o.amount_basis !== null) {
+          const f = await financeData().catch(() => null)
+          if (f?.mirror && done !== Boolean(f.links[o.key])) setExpense({ o, mode: done ? "record" : "remove", finance: f, doneOn: done_on })
+        }
       } catch (e) {
         setError(t.app.saveFailed((e as Error).message))
       }
@@ -350,6 +376,9 @@ function Main({
           {data && view === "cases" && <Cases cases={data.cases} open={openCase} />}
           {data && view === "profile" && <Profile profile={data.profile} />}
           {data && view === "catalog" && <Catalog entries={data.catalog} />}
+          {data && view === "finance" && (
+            <Finance data={data} finance={finance} onReload={reloadFinance} onOpenDeadline={openDeadline} onOpenSettings={() => go("settings")} />
+          )}
           {view === "inbox" && <Inbox />}
           {view === "archive" && <Archive />}
           {view === "activity" && <Activity live={live} />}
@@ -388,6 +417,13 @@ function Main({
       <p className="px-gutter py-5 text-xs text-muted-foreground lg:px-6">{t.app.footer}</p>
       {tour && data && <Tour onClose={() => onTour(false)} />}
       <DropToInbox onOpenInbox={openInbox} />
+      <ExpenseDialog
+        ask={expense}
+        onClose={() => {
+          setExpense(null)
+          if (financeWanted.current) reloadFinance()
+        }}
+      />
     </div>
   )
 }

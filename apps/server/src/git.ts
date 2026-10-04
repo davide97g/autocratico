@@ -4,7 +4,7 @@
  * Only the hand-edited text files are tracked; archive, inbox, secrets and outputs are not.
  */
 import { execFile } from "node:child_process"
-import { existsSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { promisify } from "node:util"
 
@@ -19,6 +19,8 @@ const IGNORE = `# Managed by autocratico: only the register is versioned.
 !/profile.toml
 !/state.json
 !/gmail.toml
+!/finance.toml
+!/investments.toml
 !/cases/
 !/catalog/
 !/notes/
@@ -51,7 +53,10 @@ export class DataRepo {
 
   async init(): Promise<void> {
     if (!(await this.available())) return
-    if (!existsSync(join(this.dir, ".gitignore"))) writeFileSync(join(this.dir, ".gitignore"), IGNORE)
+    // Written when missing, and kept up to date while it is still ours (files tracked since then).
+    const ignore = join(this.dir, ".gitignore")
+    const current = existsSync(ignore) ? readFileSync(ignore, "utf8") : null
+    if (current === null || (current !== IGNORE && current.startsWith(IGNORE.split("\n")[0]))) writeFileSync(ignore, IGNORE)
     if (!existsSync(join(this.dir, ".git"))) {
       await this.#git("init", "-q", "-b", "main")
       await this.commit("Start tracking the register")

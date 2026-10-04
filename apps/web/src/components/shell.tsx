@@ -5,6 +5,7 @@ import {
   BookOpenIcon,
   CalendarClockIcon,
   CalendarIcon,
+  ChartLineIcon,
   EyeIcon,
   EyeOffIcon,
   FolderOpenIcon,
@@ -36,13 +37,14 @@ import { LOCALES, type Locale, useI18n } from "@/i18n"
 import { capitalize, parseDate } from "@/lib/format"
 import { STYLE } from "@/lib/status"
 
-export type View = "overview" | "deadlines" | "cases" | "inbox" | "profile" | "archive" | "catalog" | "activity" | "settings"
+export type View = "overview" | "deadlines" | "cases" | "inbox" | "finance" | "profile" | "archive" | "catalog" | "activity" | "settings"
 
 export const VIEWS: { id: View; icon: LucideIcon; group: "agenda" | "archive" | "system" }[] = [
   { id: "overview", icon: LayoutDashboardIcon, group: "agenda" },
   { id: "deadlines", icon: CalendarClockIcon, group: "agenda" },
   { id: "cases", icon: FolderOpenIcon, group: "agenda" },
   { id: "inbox", icon: InboxIcon, group: "agenda" },
+  { id: "finance", icon: ChartLineIcon, group: "agenda" },
   { id: "profile", icon: UserRoundIcon, group: "archive" },
   { id: "archive", icon: ArchiveIcon, group: "archive" },
   { id: "catalog", icon: BookOpenIcon, group: "archive" },

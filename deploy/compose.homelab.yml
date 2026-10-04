@@ -34,6 +34,10 @@ services:
       resources:
         limits:
           memory: 2g
+    # dokploy-network: reaches the finance app's API as http://finance-api:3000 (docs/finance.md).
+    networks:
+      - default
+      - dokploy-network
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8790/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 30s
@@ -43,3 +47,7 @@ services:
 
 volumes:
   autocratico_claude:
+
+networks:
+  dokploy-network:
+    external: true

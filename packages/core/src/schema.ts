@@ -29,6 +29,10 @@ export const Deadline = z.object({
   case: z.string().nullable(),
   notes: z.string(),
   source: z.string(),
+  /** Category id in the finance app: preselected when a paid occurrence is recorded there. */
+  finance_category: z.string().nullable(),
+  /** Recurring template in the finance app that is this same payment: its projection is left out of future expenses. */
+  finance_recurring: z.string().nullable(),
 })
 export type Deadline = z.infer<typeof Deadline>
 
@@ -338,6 +342,7 @@ export const Status = z.object({
   speech: z.boolean(),
   telegram: z.object({ enabled: z.boolean(), chats: z.number().int() }),
   gmail: z.array(z.object({ name: z.string(), connected: z.boolean() })),
+  finance: z.object({ connected: z.boolean(), live: z.boolean(), synced_at: z.string().nullable() }),
   inbox: z.object({ new: z.number().int(), failed: z.number().int() }),
   jobs: z.array(z.object({ job: z.string(), last: JobRun.nullable(), next: z.string().nullable() })),
 })
@@ -379,3 +384,125 @@ export const GmailAccountInput = z.object({
   query: z.string().trim().min(1).max(500),
 })
 export type GmailAccountInput = z.infer<typeof GmailAccountInput>
+
+// ---------- Finance: mirror of the finance app (expenses, earnings), investments ----------
+
+export const FINANCE_TYPES = ["expense", "earning"] as const
+export const FinanceType = z.enum(FINANCE_TYPES)
+export type FinanceType = z.infer<typeof FinanceType>
+
+/** A row of the finance app's `transactions`, as its API returns it (optional fields as null). */
+export const FinanceTransaction = z.object({
+  id: z.string(),
+  date: IsoDate,
+  amount: z.number(),
+  description: z.string(),
+  category: z.string(),
+  type: FinanceType,
+  tag: z.string().nullable(),
+  recurringId: z.string().nullable(),
+})
+export type FinanceTransaction = z.infer<typeof FinanceTransaction>
+
+export const FinanceCategory = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: FinanceType,
+  color: z.string().nullable(),
+  /** Left out of the finance app's monthly budget (savings transfers, reimbursements…). */
+  excludeFromBudget: z.boolean(),
+})
+export type FinanceCategory = z.infer<typeof FinanceCategory>
+
+export const FinanceTag = z.object({ id: z.string(), name: z.string(), color: z.string().nullable() })
+export type FinanceTag = z.infer<typeof FinanceTag>
+
+/** Monthly template: the finance app adds the transaction on `dayOfMonth` (clamped) after `lastPeriod`. */
+export const FinanceRecurring = z.object({
+  id: z.string(),
+  description: z.string(),
+  amount: z.number(),
+  category: z.string(),
+  type: FinanceType,
+  tag: z.string().nullable(),
+  dayOfMonth: z.number().int(),
+  active: z.boolean(),
+  /** Last month generated, YYYY-MM. */
+  lastPeriod: z.string(),
+})
+export type FinanceRecurring = z.infer<typeof FinanceRecurring>
+
+/** data/finance/mirror.json: the finance app's data as last synced. Server-owned. */
+export const FinanceMirror = z.object({
+  synced_at: z.string(),
+  transactions: z.array(FinanceTransaction),
+  categories: z.array(FinanceCategory),
+  tags: z.array(FinanceTag),
+  recurring: z.array(FinanceRecurring),
+})
+export type FinanceMirror = z.infer<typeof FinanceMirror>
+
+/** The connection to the finance app, as the web app sees it (the token never leaves the server). */
+export const FinanceSetup = z.object({
+  url: z.string().nullable(),
+  /** A token is saved. */
+  connected: z.boolean(),
+  /** The change feed is open: edits in the finance app show up within seconds. */
+  live: z.boolean(),
+  synced_at: z.string().nullable(),
+  error: z.string().nullable(),
+  counts: z.object({ transactions: z.number().int(), categories: z.number().int(), recurring: z.number().int() }),
+})
+export type FinanceSetup = z.infer<typeof FinanceSetup>
+
+export const FINANCE_TOKEN = /^fin_[A-Za-z0-9]{20,100}$/
+export const FinanceConnectInput = z.object({
+  url: z.url({ protocol: /^https?$/ }).max(300),
+  /** Left out to keep the saved one (changing only the address). */
+  token: z.string().trim().regex(FINANCE_TOKEN).optional(),
+})
+export type FinanceConnectInput = z.infer<typeof FinanceConnectInput>
+
+/** A paid occurrence recorded as an expense in the finance app. */
+export const FinanceExpenseInput = z.object({
+  key: z.string().regex(/^.+@\d{4}-\d{2}-\d{2}$/).max(200),
+  date: IsoDate,
+  amount: z.number().positive().max(10_000_000),
+  category: z.string().min(1).max(100),
+  description: z.string().max(200),
+})
+export type FinanceExpenseInput = z.infer<typeof FinanceExpenseInput>
+
+export const InvestmentPosition = z.object({
+  name: z.string(),
+  isin: z.string().nullable(),
+  quantity: z.number().nullable(),
+  /** Market value in euro on the snapshot's date. */
+  value: z.number(),
+  /** What was paid for it, when the broker shows it. */
+  cost: z.number().nullable(),
+})
+export type InvestmentPosition = z.infer<typeof InvestmentPosition>
+
+/** One `[[snapshot]]` of investments.toml: a broker's portfolio on a day, from a screenshot or an export. */
+export const InvestmentSnapshot = z.object({
+  date: IsoDate,
+  broker: z.string(),
+  cash: z.number(),
+  positions: z.array(InvestmentPosition),
+  source: z.string(),
+})
+export type InvestmentSnapshot = z.infer<typeof InvestmentSnapshot>
+
+export const FinanceData = z.object({
+  today: IsoDate,
+  /** The finance app's change feed is open. */
+  live: z.boolean(),
+  mirror: FinanceMirror.nullable(),
+  investments: z.array(InvestmentSnapshot),
+  /** Occurrence key -> transaction id in the finance app, for paid occurrences recorded there. */
+  links: z.record(z.string(), z.string()),
+  /** Deadlines tied to the finance app (finance_category / finance_recurring set). */
+  deadlines: z.array(z.object({ id: z.string(), finance_category: z.string().nullable(), finance_recurring: z.string().nullable() })),
+})
+export type FinanceData = z.infer<typeof FinanceData>

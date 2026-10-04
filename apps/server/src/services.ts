@@ -5,6 +5,7 @@ import { Devices } from "./auth.ts"
 import { Changes } from "./changes.ts"
 import { Claude } from "./claude.ts"
 import type { Config } from "./config.ts"
+import { Finance } from "./finance.ts"
 import { DataRepo } from "./git.ts"
 import { Inbox } from "./inbox.ts"
 import { Reminders } from "./reminders.ts"
@@ -19,6 +20,7 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
   const claude = new Claude(config)
   const repo = new DataRepo(config.data)
   const reminders = new Reminders(config.data, config.timeZone)
+  const finance = overrides.finance ?? new Finance(config.data, { timeZone: config.timeZone })
   const s: Services = {
     config,
     store,
@@ -32,13 +34,14 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     telegram: null,
     transcriber: new Transcriber(config),
     reminders,
+    finance,
     ...overrides,
   }
   if (config.telegramToken && overrides.telegram === undefined) {
     s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, reminders, transcriber: s.transcriber, changes: s.changes, jobs: () => s.jobs })
   }
   if (overrides.jobs === undefined) {
-    s.jobs = new Jobs({ config, store, inbox, claude, repo, reminders, notifier: () => s.telegram })
+    s.jobs = new Jobs({ config, store, inbox, claude, repo, reminders, finance, notifier: () => s.telegram })
   }
   return s
 }
