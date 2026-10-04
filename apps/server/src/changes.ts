@@ -39,14 +39,15 @@ const FIELDS = {
   until: Day,
   severity: z.enum(SEVERITIES),
   remind_days: z.array(z.number().int().min(0).max(400)).max(10),
-  amount: z.number().nonnegative(),
+  amount: z.union([z.number().nonnegative(), z.literal("TODO")]),
+  amounts: z.record(Day, z.number().nonnegative()).refine((a) => Object.keys(a).length <= 120, "too many amounts"),
   sensitive: z.boolean(),
   case: z.string().max(120),
   notes: z.string().max(2000),
   source: z.string().max(300),
 }
 /** The order of keys in a new deadline, as in the file's schema. */
-const ORDER = ["id", "title", "area", "severity", "date", "repeat", "until", "remind_days", "amount", "sensitive", "case", "notes", "source"]
+const ORDER = ["id", "title", "area", "severity", "date", "repeat", "until", "remind_days", "amount", "amounts", "sensitive", "case", "notes", "source"]
 
 const NewDeadline = z.object({ id: Id, ...FIELDS }).partial().required({ id: true, title: true, area: true, date: true }).strict()
 // null removes a field (back to its default); title, area and date always stay.
@@ -58,6 +59,8 @@ const Patch = z
     severity: FIELDS.severity.nullable(),
     remind_days: FIELDS.remind_days.nullable(),
     amount: FIELDS.amount.nullable(),
+    // merged into the recorded ones: a date set to null is removed
+    amounts: z.record(Day, z.number().nonnegative().nullable()).nullable(),
     sensitive: FIELDS.sensitive.nullable(),
     case: FIELDS.case.nullable(),
     notes: FIELDS.notes.nullable(),
@@ -82,6 +85,14 @@ type Table = Record<string, unknown>
 /** A JSON value as TOML: ISO dates become dates. */
 function toml(key: string, v: unknown): unknown {
   return (key === "date" || key === "until") && typeof v === "string" && v !== "TODO" ? new TomlDate(v) : v
+}
+
+/** `amounts` as an inline table, by date: `{ "YYYY-MM-DD" = euro, ... }`. */
+function amountsLine(amounts: Record<string, number>): string {
+  const entries = Object.keys(amounts)
+    .sort()
+    .map((k) => `"${k}" = ${Number.isInteger(amounts[k]) ? amounts[k].toFixed(1) : String(amounts[k])}`)
+  return `amounts = { ${entries.join(", ")} }`
 }
 
 /** Objects with sorted keys, so two tables compare by content. */
@@ -139,7 +150,8 @@ function setKeys(text: string, id: string, values: Table): string {
   for (const [key, value] of Object.entries(values)) {
     const [start, end] = block(lines, id)
     const at = lines.slice(start + 1, end).findIndex((l) => new RegExp(`^\\s*${key}\\s*=`).test(l))
-    const line = value === null ? [] : stringify({ [key]: value }).trimEnd().split("\n")
+    const line =
+      value === null ? [] : key === "amounts" ? [amountsLine(value as Record<string, number>)] : stringify({ [key]: value }).trimEnd().split("\n")
     if (at >= 0) {
       const i = start + 1 + at
       lines.splice(i, valueEnd(lines, i) - i, ...line)
@@ -209,14 +221,25 @@ export class Changes {
             const v = (op.deadline as Table)[k]
             if (v !== undefined) row[k] = toml(k, v)
           }
-          text = `${text.trimEnd()}\n\n${stringify({ deadline: [row] }).trimEnd()}\n`
+          // amounts inline, so the table stays one [[deadline]] block (stringify would open a subtable)
+          const { amounts, ...rest } = row
+          const lines = [stringify({ deadline: [rest] }).trimEnd(), ...(amounts ? [amountsLine(amounts as Record<string, number>)] : [])]
+          text = `${text.trimEnd()}\n\n${lines.join("\n")}\n`
           expected.push(row)
           ids.add(op.deadline.id)
           continue
         }
         const target = expected.find((t) => t.id === op.id)
         if (!target) throw new ChangeError(`no deadline with id "${op.id}"`)
-        const set: Table = op.op === "close" ? { until: op.until ?? today } : op.op === "reopen" ? { until: null } : op.set
+        const set: Table = op.op === "close" ? { until: op.until ?? today } : op.op === "reopen" ? { until: null } : { ...op.set }
+        if (set.amounts) {
+          const merged = { ...((target.amounts as Record<string, number> | undefined) ?? {}) }
+          for (const [on, v] of Object.entries(set.amounts as Record<string, number | null>)) {
+            if (v === null) delete merged[on]
+            else merged[on] = v
+          }
+          set.amounts = Object.keys(merged).length ? merged : null
+        }
         const values: Table = {}
         for (const [k, v] of Object.entries(set)) {
           values[k] = v === null ? null : toml(k, v)

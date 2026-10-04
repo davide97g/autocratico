@@ -103,7 +103,9 @@ severity = "high"            # high | medium | low
 date = 2027-01-31            # or "TODO" when unknown
 repeat = "yearly"            # none | yearly | monthly | every N years | every N months
 remind_days = [14, 3]
-amount = 180.00              # hidden in privacy mode
+amount = 180.00              # hidden in privacy mode; "TODO" when not known yet
+# or, when it changes: amounts from bills and receipts, by date; later ones are estimated from them
+# amounts = { "2025-01-31" = 172.00, "2026-01-31" = 176.50 }
 ```
 
 ## Working with an agent

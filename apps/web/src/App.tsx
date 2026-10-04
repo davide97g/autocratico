@@ -329,7 +329,7 @@ function Main({
 
           <div key={deadline ? `deadline:${deadline}` : view} className="view-in flex min-w-0 flex-col gap-8">
           {data && view === "overview" && (
-            <Overview data={data} onDone={onDone} onOpenCase={onOpenCase} onOpenDeadlines={openDeadlines} />
+            <Overview data={data} onOpenCase={onOpenCase} onOpenDeadlines={openDeadlines} onOpenDeadline={openDeadline} />
           )}
           {data && view === "deadlines" && !deadline && (
             <Deadlines data={data} search={search} onDone={onDone} onOpenCase={onOpenCase} onOpen={openDeadline} onAsk={askAbout} />

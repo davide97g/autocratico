@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { cn } from "cn"
 
+import { Amount } from "@/components/amount"
 import { Sensitive } from "@/components/privacy"
 import { SourcePreview } from "@/components/source"
 import { SeverityIcon, StatusBadge, StatusLegend } from "@/components/status"
@@ -196,7 +197,7 @@ function Details({
   onOpen: (key: string) => void
   onAsk: (o: Occurrence) => void
 }) {
-  const { t, fmt } = useI18n()
+  const { t } = useI18n()
   const repeat = t.deadlines.repeats[o.repeat.trim().toLowerCase()] ?? o.repeat
   return (
     <div className="flex flex-col gap-3 pb-4 text-sm @lg:pl-16">
@@ -225,10 +226,9 @@ function Details({
         <span>
           {t.deadlines.repeat}: {repeat}
         </span>
-        {o.amount != null && (
+        {o.amount_basis && (
           <span>
-            {t.deadlines.amount}:{" "}
-            <Sensitive>{fmt.euro.format(o.amount)}</Sensitive>
+            {t.deadlines.amount}: <Amount o={o} />
           </span>
         )}
         <span className="font-mono">{o.key}</span>
@@ -301,9 +301,7 @@ function Row({
             )}
             <span>{areaName(t, o.area)}</span>
             <SeverityIcon value={o.severity} />
-            {o.amount != null && (
-              <Sensitive>{fmt.euro.format(o.amount)}</Sensitive>
-            )}
+            <Amount o={o} />
             {o.notes && !open && (
               <span className="line-clamp-1 max-w-md">{o.notes}</span>
             )}

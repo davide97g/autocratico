@@ -30,7 +30,7 @@ The code is public, the data is not: everything personal lives in `data/` (ignor
 - Native apps (later) go in `apps/ios`, `apps/macos`, against the same API.
 
 ## Data files
-- `data/deadlines.toml` — source of truth for deadlines (schema at the top of the file). Unknown date = `"TODO"`. A deadline that no longer applies gets `until` (last day that counts) instead of being deleted. `severity` (high/medium/low) + days left decide the status color; thresholds in `packages/core/src/status.ts`.
+- `data/deadlines.toml` — source of truth for deadlines (schema at the top of the file). Unknown date = `"TODO"`. A deadline that no longer applies gets `until` (last day that counts) instead of being deleted. `severity` (high/medium/low) + days left decide the status color; thresholds in `packages/core/src/status.ts`. Money: `amount` is the same for every occurrence (`"TODO"` = a payment whose amount is unknown); `amounts = { "YYYY-MM-DD" = euro }` records single occurrences from documents, and later ones are estimated from it (average of the last year recorded, `occurrenceAmount` in `packages/core/src/deadlines.ts`, mirrored in `store.py`). The Overview sums what is left to pay over 3/6/12 months (`packages/core/src/payments.ts`).
 - `data/state.json` — occurrences marked as done (`<id>@<date>`). Written by the server only.
 - `data/profile.toml` — person, properties, vehicles, documents, work, accounts. Free-form; only `person.name` is read by the code.
 - `data/cases/<year>-<slug>/README.md` — one folder per case: `# Title`, a `**Status:** ...` line, `- [ ]` checklist, a Timeline section with ISO dates.

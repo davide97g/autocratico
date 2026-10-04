@@ -68,6 +68,22 @@ repeat = "yearly"
 until = 2026-06-30
 
 [[deadline]]
+id = "bill"
+title = "Bill"
+area = "home"
+date = 2025-11-20
+repeat = "monthly"
+amounts = { "2025-11-20" = 30.0, "2026-04-20" = 50, "2026-08-20" = 70.55, "2026-10-20" = 41.1 }
+
+[[deadline]]
+id = "insurance"
+title = "Insurance"
+area = "vehicles"
+date = 2027-02-10
+repeat = "yearly"
+amount = "TODO"
+
+[[deadline]]
 id = "dropped"
 title = "Dropped"
 area = "home"

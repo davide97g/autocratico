@@ -10,7 +10,11 @@
 #                 kept for history instead of being deleted)
 #   severity      high (payment or deadline with penalties) | medium (default) | low (reminder)
 #   remind_days   calendar reminders, days before
-#   amount        optional, euro (hidden in privacy mode)
+#   amount        optional, euro, the same for every occurrence (hidden in privacy mode);
+#                 "TODO" for a payment whose amount is not known yet
+#   amounts       optional, amounts of single occurrences from documents (bills, notices, receipts):
+#                 { "YYYY-MM-DD" = euro }, by occurrence date. Without `amount`, later occurrences
+#                 are estimated from them (average of the last year recorded)
 #   sensitive     true when the date reveals personal data (e.g. a birthday)
 #   case          optional, folder in cases/
 #   notes, source optional (source: path relative to the data folder, e.g. archive/...)
@@ -51,6 +55,7 @@ severity = "high"
 date = 2026-06-16
 repeat = "yearly"
 remind_days = [14, 3]
+amounts = { "2025-06-16" = 405.00, "2026-06-16" = 412.00 }
 notes = "Example: second home. A main residence outside categories A/1, A/8, A/9 is exempt."
 
 [[deadline]]
@@ -61,6 +66,7 @@ severity = "high"
 date = 2026-12-16
 repeat = "yearly"
 remind_days = [14, 3]
+amounts = { "2025-12-16" = 405.00 }
 
 [[deadline]]
 id = "condo-fee"
@@ -79,6 +85,7 @@ severity = "medium"
 date = 2026-10-31
 repeat = "yearly"
 remind_days = [30]
+amounts = { "2024-10-28" = 110.00, "2025-10-30" = 120.00 }
 
 [[deadline]]
 id = "tari"
@@ -86,6 +93,7 @@ title = "TARI waste tax"
 area = "home"
 severity = "medium"
 date = "TODO"
+amount = "TODO"
 notes = "Dates depend on the municipality: copy them from the payment notice."
 
 # --- Vehicles ------------------------------------------------------------
@@ -98,6 +106,7 @@ severity = "high"
 date = 2027-02-10
 repeat = "yearly"
 remind_days = [30, 7]
+amount = "TODO"
 notes = "15 days of grace after expiry; no automatic renewal."
 
 [[deadline]]
@@ -108,6 +117,7 @@ severity = "high"
 date = 2027-03-31
 repeat = "every 2 years"
 remind_days = [30]
+amount = 79.02
 
 [[deadline]]
 id = "winter-tyres"

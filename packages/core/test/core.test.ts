@@ -10,6 +10,7 @@ import {
   level,
   parseDeadlines,
   parseWhatsAppExport,
+  payments,
   redact,
   reminders,
   slug,
@@ -59,6 +60,70 @@ remind_days = [7, 3]
     expect(level(o)).toBe("urgent")
   })
 })
+
+describe("amounts", () => {
+  const toml = `
+[[deadline]]
+id = "fee"
+title = "Fee"
+area = "home"
+date = 2026-01-15
+repeat = "every 3 months"
+amount = 100
+
+[[deadline]]
+id = "bill"
+title = "Bill"
+area = "home"
+date = 2025-10-20
+repeat = "monthly"
+amounts = { "2025-10-20" = 30.0, "2026-04-20" = 50.0, "2026-08-20" = 70.5, "2026-10-20" = 41 }
+
+[[deadline]]
+id = "insurance"
+title = "Insurance"
+area = "vehicles"
+date = 2027-02-10
+repeat = "yearly"
+amount = "TODO"
+
+[[deadline]]
+id = "service"
+title = "Service"
+area = "home"
+date = 2026-11-30
+repeat = "yearly"
+`
+  const paid = ["fee@2026-07-15", "fee@2026-10-15", "bill@2026-06-20", "bill@2026-07-20", "bill@2026-08-20"]
+  const items = agenda(parseDeadlines(toml), { done: Object.fromEntries(paid.map((k) => [k, "2026-10-01"])) }, "2026-10-04")
+  const on = (key: string) => items.find((o) => o.key === key)
+
+  it("resolves known, estimated and unknown amounts", () => {
+    expect(on("fee@2027-01-15")).toMatchObject({ amount: 100, amount_basis: "known" })
+    expect(on("bill@2026-10-20")).toMatchObject({ amount: 41, amount_basis: "known" })
+    // the year up to the latest amount recorded before it: 50, 70.5 and 41 (30 is a year older)
+    expect(on("bill@2026-11-20")).toMatchObject({ amount: 53.83, amount_basis: "estimate" })
+    expect(on("insurance@2027-02-10")).toMatchObject({ amount: null, amount_basis: "unknown" })
+    expect(on("service@2026-11-30")).toMatchObject({ amount: null, amount_basis: null })
+  })
+
+  it("sums what is left to pay over the next months", () => {
+    const p = payments(items, "2026-10-04", 3)
+    expect(p.end).toBe("2027-01-04")
+    // overdue September bill (estimated from the year before it), October bill, Nov and Dec estimates
+    expect(p.items.map((o) => o.key)).toEqual(["bill@2026-09-20", "bill@2026-10-20", "bill@2026-11-20", "bill@2026-12-20"])
+    expect(p).toMatchObject({ known: 41, estimated: cents(on("bill@2026-09-20")!.amount! + 53.83 * 2), unknown: 0 })
+    expect(p.overdue).toBe(on("bill@2026-09-20")!.amount)
+    expect(payments(items, "2026-10-04", 6)).toMatchObject({ unknown: 1 })
+  })
+
+  it("rejects bad amounts", () => {
+    expect(() => parseDeadlines(toml.replace('"TODO"', '"soon"'))).toThrow(/amount must be/)
+    expect(() => parseDeadlines(toml.replace('"2025-10-20" = 30.0', '"Oct" = 30.0'))).toThrow(/amounts must be/)
+  })
+})
+
+const cents = (n: number) => Math.round(n * 100) / 100
 
 describe("redact", () => {
   it("masks marked and recognisable personal data", () => {

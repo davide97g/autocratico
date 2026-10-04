@@ -2,6 +2,7 @@ import * as React from "react"
 import { ArrowLeftIcon, CheckIcon, FolderOpenIcon, SparklesIcon, Undo2Icon } from "lucide-react"
 import { cn } from "cn"
 
+import { Amount } from "@/components/amount"
 import { Sensitive } from "@/components/privacy"
 import { SourcePreview } from "@/components/source"
 import { SeverityIcon, StatusBadge } from "@/components/status"
@@ -108,9 +109,7 @@ export const DeadlinePage = React.memo(function DeadlinePage({
                   {areaName(t, o.area)}
                 </span>
                 <SeverityIcon value={o.severity} />
-                {o.amount != null && (
-                  <Sensitive className="font-medium text-foreground">{fmt.euro.format(o.amount)}</Sensitive>
-                )}
+                <Amount o={o} className="font-medium text-foreground" />
               </div>
             </div>
           </div>
@@ -180,11 +179,14 @@ export const DeadlinePage = React.memo(function DeadlinePage({
                 </dd>
                 <dt className="text-muted-foreground">{t.deadlines.repeat}</dt>
                 <dd>{repeat}</dd>
-                {o.amount != null && (
+                {o.amount_basis && (
                   <>
                     <dt className="text-muted-foreground">{t.deadlines.amount}</dt>
                     <dd>
-                      <Sensitive>{fmt.euro.format(o.amount)}</Sensitive>
+                      <Amount o={o} />
+                      {o.amount_basis === "estimate" && (
+                        <span className="block text-xs text-muted-foreground">{t.payments.estimate}</span>
+                      )}
                     </dd>
                   </>
                 )}

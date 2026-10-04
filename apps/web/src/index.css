@@ -241,11 +241,6 @@
   animation: float 9s ease-in-out infinite;
 }
 
-.chrome-halo {
-  background: radial-gradient(circle, oklch(1 0 0 / 22%), transparent 62%);
-  filter: blur(18px);
-}
-
 /* Black silk: soft folds for the wide card. */
 .silk {
   background:

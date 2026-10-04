@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import calendar
 import json
+import math
 import os
 import re
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -33,6 +34,8 @@ class Deadline:
     severity: str = "medium"
     remind_days: tuple[int, ...] = ()
     amount: float | None = None
+    amounts: dict[str, float] = field(default_factory=dict)
+    payment: bool = False
     sensitive: bool = False
     case: str | None = None
     notes: str = ""
@@ -55,6 +58,46 @@ class Deadline:
         if m:
             return (m.group(2), int(m.group(1)))
         raise ValueError(f"{self.id}: invalid repeat: {self.repeat!r}")
+
+
+def _number(v) -> float | None:
+    return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def _money(did: str, amount, amounts) -> dict:
+    """amount (euro or "TODO") and amounts ({"YYYY-MM-DD" = euro}) of a deadline (mirrors core/deadlines.ts)."""
+    if amount is not None and amount != "TODO" and _number(amount) is None:
+        raise ValueError(f'{did}: amount must be a number of euro or "TODO"')
+    recorded: dict[str, float] = {}
+    if amounts is not None:
+        if not isinstance(amounts, dict):
+            raise ValueError(f'{did}: amounts must be a table of "YYYY-MM-DD" = euro')
+        for on, v in sorted(amounts.items()):
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", on) or _number(v) is None:
+                raise ValueError(f'{did}: amounts must be a table of "YYYY-MM-DD" = euro')
+            recorded[on] = v
+    return {"amount": _number(amount), "amounts": recorded, "payment": amount is not None or bool(recorded)}
+
+
+def occurrence_amount(d: Deadline, on: date) -> tuple[float | None, str | None]:
+    """Amount of d on `on` and where it comes from: known, estimate, unknown (None: not a payment).
+
+    Its recorded amount, else the deadline's, else the average of the amounts recorded in the year
+    up to the latest one before `on` (or the latest one at all).
+    """
+    day = on.isoformat()
+    if day in d.amounts:
+        return d.amounts[day], "known"
+    if d.amount is not None:
+        return d.amount, "known"
+    dates = list(d.amounts)  # sorted by load_deadlines
+    if not dates:
+        return None, "unknown" if d.payment else None
+    pool = [x for x in dates if x < day] or dates
+    start = _add_months(date.fromisoformat(pool[-1]), -12).isoformat()
+    sample = [d.amounts[x] for x in pool if x > start]
+    mean = sum(sample) / len(sample)
+    return math.floor(mean * 100 + 0.5) / 100, "estimate"
 
 
 def _add_months(d: date, months: int) -> date:
@@ -91,7 +134,7 @@ def load_deadlines() -> list[Deadline]:
                 until=until,
                 severity=r.get("severity", "medium"),
                 remind_days=tuple(r.get("remind_days", [])),
-                amount=r.get("amount"),
+                **_money(did, r.get("amount"), r.get("amounts")),
                 sensitive=r.get("sensitive", False),
                 case=r.get("case"),
                 notes=r.get("notes", ""),
@@ -151,6 +194,7 @@ def agenda(today: date, back: int = 120, ahead: int = 400) -> list[dict]:
     for d in load_deadlines():
         for on in occurrences(d, today - timedelta(days=back), today + timedelta(days=ahead)):
             k = key(d, on)
+            amount, basis = occurrence_amount(d, on)
             items.append(
                 {
                     "key": k,
@@ -162,7 +206,8 @@ def agenda(today: date, back: int = 120, ahead: int = 400) -> list[dict]:
                     "done_on": done.get(k),
                     "repeat": d.repeat,
                     "severity": d.severity,
-                    "amount": d.amount,
+                    "amount": amount,
+                    "amount_basis": basis,
                     "sensitive": d.sensitive,
                     "case": d.case,
                     "notes": d.notes,

@@ -2,7 +2,6 @@ import * as React from "react"
 import { caseOpen } from "@autocratico/core"
 import {
   AlarmClockIcon,
-  ArrowUpRightIcon,
   CalendarPlusIcon,
   CheckIcon,
   FolderOpenIcon,
@@ -24,6 +23,7 @@ import { useI18n } from "@/i18n"
 import type { Data, Occurrence } from "@/lib/api"
 import { areaIcon, areaName, capitalize, parseDate } from "@/lib/format"
 import { level, ORDER, SEVERITIES, severity, STYLE } from "@/lib/status"
+import { PaymentsCard } from "@/views/payments"
 import { Timeline } from "@/views/timeline"
 
 function perMonth(items: Occurrence[], today: string, months: number, format: Intl.DateTimeFormat) {
@@ -67,14 +67,14 @@ function SquareIcon({ icon: Icon, className }: { icon: React.ElementType; classN
 
 export const Overview = React.memo(function Overview({
   data,
-  onDone,
   onOpenCase,
   onOpenDeadlines,
+  onOpenDeadline,
 }: {
   data: Data
-  onDone: (o: Occurrence, done: boolean) => void
   onOpenCase: (slug: string) => void
   onOpenDeadlines: () => void
+  onOpenDeadline: (key: string) => void
 }) {
   const { t, fmt } = useI18n()
   const [months, setMonths] = React.useState("6")
@@ -83,7 +83,6 @@ export const Overview = React.memo(function Overview({
   const upcoming = open
     .filter((o) => o.days >= 0)
     .sort((a, b) => a.days - b.days || WEIGHT[severity(a.severity)] - WEIGHT[severity(b.severity)])
-  const next = upcoming[0]
   // Memoized: a new array would make the charts replay their animation (and the calendar lay out again).
   const { compactAgenda, year, load } = React.useMemo(() => {
     // Monthly deadlines crowd the calendar and the charts: only the next one is shown.
@@ -152,55 +151,8 @@ export const Overview = React.memo(function Overview({
         </CardFooter>
       </Card>
 
-      {/* Next task */}
-      <div className="dark @2xl:col-span-1 @4xl:col-span-4">
-        <Card className="relative h-full min-h-96 bg-background ring-0">
-          <CardHeader className="relative z-10">
-            <CardTitle className="flex items-center gap-2">
-              <ArrowUpRightIcon className="size-4" />
-              {t.overview.next}
-            </CardTitle>
-            {next && (
-              <CardAction>
-                <StatusBadge level={level(next)} />
-              </CardAction>
-            )}
-          </CardHeader>
-          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-16 flex justify-center">
-            <div className="chrome-halo absolute size-52" />
-            <div className="chrome-orb size-36" />
-          </div>
-          {next ? (
-            <CardContent className="relative z-10 mt-auto flex flex-col gap-5">
-              <div className="flex flex-col gap-1">
-                <div className="text-5xl font-medium tracking-tight">
-                  <Sensitive when={next.sensitive}>{fmt.dayMonth.format(parseDate(next.date))}</Sensitive>
-                </div>
-                <div className="text-base font-medium">{next.title}</div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {t.relativeDays(next.days)} · {areaName(t, next.area)}
-                  <SeverityIcon value={next.severity} />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => onDone(next, true)}>
-                  <CheckIcon data-icon="inline-start" />
-                  {t.overview.markDone}
-                </Button>
-                {next.case && (
-                  <Button variant="outline" size="sm" onClick={() => onOpenCase(next.case!)}>
-                    {t.overview.openCase}
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          ) : (
-            <CardContent className="relative z-10 mt-auto text-sm text-muted-foreground">
-              {t.overview.nothingScheduled}
-            </CardContent>
-          )}
-        </Card>
-      </div>
+      {/* Money to pay */}
+      <PaymentsCard agenda={agenda} today={today} onOpen={onOpenDeadline} className="@2xl:col-span-1 @4xl:col-span-4" />
 
       {/* Keep an eye on */}
       <Card className="@4xl:col-span-4">

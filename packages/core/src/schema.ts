@@ -19,13 +19,27 @@ export const Deadline = z.object({
   until: IsoDate.nullable(),
   severity: Severity,
   remind_days: z.array(z.number().int()),
+  /** Amount of every occurrence; null when missing or "TODO". */
   amount: z.number().nullable(),
+  /** Amounts of single occurrences, by date, taken from documents (bills, notices, receipts). */
+  amounts: z.record(IsoDate, z.number()),
+  /** Something to pay: an amount, `amount = "TODO"` (not known yet) or recorded amounts. */
+  payment: z.boolean(),
   sensitive: z.boolean(),
   case: z.string().nullable(),
   notes: z.string(),
   source: z.string(),
 })
 export type Deadline = z.infer<typeof Deadline>
+
+/**
+ * Where an occurrence's amount comes from: `known` (its own recorded amount, or the deadline's),
+ * `estimate` (from the amounts recorded for other occurrences), `unknown` (a payment with no amount
+ * to go by). null when the deadline is not a payment.
+ */
+export const AMOUNT_BASES = ["known", "estimate", "unknown"] as const
+export const AmountBasis = z.enum(AMOUNT_BASES)
+export type AmountBasis = z.infer<typeof AmountBasis>
 
 export const Occurrence = z.object({
   /** `<id>@<date>`, the key used in state.json. */
@@ -38,7 +52,9 @@ export const Occurrence = z.object({
   done_on: IsoDate.nullable(),
   repeat: z.string(),
   severity: Severity,
+  /** This occurrence's amount, known or estimated (see amount_basis). */
   amount: z.number().nullable(),
+  amount_basis: AmountBasis.nullable(),
   sensitive: z.boolean(),
   case: z.string().nullable(),
   notes: z.string(),

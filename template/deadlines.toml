@@ -10,7 +10,11 @@
 #                 kept for history instead of being deleted)
 #   severity      high (payment or deadline with penalties) | medium (default) | low (reminder)
 #   remind_days   calendar reminders, days before
-#   amount        optional, euro (hidden in privacy mode)
+#   amount        optional, euro, the same for every occurrence (hidden in privacy mode);
+#                 "TODO" for a payment whose amount is not known yet
+#   amounts       optional, amounts of single occurrences from documents (bills, notices, receipts):
+#                 { "YYYY-MM-DD" = euro }, by occurrence date. Without `amount`, later occurrences
+#                 are estimated from them (average of the last year recorded)
 #   sensitive     true when the date reveals personal data (e.g. a birthday)
 #   case          optional, folder in cases/
 #   notes, source optional (source: path relative to the data folder, e.g. archive/...)

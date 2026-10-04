@@ -6,6 +6,7 @@ import { parse, TomlDate } from "smol-toml"
 
 import { addDays, addMonths, daysBetween } from "./dates.ts"
 import {
+  type AmountBasis,
   type Deadline,
   type Incomplete,
   type Occurrence,
@@ -74,7 +75,7 @@ export function parseDeadlines(text: string): Deadline[] {
       until,
       severity: severity as Severity,
       remind_days: Array.isArray(r.remind_days) ? r.remind_days.map(Number) : [],
-      amount: typeof r.amount === "number" ? r.amount : typeof r.amount === "bigint" ? Number(r.amount) : null,
+      ...money(id, r.amount, r.amounts),
       sensitive: r.sensitive === true,
       case: typeof r.case === "string" ? r.case : null,
       notes: str(r.notes),
@@ -83,6 +84,47 @@ export function parseDeadlines(text: string): Deadline[] {
     stepMonths(d) // validate the repeat field right away
     return d
   })
+}
+
+function num(v: unknown): number | null {
+  return typeof v === "number" ? v : typeof v === "bigint" ? Number(v) : null
+}
+
+/** `amount` (euro or "TODO") and `amounts` (`{ "YYYY-MM-DD" = euro }`) of a deadline. */
+function money(id: string, amount: unknown, amounts: unknown): Pick<Deadline, "amount" | "amounts" | "payment"> {
+  if (amount !== undefined && amount !== "TODO" && num(amount) === null) {
+    throw new DataError(`${id}: amount must be a number of euro or "TODO"`)
+  }
+  const recorded: Record<string, number> = {}
+  if (amounts !== undefined) {
+    if (!amounts || typeof amounts !== "object" || Array.isArray(amounts) || amounts instanceof Date) {
+      throw new DataError(`${id}: amounts must be a table of "YYYY-MM-DD" = euro`)
+    }
+    for (const [on, v] of Object.entries(amounts).sort(([a], [b]) => cmp(a, b))) {
+      const n = num(v)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(on) || n === null) throw new DataError(`${id}: amounts must be a table of "YYYY-MM-DD" = euro`)
+      recorded[on] = n
+    }
+  }
+  return { amount: num(amount), amounts: recorded, payment: amount !== undefined || Object.keys(recorded).length > 0 }
+}
+
+/**
+ * The amount of `d` on `on`: its recorded amount, else the deadline's, else the average of the
+ * amounts recorded in the year up to the latest one before `on` (or the latest one at all).
+ * Mirrors scripts/store.py.
+ */
+export function occurrenceAmount(d: Deadline, on: string): { amount: number | null; amount_basis: AmountBasis | null } {
+  if (on in d.amounts) return { amount: d.amounts[on], amount_basis: "known" }
+  if (d.amount !== null) return { amount: d.amount, amount_basis: "known" }
+  const dates = Object.keys(d.amounts) // sorted by parseDeadlines
+  if (!dates.length) return { amount: null, amount_basis: d.payment ? "unknown" : null }
+  const before = dates.filter((x) => x < on)
+  const pool = before.length ? before : dates
+  const from = addMonths(pool[pool.length - 1], -12)
+  const sample = pool.filter((x) => x > from).map((x) => d.amounts[x])
+  const mean = sample.reduce((a, b) => a + b, 0) / sample.length
+  return { amount: Math.floor(mean * 100 + 0.5) / 100, amount_basis: "estimate" }
 }
 
 function isoDate(v: unknown): string | null {
@@ -124,7 +166,7 @@ export function agenda(deadlines: Deadline[], state: State, today: string, back 
         done_on: state.done[key] ?? null,
         repeat: d.repeat,
         severity: d.severity,
-        amount: d.amount,
+        ...occurrenceAmount(d, on),
         sensitive: d.sensitive,
         case: d.case,
         notes: d.notes,

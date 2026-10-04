@@ -456,6 +456,31 @@ describe("changes from the chat", () => {
     expect(hash).toBe(commit.hash)
   })
 
+  it("records amounts of single occurrences and payments of unknown amount", async () => {
+    const e = await env()
+    await e.s.changes.apply(
+      {
+        summary: "amounts",
+        ops: [
+          { op: "update", id: "imu-first", set: { amounts: { "2027-06-16": 420, "2025-06-16": null } } },
+          { op: "update", id: "car-insurance", set: { amount: 310.4 } },
+          { op: "update", id: "boiler-service", set: { amount: "TODO", amounts: null } },
+          { op: "add", deadline: { id: "power", title: "Power bill", area: "home", date: "2026-11-05", repeat: "every 2 months", amounts: { "2026-09-05": 80 } } },
+        ],
+      },
+      "web"
+    )
+    const text = readFileSync(e.file, "utf8")
+    expect(text).toContain('amounts = { "2026-06-16" = 412.0, "2027-06-16" = 420.0 }')
+    expect(text).toMatch(/id = "power"[^[]*\namounts = \{ "2026-09-05" = 80\.0 \}\n$/)
+    const agenda = e.s.store.data().agenda
+    const at = (key: string) => agenda.find((o) => o.key === key)
+    expect(at("imu-first@2027-06-16")).toMatchObject({ amount: 420, amount_basis: "known" })
+    expect(at("car-insurance@2027-02-10")).toMatchObject({ amount: 310.4, amount_basis: "known" })
+    expect(at("boiler-service@2026-10-31")).toMatchObject({ amount: null, amount_basis: "unknown" })
+    expect(at("power@2026-11-05")).toMatchObject({ amount: 80, amount_basis: "estimate" })
+  })
+
   it("edits multi-line values and leaves the rest alone", async () => {
     const e = await env()
     writeFileSync(
