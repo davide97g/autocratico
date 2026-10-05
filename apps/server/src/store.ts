@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto"
 import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 
-import { type Chat, type Data, today } from "@autocratico/core"
+import { type Chat, type ChatSummary, type Data, today } from "@autocratico/core"
 import { dataPaths, loadData, loadState } from "@autocratico/core/node"
 
 import { locks, writeJson } from "./files.ts"
@@ -55,6 +55,22 @@ export class Store {
       })
       .filter((c) => !channel || c.channel === channel)
       .sort((a, b) => (a.updated < b.updated ? 1 : -1))
+  }
+
+  /** The history list: one line per conversation that has a question, newest first. */
+  chatSummaries(channel?: Chat["channel"]): ChatSummary[] {
+    return this.chats(channel).flatMap((c) => {
+      const first = c.messages.find((m) => m.role === "user")
+      if (!first) return []
+      const text = first.text.replace(/\s+/g, " ").trim()
+      let title = text
+      if (text.length > 80) {
+        title = text.slice(0, 79).trimEnd()
+        if ((title.match(/\|\|/g)?.length ?? 0) % 2) title += "||" // keep personal data marked when cut halfway
+        title += "…"
+      }
+      return [{ id: c.id, channel: c.channel, updated: c.updated, title, messages: c.messages.length }]
+    })
   }
 
   chat(id: string): Chat | null {

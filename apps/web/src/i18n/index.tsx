@@ -27,6 +27,7 @@ function initialLocale(): Locale {
 function formats(tag: string) {
   return {
     dayMonth: new Intl.DateTimeFormat(tag, { day: "numeric", month: "short" }),
+    dayMonthTime: new Intl.DateTimeFormat(tag, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
     monthYear: new Intl.DateTimeFormat(tag, { month: "long", year: "numeric" }),
     monthShort: new Intl.DateTimeFormat(tag, { month: "short" }),
     weekday: new Intl.DateTimeFormat(tag, { weekday: "short" }),

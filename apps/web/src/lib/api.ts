@@ -3,6 +3,7 @@ import type {
   Activity,
   ArchiveEntry,
   Chat,
+  ChatSummary,
   Data,
   Device,
   FinanceConnectInput,
@@ -35,6 +36,7 @@ export type {
   Case,
   CatalogEntry,
   Chat,
+  ChatSummary,
   Commit,
   Data,
   Device,
@@ -123,7 +125,8 @@ export async function markDone(key: string, done: boolean): Promise<string | nul
   return done_on
 }
 
-export const chats = (channel?: Chat["channel"]) => request<Chat[]>(`/api/chats${channel ? `?channel=${channel}` : ""}`)
+export const chats = (channel?: Chat["channel"]) => request<ChatSummary[]>(`/api/chats${channel ? `?channel=${channel}` : ""}`)
+export const chat = (id: string) => request<Chat>(`/api/chats/${id}`)
 export const deleteChat = (id: string) => post<{ ok: boolean }>(`/api/chats/${id}`, undefined, "DELETE")
 
 export const inbox = () => request<InboxItem[]>("/api/inbox")

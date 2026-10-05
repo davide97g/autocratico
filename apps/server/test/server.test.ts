@@ -36,6 +36,23 @@ describe("dev mode", () => {
     expect((await post(app, "/api/done", { key: "car-tax@2027-01-31", done: false }, noOrigin)).status).toBe(403)
   })
 
+  it("lists past chats by their first question and opens one", async () => {
+    const { app, s } = setup()
+    const me = await owner(app)
+    const store = s.store
+    const old = store.newChat("web", "old")
+    old.messages.push({ role: "user", text: `Quanto costa il ||bollo||?  ${"x".repeat(90)}`, tools: [] })
+    await store.saveChat(old)
+    await store.saveChat(store.newChat("web", "empty")) // nothing asked yet: not in the history
+    const list = await (await app.request("/api/chats?channel=web", { headers: me })).json()
+    expect(list).toHaveLength(1)
+    expect(list[0]).toMatchObject({ id: "old", messages: 1 })
+    expect(list[0].title).toMatch(/^Quanto costa il \|\|bollo\|\|\? x+…$/)
+    const chat = await (await app.request("/api/chats/old", { headers: me })).json()
+    expect(chat.messages[0].role).toBe("user")
+    expect((await app.request("/api/chats/missing", { headers: me })).status).toBe(404)
+  })
+
   it("refuses to listen on other interfaces", () => {
     expect(() => loadConfig({ host: "0.0.0.0" })).toThrow(/loopback/)
   })

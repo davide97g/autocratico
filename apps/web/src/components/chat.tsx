@@ -1,28 +1,36 @@
 import * as React from "react"
 import {
   ArrowUpIcon,
+  BellIcon,
   CalendarClockIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   FilePenIcon,
   FilePlusIcon,
   FileTextIcon,
   GlobeIcon,
+  InboxIcon,
   type LucideIcon,
+  MessagesSquareIcon,
   SearchIcon,
   SparklesIcon,
   SquareIcon,
   SquarePenIcon,
   TerminalIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
   XIcon,
 } from "lucide-react"
 import { cn } from "cn"
 
 import { Markdown } from "@/components/markdown"
+import { Sensitive } from "@/components/privacy"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useI18n } from "@/i18n"
-import { stripActions } from "@autocratico/core"
+import { type Confirmation, splitConfirmations, stripActions } from "@autocratico/core"
 
-import { chats, type Chat as SavedChat } from "@/lib/api"
+import { chat as loadChat, chats, deleteChat, type ChatSummary, type Chat as SavedChat } from "@/lib/api"
 import { ask, type ChatEvent } from "@/lib/chat"
 import { holdUpdates } from "@/lib/update"
 
@@ -144,14 +152,94 @@ function Steps({ steps, running }: { steps: Step[]; running: boolean }) {
   )
 }
 
+/** Plain text with personal data marked: `||...||` stays hidden in privacy mode. */
+function Title({ text }: { text: string }) {
+  return text.split(/\|\|(.+?)\|\|/).map((part, i) => (i % 2 ? <Sensitive key={i}>{part}</Sensitive> : part))
+}
+
+const CONFIRMATION_ICONS: Record<Confirmation["kind"], LucideIcon> = {
+  change: FilePenIcon,
+  reminder: BellIcon,
+  inbox: InboxIcon,
+  warning: TriangleAlertIcon,
+}
+
+/** Where a confirmation leads: the change in Activity, the inbox, the reminders in Settings. */
+function confirmationLink(c: Confirmation): string | null {
+  if (c.kind === "change") return c.hash ? `#activity/${c.hash}` : "#activity"
+  if (c.kind === "inbox") return "#inbox"
+  if (c.kind === "reminder") return "#settings"
+  return null
+}
+
+/** What the server did after the answer, as a card that opens it. */
+function ConfirmationCard({ c }: { c: Confirmation }) {
+  const { t } = useI18n()
+  const Icon = CONFIRMATION_ICONS[c.kind]
+  const href = confirmationLink(c)
+  const colon = c.text.indexOf(": ")
+  const label = colon < 0 ? c.text : c.text.slice(0, colon)
+  const body = colon < 0 ? null : c.text.slice(colon + 2)
+  const warning = c.kind === "warning"
+  const content = (
+    <>
+      <span
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-md",
+          warning ? "bg-status-overdue/12 text-status-overdue" : "bg-card text-foreground"
+        )}
+      >
+        <Icon className="size-4" />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className={cn("text-xs font-medium", warning ? "text-status-overdue" : "text-muted-foreground")}>{label}</span>
+        {body && (
+          <span className="text-sm leading-snug">
+            <Title text={body} />
+          </span>
+        )}
+      </span>
+      {href && (
+        <span className="flex shrink-0 items-center gap-1 self-center text-muted-foreground transition-colors group-hover:text-foreground">
+          {c.hash && <span className="font-mono text-xs">{c.hash.slice(0, 7)}</span>}
+          <ChevronRightIcon className="size-4" />
+        </span>
+      )}
+    </>
+  )
+  const base = "flex items-start gap-3 rounded-lg bg-muted/60 p-2.5"
+  if (!href) return <div className={base}>{content}</div>
+  return (
+    <a
+      href={href}
+      title={t.chat.openAction[c.kind]}
+      className={cn(base, "group transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50")}
+    >
+      {content}
+    </a>
+  )
+}
+
 function Answer({ m }: { m: ClaudeMessage }) {
   const { t } = useI18n()
   const running = m.status === "running"
+  const { text, confirmations } = splitConfirmations(stripActions(m.text))
   return (
     <div className="flex flex-col gap-3">
       <Steps steps={m.steps} running={running} />
       {m.text ? (
-        <Markdown text={headings(stripActions(m.text))} className="max-w-none [&_ol]:gap-1 [&_p]:my-1.5 [&_ul]:gap-1 [&>:first-child]:mt-0" />
+        <>
+          {text && (
+            <Markdown text={headings(text)} className="max-w-none [&_ol]:gap-1 [&_p]:my-1.5 [&_ul]:gap-1 [&>:first-child]:mt-0" />
+          )}
+          {confirmations.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {confirmations.map((c, i) => (
+                <ConfirmationCard key={i} c={c} />
+              ))}
+            </div>
+          )}
+        </>
       ) : (
         running && (
           <span className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -167,6 +255,88 @@ function Answer({ m }: { m: ClaudeMessage }) {
       {m.status === "done" && m.duration_ms != null && (
         <p className="text-xs text-muted-foreground">{t.chat.seconds(Math.max(1, Math.round(m.duration_ms / 1000)))}</p>
       )}
+    </div>
+  )
+}
+
+function History({
+  current,
+  onOpen,
+  onDeleted,
+}: {
+  current: string | null
+  onOpen: (id: string) => void
+  onDeleted: (id: string) => void
+}) {
+  const { t, fmt } = useI18n()
+  const [list, setList] = React.useState<ChatSummary[] | null>(null)
+  const [failed, setFailed] = React.useState(false)
+  const [confirming, setConfirming] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    chats("web").then(setList, () => setFailed(true))
+  }, [])
+
+  async function remove(id: string) {
+    setConfirming(null)
+    try {
+      await deleteChat(id)
+      setList((l) => l?.filter((c) => c.id !== id) ?? null)
+      onDeleted(id)
+    } catch {
+      setFailed(true)
+    }
+  }
+
+  if (failed) return <p className="text-sm text-muted-foreground">{t.chat.historyError}</p>
+  if (!list) return null
+  if (!list.length) return <p className="text-sm text-muted-foreground">{t.chat.historyEmpty}</p>
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="px-1 text-xs font-medium text-muted-foreground">{t.chat.historyTitle}</p>
+      <ul className="flex flex-col gap-1">
+        {list.map((c) => (
+          <li
+            key={c.id}
+            aria-current={c.id === current || undefined}
+            className="group flex items-center gap-1 rounded-lg hover:bg-muted aria-current:bg-muted"
+          >
+            <button
+              type="button"
+              onClick={() => onOpen(c.id)}
+              className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg px-3 py-2 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              <span className="truncate text-sm">
+                <Title text={c.title} />
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {fmt.dayMonthTime.format(new Date(c.updated))}
+                {c.id === current && ` · ${t.chat.current}`}
+              </span>
+            </button>
+            {confirming === c.id ? (
+              <span className="flex shrink-0 items-center gap-1 pr-1">
+                <Button size="xs" variant="destructive" onClick={() => remove(c.id)}>
+                  {t.chat.historyDeleteConfirm}
+                </Button>
+                <Button size="xs" variant="ghost" onClick={() => setConfirming(null)}>
+                  {t.chat.historyCancel}
+                </Button>
+              </span>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="mr-1 shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100"
+                onClick={() => setConfirming(c.id)}
+                aria-label={t.chat.historyDelete}
+              >
+                <Trash2Icon />
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -187,6 +357,7 @@ export const Chat = React.memo(function Chat({
   const [conversation, setConversation] = React.useState<Conversation>(read)
   const [draft, setDraft] = React.useState("")
   const [abort, setAbort] = React.useState<AbortController | null>(null)
+  const [history, setHistory] = React.useState(false)
   const bottom = React.useRef<HTMLDivElement>(null)
   const input = React.useRef<HTMLTextAreaElement>(null)
 
@@ -200,16 +371,18 @@ export const Chat = React.memo(function Chat({
   React.useEffect(() => {
     if (autoFocus) input.current?.focus()
     // The latest web conversation, possibly started on another device.
-    chats("web").then(
-      ([latest]) =>
-        setConversation((c) => {
-          if (!latest || c.messages.some((m) => m.role === "claude" && m.status === "running")) return c
-          // A conversation about a deadline that has not reached the server yet stays.
-          if (c.about && c.chat !== latest.id) return c
-          return { ...fromServer(latest), about: c.about }
-        }),
-      () => undefined
-    )
+    chats("web")
+      .then(([latest]) => (latest ? loadChat(latest.id) : null))
+      .then(
+        (latest) =>
+          setConversation((c) => {
+            if (!latest || c.messages.some((m) => m.role === "claude" && m.status === "running")) return c
+            // A conversation about a deadline that has not reached the server yet stays.
+            if (c.about && c.chat !== latest.id) return c
+            return { ...fromServer(latest), about: c.about }
+          }),
+        () => undefined
+      )
     // eslint-disable-next-line react-hooks/exhaustive-deps -- on mount only
   }, [])
   // "Ask Claude" on a deadline while the chat is open.
@@ -266,6 +439,22 @@ export const Chat = React.memo(function Chat({
   function startOver() {
     abort?.abort()
     setConversation(EMPTY)
+    setHistory(false)
+    input.current?.focus()
+  }
+
+  async function open(id: string) {
+    setHistory(false)
+    if (id === conversation.chat) return
+    abort?.abort()
+    try {
+      setConversation(fromServer(await loadChat(id)))
+    } catch (e) {
+      setConversation({
+        chat: null,
+        messages: [{ role: "claude", text: "", steps: [], status: "error", error: t.chat.serverDown((e as Error).message) }],
+      })
+    }
     input.current?.focus()
   }
 
@@ -282,6 +471,22 @@ export const Chat = React.memo(function Chat({
         <Tooltip>
           <TooltipTrigger
             render={
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setHistory((h) => !h)}
+                aria-label={history ? t.chat.historyBack : t.chat.history}
+                aria-pressed={history}
+              />
+            }
+          >
+            {history ? <ChevronLeftIcon /> : <MessagesSquareIcon />}
+          </TooltipTrigger>
+          <TooltipContent>{history ? t.chat.historyBack : t.chat.history}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            render={
               <Button variant="ghost" size="icon" onClick={startOver} aria-label={t.chat.newChat} disabled={!conversation.messages.length} />
             }
           >
@@ -295,7 +500,15 @@ export const Chat = React.memo(function Chat({
       </header>
 
       <div className="min-h-0 flex-1 overscroll-contain overflow-y-auto px-4 py-5">
-        {conversation.messages.length === 0 ? (
+        {history ? (
+          <History
+            current={conversation.chat}
+            onOpen={open}
+            onDeleted={(id) => {
+              if (id === conversation.chat) setConversation(EMPTY)
+            }}
+          />
+        ) : conversation.messages.length === 0 ? (
           <div className="flex h-full flex-col justify-end gap-5">
             <div className="flex flex-col gap-2">
               <p className="text-lg font-medium tracking-tight">{conversation.about ? t.chat.aboutTitle : t.chat.emptyTitle}</p>
@@ -331,7 +544,7 @@ export const Chat = React.memo(function Chat({
       </div>
 
       <form
-        className="p-3 pt-0"
+        className={cn("p-3 pt-0", history && "hidden")}
         onSubmit={(e) => {
           e.preventDefault()
           send(draft)

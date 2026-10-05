@@ -252,7 +252,12 @@ export function createApp(s: Services) {
 
   app.get("/api/chats", (c) => {
     const channel = c.req.query("channel")
-    return c.json(store.chats(channel === "web" || channel === "telegram" ? channel : undefined))
+    return c.json(store.chatSummaries(channel === "web" || channel === "telegram" ? channel : undefined))
+  })
+
+  app.get("/api/chats/:id", (c) => {
+    const chat = store.chat(c.req.param("id"))
+    return chat ? c.json(chat) : c.json({ error: "not found" }, 404)
   })
 
   app.delete("/api/chats/:id", (c) => c.json({ ok: store.deleteChat(c.req.param("id")) }))

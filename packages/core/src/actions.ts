@@ -63,6 +63,28 @@ export function stripActions(answer: string): string {
   return answer.replace(BLOCK, "").replace(OPEN, "").trimEnd()
 }
 
+/** What the server did after an answer: one line each, appended by `finishAnswer` (apps/server/src/chat-actions.ts). */
+export type Confirmation = { kind: "change" | "reminder" | "inbox" | "warning"; text: string; hash: string | null }
+
+const CONFIRMATION = /^(✏️|⏰|📥|⚠️) (.+)$/u
+const KINDS: Record<string, Confirmation["kind"]> = { "✏️": "change", "⏰": "reminder", "📥": "inbox", "⚠️": "warning" }
+// "(change 55cb507, undo it from Activity)", "(modifica 55cb507, annullabile da Attività)"
+const CHANGE_REF = /\s*\((?:change|modifica) ([0-9a-f]{7,40})\b[^)]*\)$/
+
+/** Splits the server's confirmation lines (the last paragraph, when all its lines are such) from the answer. */
+export function splitConfirmations(answer: string): { text: string; confirmations: Confirmation[] } {
+  const cut = answer.lastIndexOf("\n\n")
+  const tail = answer.slice(cut + 1).trim()
+  const lines = tail.split("\n")
+  if (!tail || !lines.every((l) => CONFIRMATION.test(l))) return { text: answer, confirmations: [] }
+  const confirmations = lines.map((l): Confirmation => {
+    const [, emoji, rest] = CONFIRMATION.exec(l)!
+    const ref = CHANGE_REF.exec(rest)
+    return { kind: KINDS[emoji], text: ref ? rest.slice(0, ref.index) : rest, hash: ref?.[1] ?? null }
+  })
+  return { text: cut < 0 ? "" : answer.slice(0, cut).trimEnd(), confirmations }
+}
+
 /**
  * When a reminder is due, as an ISO instant. Accepts ISO with an offset, or a local date-time
  * (YYYY-MM-DDTHH:MM[:SS]) read in `timeZone`. Null when unreadable, past, or more than a year away.

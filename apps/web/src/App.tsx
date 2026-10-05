@@ -96,18 +96,26 @@ function useVisualViewport(active: boolean) {
 }
 
 const DEADLINE_HASH = "deadline/"
+const ACTIVITY_HASH = "activity/"
 
-/** `#<view>`, or `#deadline/<key>` for one occurrence on its own page (under Deadlines). */
-function routeFromHash(): { view: View; deadline: string | null } {
+/**
+ * `#<view>`, `#deadline/<key>` for one occurrence on its own page (under Deadlines),
+ * or `#activity/<hash>` for one change in Activity (the chat links its changes there).
+ */
+function routeFromHash(): { view: View; deadline: string | null; commit: string | null } {
   const h = window.location.hash.slice(1)
   if (h.startsWith(DEADLINE_HASH)) {
     try {
-      return { view: "deadlines", deadline: decodeURIComponent(h.slice(DEADLINE_HASH.length)) || null }
+      return { view: "deadlines", deadline: decodeURIComponent(h.slice(DEADLINE_HASH.length)) || null, commit: null }
     } catch {
-      return { view: "deadlines", deadline: null }
+      return { view: "deadlines", deadline: null, commit: null }
     }
   }
-  return { view: VIEWS.some((v) => v.id === h) ? (h as View) : "overview", deadline: null }
+  if (h.startsWith(ACTIVITY_HASH)) {
+    const commit = h.slice(ACTIVITY_HASH.length)
+    return { view: "activity", deadline: null, commit: /^[0-9a-f]{4,40}$/.test(commit) ? commit : null }
+  }
+  return { view: VIEWS.some((v) => v.id === h) ? (h as View) : "overview", deadline: null, commit: null }
 }
 
 export function App() {
@@ -157,6 +165,7 @@ function Main({
   const [error, setError] = React.useState<string | null>(null)
   const [view, setView] = React.useState<View>(() => routeFromHash().view)
   const [deadline, setDeadline] = React.useState<string | null>(() => routeFromHash().deadline)
+  const [commit, setCommit] = React.useState<string | null>(() => routeFromHash().commit)
   const [search, setSearch] = React.useState("")
   const [openCase, setOpenCase] = React.useState<string | null>(null)
   const [compact, setCompact] = usePreference("autocratico.sidebar-compact", false)
@@ -202,10 +211,13 @@ function Main({
       const r = routeFromHash()
       setView(r.view)
       setDeadline(r.deadline)
+      setCommit(r.commit)
+      // A link followed from the chat sheet: show where it leads.
+      if (!window.matchMedia("(min-width: 72rem)").matches) setChatOpen(false)
     }
     window.addEventListener("hashchange", onHash)
     return () => window.removeEventListener("hashchange", onHash)
-  }, [reload])
+  }, [reload, setChatOpen])
 
   React.useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -232,6 +244,7 @@ function Main({
     window.location.hash = v
     setView(v)
     setDeadline(null)
+    setCommit(null)
     window.scrollTo({ top: 0 })
   }, [])
   const openDeadlines = React.useCallback(() => go("deadlines"), [go])
@@ -381,7 +394,7 @@ function Main({
           )}
           {view === "inbox" && <Inbox />}
           {view === "archive" && <Archive />}
-          {view === "activity" && <Activity live={live} />}
+          {view === "activity" && <Activity live={live} focus={commit} />}
           {view === "settings" && (
             <Settings
               session={session}

@@ -175,6 +175,20 @@ describe("chat actions", () => {
     expect(extractActions("```reminder\nnot json\n```").actions.reminders).toEqual([])
   })
 
+  it("splits the server's confirmation lines from the answer", async () => {
+    const { splitConfirmations } = await import("../src/index.ts")
+    const answer = "Sposto la data.\n\n✏️ Registro aggiornato: Bollo al 30/09/2027 (modifica 55cb507, annullabile da Attività)\n📥 Aggiunto all'inbox: TARI."
+    const { text, confirmations } = splitConfirmations(answer)
+    expect(text).toBe("Sposto la data.")
+    expect(confirmations).toEqual([
+      { kind: "change", text: "Registro aggiornato: Bollo al 30/09/2027", hash: "55cb507" },
+      { kind: "inbox", text: "Aggiunto all'inbox: TARI.", hash: null },
+    ])
+    expect(splitConfirmations("⚠️ Change not applied: unknown id").confirmations[0].kind).toBe("warning")
+    // A last paragraph that is not only confirmations stays text.
+    expect(splitConfirmations("Ok.\n\n⏰ soon\nmore").confirmations).toEqual([])
+  })
+
   it("reads reminder times in the deadlines' time zone", async () => {
     const { reminderTime, localNow } = await import("../src/index.ts")
     const now = new Date("2026-10-03T13:40:00Z")

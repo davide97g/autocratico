@@ -307,6 +307,16 @@ export const Chat = z.object({
 })
 export type Chat = z.infer<typeof Chat>
 
+/** A conversation in the history list: its first question stands for it. */
+export const ChatSummary = z.object({
+  id: z.string(),
+  channel: z.enum(["web", "telegram"]),
+  updated: z.string(),
+  title: z.string(),
+  messages: z.number(),
+})
+export type ChatSummary = z.infer<typeof ChatSummary>
+
 // ---------- Account: the one user of this instance ----------
 
 export const AUTH_MODES = ["dev", "prod"] as const

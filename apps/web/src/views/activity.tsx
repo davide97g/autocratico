@@ -231,12 +231,26 @@ function RunRow({ r }: { r: JobRun }) {
   )
 }
 
-function CommitRow({ c, onReverted }: { c: Commit; onReverted: (msg: string) => void }) {
+function CommitRow({ c, focused, onReverted }: { c: Commit; focused: boolean; onReverted: (msg: string) => void }) {
   const { t, locale } = useI18n()
   const { enabled: privacy } = usePrivacy()
   const [patch, setPatch] = React.useState<string | null>(null)
   const [open, setOpen] = React.useState(false)
+  const row = React.useRef<HTMLLIElement>(null)
   const chat = c.subject.startsWith(CHAT)
+
+  // Opened from a link (the chat's confirmation): bring it into view with its patch.
+  React.useEffect(() => {
+    if (!focused) return
+    row.current?.scrollIntoView({ block: "center", behavior: "smooth" })
+    commitPatch(c.hash).then(
+      (p) => {
+        setPatch(p.patch)
+        setOpen(true)
+      },
+      () => undefined
+    )
+  }, [focused, c.hash])
 
   async function toggle() {
     if (!patch) setPatch((await commitPatch(c.hash)).patch)
@@ -250,7 +264,7 @@ function CommitRow({ c, onReverted }: { c: Commit; onReverted: (msg: string) => 
   }
 
   return (
-    <li className="flex flex-col gap-2 rounded-lg bg-muted/50 p-3">
+    <li ref={row} className={cn("flex scroll-mt-6 flex-col gap-2 rounded-lg bg-muted/50 p-3", focused && "ring-2 ring-ring")}>
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-card">
           {chat ? <MessageSquareTextIcon className="size-4" /> : <GitCommitHorizontalIcon className="size-4" />}
@@ -296,7 +310,7 @@ function CommitRow({ c, onReverted }: { c: Commit; onReverted: (msg: string) => 
   )
 }
 
-export function Activity({ live }: { live: LiveJobs | null }) {
+export function Activity({ live, focus = null }: { live: LiveJobs | null; focus?: string | null }) {
   const { t } = useI18n()
   const [data, setData] = React.useState<ActivityData | null>(null)
   const [message, setMessage] = React.useState<string | null>(null)
@@ -348,6 +362,7 @@ export function Activity({ live }: { live: LiveJobs | null }) {
               <CommitRow
                 key={c.hash}
                 c={c}
+                focused={focus !== null && (c.hash.startsWith(focus) || focus.startsWith(c.hash))}
                 onReverted={(m) => {
                   setMessage(m)
                   refresh()
