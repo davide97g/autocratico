@@ -12,6 +12,7 @@
  * {"summary": "IMU: one-off fine, no more yearly payments", "ops": [{"op": "close", "id": "imu", "until": "2026-06-16"}]}
  * ```
  * A change block is validated and applied by the server (apps/server/src/changes.ts) as one commit.
+ * An empty ```confirm``` block marks an answer that asks to confirm a change: the clients show yes/no buttons.
  */
 
 export type ReminderAction = { at: string; text: string }
@@ -21,8 +22,12 @@ export type ChangeAction = { summary: string; ops: Record<string, unknown>[] }
 export type Actions = { reminders: ReminderAction[]; inbox: InboxAction[]; changes: ChangeAction[] }
 
 const BLOCK = /```(reminder|inbox|change)[ \t]*\n([\s\S]*?)```/g
+const CONFIRM = /```confirm[^\n`]*\n?[^`]*```/g
+const CONFIRM_BLOCK = "```confirm\n```"
 // While streaming: a block that has started but not ended yet.
-const OPEN = /```(reminder|inbox|change)[\s\S]*$/
+const OPEN = /```(reminder|inbox|change|confirm)[\s\S]*$/
+// A fence still being typed ("```conf"): could be one of the blocks. A closing fence (no name) stays.
+const FENCE_START = /```[a-z]+$/
 
 function str(v: unknown, max: number): string {
   return typeof v === "string" ? v.trim().slice(0, max) : ""
@@ -55,12 +60,19 @@ export function extractActions(answer: string): { text: string; actions: Actions
     }
     return ""
   })
-  return { text: stripActions(text), actions }
+  // The confirm block stays (at the end), for the clients to show their buttons.
+  const clean = stripActions(text)
+  return { text: asksToConfirm(answer) ? `${clean}\n\n${CONFIRM_BLOCK}` : clean, actions }
 }
 
 /** The answer without action blocks, also mid-stream (an unfinished block is hidden too). */
 export function stripActions(answer: string): string {
-  return answer.replace(BLOCK, "").replace(OPEN, "").trimEnd()
+  return answer.replace(BLOCK, "").replace(CONFIRM, "").replace(OPEN, "").replace(FENCE_START, "").trimEnd()
+}
+
+/** True when the answer asks the user to confirm a change (it ends with a confirm block). */
+export function asksToConfirm(answer: string): boolean {
+  return answer.replace(BLOCK, "").match(CONFIRM) !== null
 }
 
 /** What the server did after an answer: one line each, appended by `finishAnswer` (apps/server/src/chat-actions.ts). */

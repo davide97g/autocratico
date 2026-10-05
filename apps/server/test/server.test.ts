@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process"
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 
-import type { JobRun } from "@autocratico/core"
+import type { Chat, ChatSummary, JobRun } from "@autocratico/core"
 import { strToU8, zipSync } from "fflate"
 import { beforeEach, describe, expect, it } from "vitest"
 
@@ -44,11 +44,11 @@ describe("dev mode", () => {
     old.messages.push({ role: "user", text: `Quanto costa il ||bollo||?  ${"x".repeat(90)}`, tools: [] })
     await store.saveChat(old)
     await store.saveChat(store.newChat("web", "empty")) // nothing asked yet: not in the history
-    const list = await (await app.request("/api/chats?channel=web", { headers: me })).json()
+    const list = (await (await app.request("/api/chats?channel=web", { headers: me })).json()) as ChatSummary[]
     expect(list).toHaveLength(1)
     expect(list[0]).toMatchObject({ id: "old", messages: 1 })
     expect(list[0].title).toMatch(/^Quanto costa il \|\|bollo\|\|\? x+…$/)
-    const chat = await (await app.request("/api/chats/old", { headers: me })).json()
+    const chat = (await (await app.request("/api/chats/old", { headers: me })).json()) as Chat
     expect(chat.messages[0].role).toBe("user")
     expect((await app.request("/api/chats/missing", { headers: me })).status).toBe(404)
   })

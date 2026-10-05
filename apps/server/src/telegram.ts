@@ -8,7 +8,7 @@
 import { createHash, randomInt, timingSafeEqual } from "node:crypto"
 import { join } from "node:path"
 
-import { type Chat, type Occurrence, redact, stripActions } from "@autocratico/core"
+import { asksToConfirm, type Chat, type Occurrence, redact, stripActions } from "@autocratico/core"
 import { Bot, type Context, InlineKeyboard } from "grammy"
 
 import { type Claude, friendlyError } from "./claude.ts"
@@ -58,6 +58,10 @@ const TEXT = {
     doneMissing: "Nessuna scadenza aperta con quell'id.",
     newChat: "Nuova conversazione.",
     thinking: "…",
+    yes: "✅ Sì",
+    no: "✖️ No",
+    confirmYes: "Sì, confermo",
+    confirmNo: "No, lascia com'è",
     noClaude: "L'agente non è disponibile su questo server.",
     tooBig: "File troppo grande per Telegram (max 20 MB): caricalo dalla web app.",
     heard: (t: string) => `🎙️ ${t}`,
@@ -103,6 +107,10 @@ const TEXT = {
     doneMissing: "No open deadline with that id.",
     newChat: "New conversation.",
     thinking: "…",
+    yes: "✅ Yes",
+    no: "✖️ No",
+    confirmYes: "Yes, confirm",
+    confirmNo: "No, leave it as it is",
     noClaude: "The agent is not available on this server.",
     tooBig: "File too large for Telegram (20 MB max): upload it from the web app.",
     heard: (t: string) => `🎙️ ${t}`,
@@ -346,6 +354,14 @@ export class Telegram implements Notifier {
       await ctx.answerCallbackQuery({ text: o ? t().doneOk(redact(o.title)).slice(0, 190) : t().doneMissing })
     })
 
+    // Yes/no under an answer that asks to confirm a change: the choice goes to the agent as a message.
+    bot.callbackQuery(/^confirm:(yes|no)$/, async (ctx) => {
+      const text = ctx.match[1] === "yes" ? t().confirmYes : t().confirmNo
+      await ctx.editMessageReplyMarkup().catch(() => undefined)
+      await ctx.answerCallbackQuery({ text })
+      return this.#converse(ctx, text)
+    })
+
     bot.callbackQuery(/^rdone:(\w+)$/, async (ctx) => {
       await ctx.editMessageReplyMarkup().catch(() => undefined)
       await ctx.answerCallbackQuery({ text: t().ok })
@@ -485,9 +501,15 @@ export class Telegram implements Notifier {
         locale: this.#d.config.locale,
         changes: this.#d.changes,
       })
-      const parts = outgoing(answer)
-      if (parts[0] !== shown) await ctx.api.editMessageText(chatId, sent.message_id, parts[0]).catch(() => undefined)
-      for (const p of parts.slice(1)) await ctx.reply(p)
+      const parts = outgoing(stripActions(answer))
+      const confirm = asksToConfirm(answer)
+        ? keyboard([[{ text: this.#t.yes, data: "confirm:yes" }, { text: this.#t.no, data: "confirm:no" }]])
+        : undefined
+      const markup = (i: number) => (i === parts.length - 1 ? confirm : undefined)
+      if (parts[0] !== shown || markup(0)) {
+        await ctx.api.editMessageText(chatId, sent.message_id, parts[0], { reply_markup: markup(0) }).catch(() => undefined)
+      }
+      for (const [i, p] of parts.slice(1).entries()) await ctx.reply(p, { reply_markup: markup(i + 1) })
       chat.messages.push({ role: "user", text, tools: [] }, { role: "assistant", text: answer, tools, error })
       await this.#d.store.saveChat(chat)
     } finally {

@@ -175,6 +175,20 @@ describe("chat actions", () => {
     expect(extractActions("```reminder\nnot json\n```").actions.reminders).toEqual([])
   })
 
+  it("keeps the confirm block for the clients' yes/no buttons and hides it", async () => {
+    const { asksToConfirm, extractActions, stripActions } = await import("../src/index.ts")
+    const answer = "Chiudo «Contabo» con until oggi. Confermi?\n\n```confirm\n```"
+    expect(asksToConfirm(answer)).toBe(true)
+    expect(stripActions(answer)).toBe("Chiudo «Contabo» con until oggi. Confermi?")
+    expect(stripActions("Confermi?\n```conf")).toBe("Confermi?") // mid-stream
+    const { text } = extractActions(answer)
+    expect(asksToConfirm(text)).toBe(true)
+    expect(stripActions(text)).toBe(stripActions(answer))
+    expect(asksToConfirm("Fatto.")).toBe(false)
+    // A confirm word inside a change block is not a confirm block.
+    expect(asksToConfirm('```change\n{"summary":"```confirm```","ops":[]}\n```')).toBe(false)
+  })
+
   it("splits the server's confirmation lines from the answer", async () => {
     const { splitConfirmations } = await import("../src/index.ts")
     const answer = "Sposto la data.\n\n✏️ Registro aggiornato: Bollo al 30/09/2027 (modifica 55cb507, annullabile da Attività)\n📥 Aggiunto all'inbox: TARI."

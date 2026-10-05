@@ -189,6 +189,10 @@ export const en = {
     historyCancel: "Cancel",
     current: "current",
     openAction: { change: "Open the change in Activity", inbox: "Open the inbox", reminder: "See the reminders in Settings", warning: "" },
+    yes: "Yes",
+    no: "No",
+    confirmYes: "Yes, confirm",
+    confirmNo: "No, leave it as it is",
     close: "Close the chat",
     emptyTitle: "What do you want to know?",
     emptyBody:

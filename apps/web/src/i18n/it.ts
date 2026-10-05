@@ -191,6 +191,10 @@ export const it: Messages = {
     historyCancel: "Annulla",
     current: "attuale",
     openAction: { change: "Apri la modifica in Attività", inbox: "Apri l'inbox", reminder: "Vedi i promemoria nelle Impostazioni", warning: "" },
+    yes: "Sì",
+    no: "No",
+    confirmYes: "Sì, confermo",
+    confirmNo: "No, lascia com'è",
     close: "Chiudi la chat",
     emptyTitle: "Cosa vuoi sapere?",
     emptyBody:

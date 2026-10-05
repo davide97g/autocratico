@@ -2,6 +2,7 @@ import * as React from "react"
 import {
   ArrowUpIcon,
   BellIcon,
+  CheckIcon,
   CalendarClockIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -28,7 +29,7 @@ import { Sensitive } from "@/components/privacy"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useI18n } from "@/i18n"
-import { type Confirmation, splitConfirmations, stripActions } from "@autocratico/core"
+import { asksToConfirm, type Confirmation, splitConfirmations, stripActions } from "@autocratico/core"
 
 import { chat as loadChat, chats, deleteChat, type ChatSummary, type Chat as SavedChat } from "@/lib/api"
 import { ask, type ChatEvent } from "@/lib/chat"
@@ -538,6 +539,23 @@ export const Chat = React.memo(function Chat({
                 <Answer key={i} m={m} />
               )
             )}
+            {(() => {
+              // The agent asks to confirm a change: yes/no answer it in one tap.
+              const last = conversation.messages.at(-1)
+              if (abort || last?.role !== "claude" || last.status !== "done" || !asksToConfirm(last.text)) return null
+              return (
+                <div className="-mt-2 flex gap-2">
+                  <Button size="sm" onClick={() => send(t.chat.confirmYes)}>
+                    <CheckIcon data-icon="inline-start" />
+                    {t.chat.yes}
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => send(t.chat.confirmNo)}>
+                    <XIcon data-icon="inline-start" />
+                    {t.chat.no}
+                  </Button>
+                </div>
+              )
+            })()}
           </div>
         )}
         <div ref={bottom} />
