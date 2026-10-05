@@ -180,7 +180,7 @@ export function Onboarding({ session, onDone }: { session: Session; onDone: (tou
               e.preventDefault()
               if (name.trim()) go(1)
             }}
-            className="flex flex-col gap-6"
+            className="flex flex-col gap-4 sm:gap-6"
           >
             <CardHeader>
               <CardTitle className="text-2xl font-medium tracking-tight">{t.onboarding.nameTitle}</CardTitle>
@@ -201,7 +201,7 @@ export function Onboarding({ session, onDone }: { session: Session; onDone: (tou
         )}
 
         {step === "password" && (
-          <form onSubmit={create} className="flex flex-col gap-6">
+          <form onSubmit={create} className="flex flex-col gap-4 sm:gap-6">
             <CardHeader>
               <CardTitle className="text-2xl font-medium tracking-tight">{t.onboarding.passwordTitle}</CardTitle>
               <CardDescription className="leading-relaxed">{t.onboarding.passwordBody}</CardDescription>
@@ -260,7 +260,7 @@ export function Onboarding({ session, onDone }: { session: Session; onDone: (tou
               <CardTitle className="text-2xl font-medium tracking-tight">{t.onboarding.profileTitle}</CardTitle>
               <CardDescription className="leading-relaxed">{t.onboarding.profileBody}</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-6">
+            <CardContent className="flex flex-col gap-4 sm:gap-6">
               <fieldset className="grid gap-4 sm:grid-cols-2">
                 <legend className="mb-3 text-sm font-medium">{t.onboarding.person}</legend>
                 <Field label={t.onboarding.birthDate}>

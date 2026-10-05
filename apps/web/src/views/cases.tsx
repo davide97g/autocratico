@@ -43,7 +43,7 @@ export const Cases = React.memo(function Cases({ cases, open }: { cases: Case[];
   const closed = first(cases.filter((c) => !caseOpen(c)))
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {active.length === 0 && <p className="text-sm text-muted-foreground">{t.cases.emptyTitle}</p>}
       {active.map((c) => (
         <CaseCard key={c.slug} c={c} />
@@ -58,7 +58,7 @@ function Closed({ cases, initiallyOpen }: { cases: Case[]; initiallyOpen: boolea
   const { t } = useI18n()
   const [shown, setShown] = React.useState(initiallyOpen)
   return (
-    <section className="flex flex-col gap-6">
+    <section className="flex flex-col gap-4 sm:gap-6">
       <Button variant="ghost" className="self-start text-muted-foreground" onClick={() => setShown((v) => !v)} aria-expanded={shown}>
         <ChevronDownIcon data-icon="inline-start" className={cn("transition-transform", !shown && "-rotate-90")} />
         {shown ? t.cases.hideClosed(cases.length) : t.cases.showClosed(cases.length)}
@@ -77,7 +77,7 @@ export function CaseCard({ c }: { c: Case }) {
         <CardTitle className="text-2xl font-medium tracking-tight">{c.title}</CardTitle>
         <CardAction>{c.status && <Badge variant={caseOpen(c) ? "default" : "secondary"}>{c.status}</Badge>}</CardAction>
       </CardHeader>
-      <CardContent className="flex flex-col gap-6">
+      <CardContent className="flex flex-col gap-4 sm:gap-6">
         <Progress value={c.total ? (c.done / c.total) * 100 : 0} className="max-w-sm">
           <ProgressLabel className="text-xs text-muted-foreground">{t.cases.closedItems}</ProgressLabel>
           <ProgressValue className="font-mono text-xs">{() => `${c.done}/${c.total}`}</ProgressValue>

@@ -25,6 +25,7 @@ import { describeSource, listArchive } from "./sources.ts"
 import { setPersonName, writeProfile } from "./profile.ts"
 import type { Store } from "./store.ts"
 import { finishAnswer } from "./chat-actions.ts"
+import type { Pulse } from "./pulse.ts"
 import type { Reminders } from "./reminders.ts"
 import type { Telegram } from "./telegram.ts"
 import type { Transcriber } from "./transcribe.ts"
@@ -46,6 +47,8 @@ export type Services = {
   reminders: Reminders
   /** The finance app's mirror (tests pass one with a fake finance app). */
   finance: Finance
+  /** What changed, for the open web apps (`/api/events`). */
+  pulse: Pulse
   /** Override for tests: Gmail setup with a fake Google. */
   gmail?: Gmail
   /** Override for tests: verifies the Cloudflare Access JWT. */
@@ -505,7 +508,10 @@ export function createApp(s: Services) {
     return c.json({ ok: await s.finance.removeExpense(c.req.param("key")) })
   })
 
-  /** Server events for the open web app: `finance` with the mirror's revision when it changes. */
+  /**
+   * Server events for the open web app: `finance` with the mirror's revision when it changes, and one event
+   * per topic of `pulse.ts` (data, inbox, archive, activity, jobs, chats, reminders) when something there changed.
+   */
   app.get("/api/events", (c) =>
     streamSSE(c, async (sse) => {
       let open = true
@@ -514,6 +520,7 @@ export function createApp(s: Services) {
           open = false
         })
       const off = s.finance.onChange((rev) => void send("finance", { rev }))
+      const offPulse = s.pulse.on((topic) => void send(topic, {}))
       sse.onAbort(() => {
         open = false
       })
@@ -523,6 +530,7 @@ export function createApp(s: Services) {
         if (open) await send("ping", Date.now())
       }
       off()
+      offPulse()
     })
   )
 

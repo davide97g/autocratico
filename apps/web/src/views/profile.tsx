@@ -197,7 +197,7 @@ function Person({ row }: { row: Row }) {
     typeof row.name === "string" && !isEmpty(row.name) ? row.name : null
   return (
     <Card className="@container rounded-xl">
-      <CardContent className="flex flex-col gap-6">
+      <CardContent className="flex flex-col gap-4 sm:gap-6">
         <div className="flex items-center gap-4">
           <Avatar className="size-14">
             <AvatarFallback className="bg-primary text-lg text-primary-foreground">
@@ -282,7 +282,7 @@ export function Profile({ profile }: { profile: ProfileData }) {
     }))
     .filter((s) => s.rows.length > 0)
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {person && <Person row={person} />}
       <div className="gap-6 @3xl:columns-2 @7xl:columns-3">
         {sections.map((s) => (

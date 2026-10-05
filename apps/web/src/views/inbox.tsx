@@ -15,12 +15,13 @@ import { cn } from "cn"
 import { AddDocuments, INBOX_ADDED } from "@/components/add-documents"
 import { Documents } from "@/components/documents"
 import { Markdown } from "@/components/markdown"
+import { ShinyText, stagger } from "@/components/motion"
 import { Sensitive, usePrivacy } from "@/components/privacy"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
-import { Skeleton } from "@/components/ui/skeleton"
+import { RowsSkeleton } from "@/components/skeletons"
 import { useI18n } from "@/i18n"
 import {
   type InboxDetail,
@@ -29,6 +30,7 @@ import {
   inboxItem,
   setInboxStatus,
 } from "@/lib/api"
+import { useLiveRefresh } from "@/lib/events"
 import { unlessChanged } from "@/lib/utils"
 
 const SOURCE_ICON: Record<string, LucideIcon> = {
@@ -63,8 +65,11 @@ function AddCard() {
   )
 }
 
-function Item({ item, onChange }: { item: InboxItem; onChange: () => void }) {
+function Item({ item, onChange, index }: { item: InboxItem; onChange: () => void; index: number }) {
   const { t, fmt } = useI18n()
+  // The agent moved it on (processing, processed, failed) while on screen: it glows once.
+  const [seen, setSeen] = React.useState(item.status)
+  const changed = seen !== item.status
   const { enabled: privacy } = usePrivacy()
   const [detail, setDetail] = React.useState<InboxDetail | null>(null)
   const [open, setOpen] = React.useState(false)
@@ -81,7 +86,11 @@ function Item({ item, onChange }: { item: InboxItem; onChange: () => void }) {
   }
 
   return (
-    <li className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3">
+    <li
+      className={cn("rise-in flex flex-col gap-3 rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted/70", changed && "fresh")}
+      style={stagger(index)}
+      onAnimationEnd={(e) => e.animationName === "fresh" && setSeen(item.status)}
+    >
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-card">
           <Icon className="size-4" />
@@ -108,7 +117,11 @@ function Item({ item, onChange }: { item: InboxItem; onChange: () => void }) {
           )}
         </div>
         <Badge variant="secondary" className={cn("shrink-0", STATUS_STYLE[item.status])}>
-          {t.inbox.status[item.status] ?? item.status}
+          {item.status === "processing" ? (
+            <ShinyText>{t.inbox.status[item.status] ?? item.status}</ShinyText>
+          ) : (
+            (t.inbox.status[item.status] ?? item.status)
+          )}
         </Badge>
       </div>
       <div className="flex flex-wrap gap-2 pl-12">
@@ -128,7 +141,7 @@ function Item({ item, onChange }: { item: InboxItem; onChange: () => void }) {
         )}
       </div>
       {open && detail && (
-        <div className="flex flex-col gap-3 pl-12">
+        <div className="flex flex-col gap-3 pl-12 duration-200 animate-in fade-in-0 slide-in-from-top-1">
           <Documents paths={detail.files.map((f) => `inbox/${item.folder}/${f}`)} />
           {detail.content &&
             (privacy ? (
@@ -153,17 +166,14 @@ export function Inbox() {
 
   React.useEffect(() => {
     refresh()
-    // Items change state while the agent works: poll gently while some are pending.
-    const timer = setInterval(refresh, 15_000)
     window.addEventListener(INBOX_ADDED, refresh)
-    return () => {
-      clearInterval(timer)
-      window.removeEventListener(INBOX_ADDED, refresh)
-    }
+    return () => window.removeEventListener(INBOX_ADDED, refresh)
   }, [refresh])
+  // Items change state while the agent works: the server says when.
+  useLiveRefresh("inbox", refresh, 15_000)
 
   return (
-    <div className="grid items-start gap-6 @4xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] @7xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+    <div className="grid items-start gap-4 sm:gap-6 @4xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] @7xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
       <AddCard />
       <Card className="rounded-xl">
         <CardHeader>
@@ -172,7 +182,7 @@ export function Inbox() {
         </CardHeader>
         <CardContent>
           {error && <p className="text-sm text-status-overdue">{error}</p>}
-          {!items && !error && <Skeleton className="h-40 rounded-lg" />}
+          {!items && !error && <RowsSkeleton rows={4} />}
           {items?.length === 0 && (
             <Empty>
               <EmptyHeader>
@@ -186,8 +196,8 @@ export function Inbox() {
           )}
           {items && items.length > 0 && (
             <ul className="flex flex-col gap-2">
-              {items.slice(0, 100).map((i) => (
-                <Item key={i.id} item={i} onChange={refresh} />
+              {items.slice(0, 100).map((i, n) => (
+                <Item key={i.id} item={i} onChange={refresh} index={n} />
               ))}
             </ul>
           )}

@@ -1,3 +1,4 @@
+import * as React from "react"
 import {
   BanknoteIcon,
   ChartLineIcon,
@@ -69,4 +70,25 @@ export function capitalize(s: string) {
 /** `snake_case` or `kebab-case` key to a readable label. */
 export function humanize(key: string) {
   return capitalize(key.replace(/[_-]/g, " "))
+}
+
+/** 45 s, 3:07, 1:02:05 */
+export function duration(ms: number) {
+  const total = Math.max(0, Math.round(ms / 1000))
+  if (total < 60) return `${total} s`
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = String(total % 60).padStart(2, "0")
+  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`
+}
+
+/** The current time, ticking every second while `active`. */
+export function useNow(active: boolean) {
+  const [now, setNow] = React.useState(() => Date.now())
+  React.useEffect(() => {
+    if (!active) return
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [active])
+  return now
 }

@@ -28,6 +28,10 @@
 3. About a minute later the **triage** job runs Claude Code with the `triage` profile on the new items. The agent follows the rules in `AGENTS.md`: deadlines in `deadlines.toml`, a case in `cases/`, a Timeline line, the journal. It cannot touch secrets, server-owned files, or the web.
 4. The server reads the agent's JSON result, updates the items, commits the data folder (`data/.git`) and sends a redacted summary to Telegram, with a link to **Activity**, where every change can be reviewed and undone.
 
+## Live updates
+
+The open web apps never need a reload to see a change. `apps/server/src/pulse.ts` watches the data folder (recursively) and the jobs' progress, and `/api/events` (server-sent events) names the part that changed: `data` (deadlines, state, profile, cases, catalog, investments), `inbox`, `archive`, `activity` (a new commit), `jobs`, `chats`, `reminders`, plus `finance` from the finance mirror. Each view reads its part again; occurrences that changed glow once and a notice says so. If the stream cannot stay open (a proxy that buffers it, a filesystem without recursive watching), the views fall back to polling.
+
 ## The chat can act, without write access
 
 The chat agent (web and Telegram) stays read-only. When the user asks for a reminder or gives information to record, it ends its answer with a `reminder` or `inbox` fenced block; the server validates it, creates the reminder (sent on Telegram when due, checked every 30 s) or an inbox item for the background agent, removes the block from the answer and confirms what it did.

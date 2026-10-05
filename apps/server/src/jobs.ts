@@ -18,6 +18,7 @@ import { locks } from "./files.ts"
 import type { Finance } from "./finance.ts"
 import type { DataRepo } from "./git.ts"
 import type { Inbox } from "./inbox.ts"
+import type { Pulse } from "./pulse.ts"
 import type { Reminders } from "./reminders.ts"
 import type { Store } from "./store.ts"
 
@@ -58,6 +59,8 @@ type Context = {
   reminders: Reminders
   finance: Finance
   notifier: () => Notifier | null
+  /** Tells the open web apps that the live state changed (a run started, a step, the queue). */
+  pulse?: Pulse
 }
 
 const TEXT = {
@@ -169,11 +172,12 @@ export function cleanSteps(steps: JobStep[]): JobStep[] {
 }
 
 /** Records what the agent does into `run.steps`, for the live view and the log. */
-export function recorder(run: JobRun) {
+export function recorder(run: JobRun, onStep?: () => void) {
   run.steps = []
   return (e: ChatEvent) => {
     const steps = run.steps!
     if (steps.length >= MAX_STEPS) return
+    onStep?.()
     const at = new Date().toISOString()
     if (e.type === "tool") steps.push({ at, tool: e.name, text: e.detail })
     else if (e.type === "block") steps.push({ at, text: "" })
@@ -203,6 +207,10 @@ export class Jobs {
 
   get #t() {
     return TEXT[this.#c.config.locale]
+  }
+
+  #changed() {
+    this.#c.pulse?.emit("jobs")
   }
 
   start() {
@@ -255,6 +263,7 @@ export class Jobs {
     if (fresh.length && !fresh.some(urgent)) delay = Math.max(delay, this.#pacedAt + PACE_MS - Date.now())
     if (this.#triageTimer) clearTimeout(this.#triageTimer)
     this.#triageAt = new Date(Date.now() + delay).toISOString()
+    this.#changed()
     this.#triageTimer = setTimeout(() => {
       this.#triageTimer = null
       this.#triageAt = null
@@ -276,6 +285,7 @@ export class Jobs {
   /** Run a job now. Jobs run one at a time, since most of them write to the data folder. `manual`: asked by the user, not paced. */
   trigger(name: JobName, manual = false): Promise<JobRun> {
     this.#waiting.push(name)
+    this.#changed()
     return locks.run("jobs", async () => {
       this.#waiting.splice(this.#waiting.indexOf(name), 1)
       const run: JobRun = {
@@ -287,6 +297,7 @@ export class Jobs {
         summary: "",
       }
       this.#current = run
+      this.#changed()
       try {
         run.summary = await this.#run(name, run, manual)
         run.ok = true
@@ -299,6 +310,7 @@ export class Jobs {
       run.finished = new Date().toISOString()
       if (run.steps) run.steps = cleanSteps(run.steps)
       this.#log(run)
+      this.#changed()
       return run
     })
   }
@@ -393,7 +405,7 @@ export class Jobs {
         locale: config.locale,
         signal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
       },
-      recorder(run)
+      recorder(run, () => this.#changed())
     )
     const result = parseTriage(text)
     if (error || !result) {
@@ -458,7 +470,7 @@ export class Jobs {
         prompt:
           "Write the weekly digest for a phone notification, at most 12 short lines: deadlines in the next 21 days, overdue ones, open cases with their next step, dates still TODO, inbox items that failed. Start with the most urgent. No preamble.",
       },
-      recorder(run)
+      recorder(run, () => this.#changed())
     )
     if (error) throw new Error(error)
     await this.#c.notifier()?.notify(`📋 ${this.#t.digest}\n\n${text}`)

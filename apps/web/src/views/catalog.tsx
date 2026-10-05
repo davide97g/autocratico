@@ -13,7 +13,7 @@ export function Catalog({ entries }: { entries: CatalogEntry[] }) {
   if (!active) return null
 
   return (
-    <div className="grid gap-6 @3xl:grid-cols-[16rem_minmax(0,1fr)]">
+    <div className="grid gap-4 sm:gap-6 @3xl:grid-cols-[16rem_minmax(0,1fr)]">
       <nav className="flex gap-1 overflow-x-auto rounded-xl bg-card p-2 @3xl:flex-col @3xl:self-start" aria-label={t.catalog.topics}>
         {entries.map((e) => (
           <Button

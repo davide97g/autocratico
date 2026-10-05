@@ -77,18 +77,23 @@ export function Timeline({
   }
 
   return (
-    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-4">
+    // Wide layout: rows share the height the card gets from its row (at least their lanes), so no empty block below.
+    <div
+      className="grid h-full grid-cols-[4.25rem_minmax(0,1fr)] gap-x-2 @md:grid-cols-[5.5rem_minmax(0,1fr)] @md:gap-x-4 @4xl:[grid-template-rows:repeat(var(--rows),minmax(min-content,1fr))_auto]"
+      style={{ "--rows": Math.max(1, rows.length) } as React.CSSProperties}
+    >
       {rows.map(({ area, items }, i) => {
         const height = Math.max(1, ...items.map((p) => p.lane + 1)) * LANE_HEIGHT + 8
         return (
           <React.Fragment key={area}>
             <div
-              className={cn("flex items-center text-sm text-muted-foreground", i > 0 && "border-t border-dashed")}
-              style={{ height }}
+              className={cn("flex items-center truncate text-xs text-muted-foreground @md:text-sm", i > 0 && "border-t border-dashed")}
+              style={{ minHeight: height }}
             >
               {areaName(t, area)}
             </div>
-            <div className={cn("relative", i > 0 && "border-t border-dashed")} style={{ height }}>
+            <div className={cn("flex items-center", i > 0 && "border-t border-dashed")} style={{ minHeight: height }}>
+            <div className="relative w-full" style={{ height }}>
               {items.map(({ o, x, w, lane, flipped }) => {
                 const l = level(o)
                 return (
@@ -130,6 +135,7 @@ export function Timeline({
                   </Tooltip>
                 )
               })}
+            </div>
             </div>
           </React.Fragment>
         )

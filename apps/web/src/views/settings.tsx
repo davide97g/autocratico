@@ -3,15 +3,19 @@ import {
   AlarmClockIcon,
   CompassIcon,
   CopyIcon,
+  KeyboardIcon,
   KeyRoundIcon,
   LaptopIcon,
   LogOutIcon,
   MonitorIcon,
+  MoonIcon,
   PlayIcon,
   SendIcon,
   SmartphoneIcon,
+  SunIcon,
   TabletIcon,
 } from "lucide-react"
+import { cn } from "cn"
 
 import { FinanceCard } from "@/components/finance"
 import { GmailCard } from "@/components/gmail"
@@ -20,10 +24,17 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Kbd, MOD } from "@/components/kbd"
+import { CardSkeleton, RowsSkeleton } from "@/components/skeletons"
+import { useTheme } from "@/components/theme-provider"
+import { Switch } from "@/components/ui/switch"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useI18n } from "@/i18n"
 import { LanguageSwitch } from "@/components/shell"
+import { useConnection, useLiveRefresh } from "@/lib/events"
 import { jobIcon } from "@/lib/format"
+import { type Prefs, usePrefs } from "@/lib/prefs"
+import { switchTheme } from "@/lib/theme-switch"
 import { UsernameHint } from "@/views/login"
 import {
   type AccountSession,
@@ -217,14 +228,6 @@ function AccountCard({
             {renamed ? t.settings.saved : t.settings.rename}
           </Button>
         </form>
-
-        <div className="flex items-center gap-4 border-t pt-4">
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
-            <span className="font-medium">{t.settings.language}</span>
-            <span className="text-xs text-muted-foreground">{t.settings.languageDescription}</span>
-          </div>
-          <LanguageSwitch compact={false} touch />
-        </div>
 
         <form onSubmit={savePassword} className="flex flex-col gap-3 border-t pt-4">
           <span className="text-sm font-medium">{t.settings.changePassword}</span>
@@ -448,6 +451,90 @@ function TelegramCard({ enabled }: { enabled: boolean }) {
   )
 }
 
+/** One preference: what it is on the left, its control on the right. */
+function PrefRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b py-3 last:border-b-0">
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-sm font-medium">{label}</span>
+        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  )
+}
+
+const THEMES = [
+  { id: "light", icon: SunIcon },
+  { id: "dark", icon: MoonIcon },
+  { id: "system", icon: MonitorIcon },
+] as const
+
+const LIVE_DOT = { live: "bg-status-done", connecting: "bg-status-soon", offline: "bg-muted-foreground" } as const
+
+/** How the app looks and moves on this device: theme, language, animations, notices, sidebar. */
+function InterfaceCard({ onShortcuts }: { onShortcuts: () => void }) {
+  const { t } = useI18n()
+  const { theme, setTheme } = useTheme()
+  const { prefs, set } = usePrefs()
+  const connection = useConnection()
+  const origin = React.useRef<{ x: number; y: number } | undefined>(undefined)
+  const toggle = (key: keyof Prefs, label: string, hint: string) => (
+    <PrefRow label={label} hint={hint}>
+      <Switch checked={prefs[key]} onCheckedChange={(v) => set(key, v)} aria-label={label} />
+    </PrefRow>
+  )
+  return (
+    <Card className="rounded-xl">
+      <CardHeader>
+        <CardTitle className="text-lg font-medium tracking-tight">{t.settings.interface.title}</CardTitle>
+        <CardDescription>{t.settings.interface.description}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col">
+        <PrefRow label={t.settings.interface.theme}>
+          <ToggleGroup
+            value={[theme]}
+            onValueChange={(v) => v[0] && switchTheme(setTheme, v[0] as typeof theme, origin.current)}
+            onPointerDown={(e) => (origin.current = { x: e.clientX, y: e.clientY })}
+            className="rounded-lg bg-muted p-0.5"
+            aria-label={t.settings.interface.theme}
+          >
+            {THEMES.map(({ id, icon: Icon }) => (
+              <ToggleGroupItem key={id} value={id} size="sm" className="h-8 gap-1.5 rounded-md px-2.5 text-xs aria-pressed:bg-card aria-pressed:shadow-xs">
+                <Icon className="size-3.5" />
+                <span className="hidden sm:inline">{t.settings.interface.themes[id]}</span>
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </PrefRow>
+        <PrefRow label={t.settings.interface.language} hint={t.settings.languageDescription}>
+          <LanguageSwitch compact={false} touch />
+        </PrefRow>
+        {toggle("reduceMotion", t.settings.interface.reduceMotion, t.settings.interface.reduceMotionHint)}
+        {toggle("splash", t.settings.interface.splash, t.settings.interface.splashHint)}
+        {toggle("liveNotices", t.settings.interface.liveNotices, t.settings.interface.liveNoticesHint)}
+        {toggle("compact", t.settings.interface.compact, t.settings.interface.compactHint)}
+        <PrefRow label={t.settings.interface.live}>
+          <span className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className={cn("size-2 rounded-full transition-colors", LIVE_DOT[connection])} />
+            {t.settings.interface.liveStates[connection]}
+          </span>
+        </PrefRow>
+        <PrefRow label={t.settings.interface.shortcuts} hint={t.settings.interface.shortcutsHint}>
+          <Button variant="secondary" size="sm" onClick={onShortcuts}>
+            <KeyboardIcon data-icon="inline-start" />
+            {t.settings.interface.showShortcuts}
+            <span className="ml-1 hidden items-center gap-0.5 pointer-fine:flex">
+              <Kbd>{MOD}</Kbd>
+              <Kbd>K</Kbd>
+            </span>
+          </Button>
+        </PrefRow>
+      </CardContent>
+    </Card>
+  )
+}
+
 function RemindersCard() {
   const { t, locale } = useI18n()
   const [list, setList] = React.useState<Reminder[]>([])
@@ -455,6 +542,8 @@ function RemindersCard() {
     loadReminders().then(setList, () => undefined)
   }, [])
   React.useEffect(refresh, [refresh])
+  // Set from the chat or Telegram, sent by the server: the list follows.
+  useLiveRefresh("reminders", refresh, 60_000)
   return (
     <Card className="rounded-xl">
       <CardHeader>
@@ -496,11 +585,13 @@ export function Settings({
   onRenamed,
   onSignedOut,
   onTour,
+  onShortcuts,
 }: {
   session: Session
   onRenamed: () => void
   onSignedOut: () => void
   onTour: () => void
+  onShortcuts: () => void
 }) {
   const [s, setS] = React.useState<Status | null>(null)
   const [error, setError] = React.useState<string | null>(null)
@@ -510,15 +601,26 @@ export function Settings({
   React.useEffect(refresh, [refresh])
 
   if (error) return <p className="text-sm text-status-overdue">{error}</p>
-  if (!s) return <Skeleton className="h-72 rounded-xl" />
+  if (!s)
+    return (
+      <div className="grid items-start gap-4 sm:gap-6 @4xl:grid-cols-2">
+        <CardSkeleton>
+          <RowsSkeleton rows={3} />
+        </CardSkeleton>
+        <CardSkeleton>
+          <RowsSkeleton rows={4} />
+        </CardSkeleton>
+      </div>
+    )
   return (
-    <div className="grid items-start gap-6 @4xl:grid-cols-2">
-      <div className="flex flex-col gap-6">
+    <div className="grid items-start gap-4 sm:gap-6 @4xl:grid-cols-2">
+      <div className="flex flex-col gap-4 sm:gap-6">
+        <InterfaceCard onShortcuts={onShortcuts} />
         <AccountCard session={session} onRenamed={onRenamed} onSignedOut={onSignedOut} onTour={onTour} />
         <SessionsCard />
         <ServerCard s={s} onRefresh={refresh} />
       </div>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:gap-6">
         <GmailCard />
         <FinanceCard />
         <TelegramCard enabled={s.telegram.enabled} />

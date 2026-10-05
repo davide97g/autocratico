@@ -5,6 +5,7 @@ import { Bar, BarChart, XAxis } from "recharts"
 import { cn } from "cn"
 
 import { Amount } from "@/components/amount"
+import { CountUp } from "@/components/motion"
 import { Sensitive, usePrivacy } from "@/components/privacy"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -38,11 +39,13 @@ export function PaymentsCard({
   today,
   onOpen,
   className,
+  style,
 }: {
   agenda: Occurrence[]
   today: string
   onOpen: (key: string) => void
   className?: string
+  style?: React.CSSProperties
 }) {
   const { t, fmt } = useI18n()
   const { enabled: privacy } = usePrivacy()
@@ -61,7 +64,7 @@ export function PaymentsCard({
 
   return (
     // On wide screens the card takes the row's height without setting it: the calendar does, the list scrolls.
-    <div className={cn("dark @4xl:relative @4xl:min-h-150", className)}>
+    <div className={cn("dark @4xl:relative @4xl:min-h-140", className)} style={style}>
       <Card className="h-full bg-background ring-0 @4xl:absolute @4xl:inset-0">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -70,7 +73,7 @@ export function PaymentsCard({
           </CardTitle>
           <CardDescription>{t.payments.description(Number(months))}</CardDescription>
         </CardHeader>
-        <CardContent className="flex min-h-0 flex-1 flex-col gap-6">
+        <CardContent className="@container/pay flex min-h-0 flex-1 flex-col gap-6">
           <ToggleGroup
             value={[months]}
             onValueChange={(v) => v[0] && setMonths(v[0])}
@@ -86,9 +89,11 @@ export function PaymentsCard({
 
           {/* Totals */}
           <div className="flex flex-col gap-4">
-            <div className="text-5xl font-medium tracking-tight">
+            <div className="text-4xl font-medium tracking-tight whitespace-nowrap @xs/pay:text-5xl">
               {p.estimated > 0 && <span className="text-muted-foreground">≈ </span>}
-              <Sensitive>{fmt.euro.format(total)}</Sensitive>
+              <Sensitive>
+                <CountUp value={total} format={fmt.euro.format} />
+              </Sensitive>
             </div>
             <dl className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 text-sm">
               <span className="size-2.5 rounded-xs bg-foreground" />
@@ -145,9 +150,9 @@ export function PaymentsCard({
                   key={o.key}
                   type="button"
                   onClick={() => onOpen(o.key)}
-                  className="flex shrink-0 items-center gap-3 border-b py-2.5 text-left outline-none last:border-b-0 hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="group/row -mx-1 flex shrink-0 items-center gap-3 rounded-md border-b px-1 py-2.5 text-left outline-none transition-colors last:border-b-0 hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
-                  <span className={cn("h-7 w-1 shrink-0 rounded-full", STYLE[level(o)].dot)} />
+                  <span className={cn("h-7 w-1 shrink-0 rounded-full transition-[height] duration-300 ease-out-expo group-hover/row:h-9", STYLE[level(o)].dot)} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{o.title}</span>
                     <span className="block text-xs text-muted-foreground">

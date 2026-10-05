@@ -114,14 +114,14 @@ export function Finance({
 }) {
   if (!finance) {
     return (
-      <div className="grid gap-6 @4xl:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 @4xl:grid-cols-3">
         <Skeleton className="h-72 rounded-xl @4xl:col-span-2" />
         <Skeleton className="h-72 rounded-xl" />
       </div>
     )
   }
   return (
-    <div className="grid grid-cols-1 gap-6 @4xl:grid-cols-12">
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 @4xl:grid-cols-12">
       {finance.mirror ? (
         <Synced data={data} finance={finance} onReload={onReload} onOpenDeadline={onOpenDeadline} />
       ) : (
@@ -276,7 +276,7 @@ function PeriodCard({
           </ToggleGroup>
         </CardAction>
       </CardHeader>
-      <CardContent className="grid grid-cols-2 gap-6 @2xl:grid-cols-4">
+      <CardContent className="grid grid-cols-2 gap-4 sm:gap-6 @2xl:grid-cols-4">
         <Stat label={t.finance.spent} value={<Sensitive>{fmt.euro.format(current.expense)}</Sensitive>} hint={avgHint(average.expense)} />
         <Stat label={t.finance.earned} value={<Sensitive>{fmt.euro.format(current.earning)}</Sensitive>} hint={avgHint(average.earning)} />
         <Stat label={t.finance.net} value={<Sensitive>{fmt.euro.format(current.net)}</Sensitive>} tone={current.net < 0 ? "out" : current.net > 0 ? "in" : undefined} />
@@ -560,7 +560,7 @@ function InvestmentsCard({ finance, className }: { finance: FinanceData; classNa
         {p.history.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t.finance.noInvestments}</p>
         ) : (
-          <div className="grid gap-6 @4xl:grid-cols-12">
+          <div className="grid gap-4 sm:gap-6 @4xl:grid-cols-12">
             <div className="flex flex-col gap-5 @4xl:col-span-7">
               <div className="grid grid-cols-3 gap-4">
                 <Stat label={t.finance.value} value={<Sensitive>{fmt.euro.format(p.total)}</Sensitive>} />

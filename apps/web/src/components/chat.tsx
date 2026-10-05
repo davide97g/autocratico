@@ -25,6 +25,7 @@ import {
 import { cn } from "cn"
 
 import { Markdown } from "@/components/markdown"
+import { ShinyText, stagger } from "@/components/motion"
 import { Sensitive } from "@/components/privacy"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -33,6 +34,7 @@ import { asksToConfirm, type Confirmation, splitConfirmations, stripActions } fr
 
 import { chat as loadChat, chats, deleteChat, type ChatSummary, type Chat as SavedChat } from "@/lib/api"
 import { ask, type ChatEvent } from "@/lib/chat"
+import { useServerEvents } from "@/lib/events"
 import { holdUpdates } from "@/lib/update"
 
 type Step = { name: string; detail: string }
@@ -52,6 +54,10 @@ type Conversation = { chat: string | null; messages: Message[]; about?: Topic }
 
 const STORAGE_KEY = "autocratico.chat"
 const TOPIC_EVENT = "autocratico:chat-about"
+const ASK_EVENT = "autocratico:chat-ask"
+const NEW_EVENT = "autocratico:chat-new"
+/** A question asked from outside the chat (the palette, the sidebar), sent as soon as a chat is on screen. */
+let pendingQuestion: string | null = null
 const EMPTY: Conversation = { chat: null, messages: [] }
 
 /**
@@ -61,6 +67,18 @@ const EMPTY: Conversation = { chat: null, messages: [] }
 export function chatAbout(topic: Topic) {
   save({ chat: null, messages: [], about: topic })
   window.dispatchEvent(new Event(TOPIC_EVENT))
+}
+
+/** Sends `question` in the chat: the one on screen, or the one about to open. */
+export function chatAsk(question: string) {
+  pendingQuestion = question
+  window.dispatchEvent(new Event(ASK_EVENT))
+}
+
+/** Starts an empty conversation. */
+export function chatNew() {
+  save(EMPTY)
+  window.dispatchEvent(new Event(NEW_EVENT))
 }
 
 export const TOOL_ICONS: Record<string, LucideIcon> = {
@@ -134,7 +152,7 @@ function Steps({ steps, running }: { steps: Step[]; running: boolean }) {
   const items = visible.map((s, i) => {
     const Icon = TOOL_ICONS[s.name] ?? TerminalIcon
     return (
-      <li key={i} className="flex min-w-0 items-center gap-2">
+      <li key={running ? steps.length - visible.length + i : i} className={cn("flex min-w-0 items-center gap-2", running && "animate-in duration-300 fade-in-0 slide-in-from-bottom-1")}>
         <Icon className="size-3.5 shrink-0" />
         <span className="shrink-0">{t.chat.tools[s.name] ?? s.name}</span>
         <span className="truncate font-mono text-[0.7rem]">{s.detail}</span>
@@ -231,21 +249,30 @@ function Answer({ m }: { m: ClaudeMessage }) {
       {m.text ? (
         <>
           {text && (
-            <Markdown text={headings(text)} className="max-w-none [&_ol]:gap-1 [&_p]:my-1.5 [&_ul]:gap-1 [&>:first-child]:mt-0" />
+            <Markdown
+              text={headings(text)}
+              className={cn("max-w-none [&_ol]:gap-1 [&_p]:my-1.5 [&_ul]:gap-1 [&>:first-child]:mt-0", running && "streaming")}
+            />
           )}
           {confirmations.length > 0 && (
             <div className="flex flex-col gap-2">
               {confirmations.map((c, i) => (
-                <ConfirmationCard key={i} c={c} />
+                <div key={i} className="rise-in" style={stagger(i)}>
+                  <ConfirmationCard c={c} />
+                </div>
               ))}
             </div>
           )}
         </>
       ) : (
         running && (
-          <span className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="size-2 animate-pulse rounded-full bg-foreground" />
-            {t.chat.thinking}
+          <span className="flex items-center gap-2.5 text-sm text-muted-foreground">
+            <span className="thinking-dots" aria-hidden>
+              <span />
+              <span />
+              <span />
+            </span>
+            <ShinyText>{t.chat.thinking}</ShinyText>
           </span>
         )
       )}
@@ -274,9 +301,11 @@ function History({
   const [failed, setFailed] = React.useState(false)
   const [confirming, setConfirming] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
+  const refresh = React.useCallback(() => {
     chats("web").then(setList, () => setFailed(true))
   }, [])
+  React.useEffect(refresh, [refresh])
+  useServerEvents("chats", refresh)
 
   async function remove(id: string) {
     setConfirming(null)
@@ -296,11 +325,12 @@ function History({
     <div className="flex flex-col gap-2">
       <p className="px-1 text-xs font-medium text-muted-foreground">{t.chat.historyTitle}</p>
       <ul className="flex flex-col gap-1">
-        {list.map((c) => (
+        {list.map((c, i) => (
           <li
             key={c.id}
+            style={stagger(i)}
             aria-current={c.id === current || undefined}
-            className="group flex items-center gap-1 rounded-lg hover:bg-muted aria-current:bg-muted"
+            className="group rise-in flex items-center gap-1 rounded-lg transition-colors hover:bg-muted aria-current:bg-muted"
           >
             <button
               type="button"
@@ -390,6 +420,7 @@ export const Chat = React.memo(function Chat({
   const abortRef = React.useRef(abort)
   React.useEffect(() => {
     abortRef.current = abort
+    if (!abort && pendingQuestion) window.dispatchEvent(new Event(ASK_EVENT))
   }, [abort])
   React.useEffect(() => {
     const onTopic = () => {
@@ -399,6 +430,32 @@ export const Chat = React.memo(function Chat({
     }
     window.addEventListener(TOPIC_EVENT, onTopic)
     return () => window.removeEventListener(TOPIC_EVENT, onTopic)
+  }, [])
+  // A question from the palette or the sidebar: now, or as soon as the answer in progress ends.
+  const sendRef = React.useRef<(text: string) => void>(() => undefined)
+  React.useEffect(() => {
+    const onAsk = () => {
+      const q = pendingQuestion
+      if (!q || abortRef.current) return
+      pendingQuestion = null
+      setHistory(false)
+      sendRef.current(q)
+    }
+    const onNew = () => {
+      abortRef.current?.abort()
+      setConversation(EMPTY)
+      setHistory(false)
+      input.current?.focus()
+    }
+    // After this render's effects, when send() is wired up.
+    const first = window.setTimeout(onAsk)
+    window.addEventListener(ASK_EVENT, onAsk)
+    window.addEventListener(NEW_EVENT, onNew)
+    return () => {
+      window.clearTimeout(first)
+      window.removeEventListener(ASK_EVENT, onAsk)
+      window.removeEventListener(NEW_EVENT, onNew)
+    }
   }, [])
 
   async function send(text: string) {
@@ -436,6 +493,10 @@ export const Chat = React.memo(function Chat({
       release()
     }
   }
+
+  React.useEffect(() => {
+    sendRef.current = (text) => void send(text)
+  })
 
   function startOver() {
     abort?.abort()
@@ -511,16 +572,17 @@ export const Chat = React.memo(function Chat({
           />
         ) : conversation.messages.length === 0 ? (
           <div className="flex h-full flex-col justify-end gap-5">
-            <div className="flex flex-col gap-2">
+            <div className="rise-in flex flex-col gap-2">
               <p className="text-lg font-medium tracking-tight">{conversation.about ? t.chat.aboutTitle : t.chat.emptyTitle}</p>
               <p className="text-sm text-muted-foreground">{conversation.about ? t.chat.aboutBody : t.chat.emptyBody}</p>
             </div>
             <div className="flex flex-col gap-2">
-              {(conversation.about ? t.chat.aboutSuggestions : t.chat.suggestions).map((s) => (
+              {(conversation.about ? t.chat.aboutSuggestions : t.chat.suggestions).map((s, i) => (
                 <Button
                   key={s}
                   variant="secondary"
-                  className="h-auto justify-start rounded-lg px-3 py-2.5 text-left whitespace-normal"
+                  style={stagger(i + 1)}
+                  className="rise-in h-auto justify-start rounded-lg px-3 py-2.5 text-left whitespace-normal hover:translate-x-0.5"
                   onClick={() => send(s)}
                 >
                   {s}
@@ -529,14 +591,19 @@ export const Chat = React.memo(function Chat({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 sm:gap-6">
             {conversation.messages.map((m, i) =>
               m.role === "user" ? (
-                <div key={i} className="ml-8 self-end rounded-lg bg-primary px-3.5 py-2.5 text-primary-foreground">
+                <div
+                  key={i}
+                  className="ml-8 origin-bottom-right self-end rounded-lg bg-primary px-3.5 py-2.5 text-primary-foreground duration-300 animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2"
+                >
                   <Markdown text={m.text} className="[&_p]:my-0" />
                 </div>
               ) : (
-                <Answer key={i} m={m} />
+                <div key={i} className="duration-300 animate-in fade-in-0 slide-in-from-bottom-1">
+                  <Answer m={m} />
+                </div>
               )
             )}
             {(() => {
@@ -544,7 +611,7 @@ export const Chat = React.memo(function Chat({
               const last = conversation.messages.at(-1)
               if (abort || last?.role !== "claude" || last.status !== "done" || !asksToConfirm(last.text)) return null
               return (
-                <div className="-mt-2 flex gap-2">
+                <div className="-mt-2 flex gap-2 duration-300 animate-in fade-in-0 slide-in-from-bottom-1">
                   <Button size="sm" onClick={() => send(t.chat.confirmYes)}>
                     <CheckIcon data-icon="inline-start" />
                     {t.chat.yes}
@@ -602,11 +669,17 @@ export const Chat = React.memo(function Chat({
             className="field-sizing-content max-h-40 min-h-8 flex-1 resize-none bg-transparent py-1.5 text-base outline-none placeholder:text-muted-foreground sm:text-sm"
           />
           {abort ? (
-            <Button type="button" size="icon" onClick={() => abort.abort()} aria-label={t.chat.stop}>
+            <Button type="button" size="icon" onClick={() => abort.abort()} aria-label={t.chat.stop} className="duration-200 animate-in zoom-in-75">
               <SquareIcon className="fill-current" />
             </Button>
           ) : (
-            <Button type="submit" size="icon" disabled={!draft.trim()} aria-label={t.chat.send}>
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!draft.trim()}
+              aria-label={t.chat.send}
+              className="transition-[opacity,transform,scale] disabled:scale-90 enabled:hover:-translate-y-0.5"
+            >
               <ArrowUpIcon />
             </Button>
           )}

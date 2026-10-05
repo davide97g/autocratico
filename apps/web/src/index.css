@@ -283,3 +283,176 @@
 @media (prefers-reduced-motion: no-preference) {
   .view-in { animation: view-in 220ms cubic-bezier(0.16, 1, 0.3, 1); }
 }
+
+/*
+ * Micro-interactions. One rhythm everywhere: entrances ease out (cubic-bezier(0.16, 1, 0.3, 1)) in 200-450 ms,
+ * feedback is under 200 ms, and everything collapses to nothing under prefers-reduced-motion
+ * or when the user turns animations down in Settings (data-reduce-motion on <html>).
+ */
+@theme inline {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Items of a list come in one after the other (style="--i: n", see stagger() in components/motion.tsx). */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rise-in { animation: rise-in 420ms var(--ease-out-expo) both; animation-delay: calc(var(--i, 0) * 45ms); }
+}
+
+/* Something in progress: a light runs across the text. */
+.shiny-text {
+  background: linear-gradient(100deg, currentColor 40%, color-mix(in oklch, currentColor 25%, transparent) 50%, currentColor 60%) 0 0 / 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shiny-text 2.2s linear infinite;
+}
+@keyframes shiny-text {
+  from { background-position: 125% 0; }
+  to { background-position: -25% 0; }
+}
+
+/* Skeletons: a soft sheen instead of a blink, shaped like what is coming. */
+@layer components {
+  .skeleton-sheen {
+    background-color: var(--muted);
+    background-image: linear-gradient(90deg, transparent 0%, color-mix(in oklch, var(--card) 60%, transparent) 50%, transparent 100%);
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: sheen 1.6s ease-in-out infinite;
+  }
+}
+@keyframes sheen {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+
+/* Changed on the server while on screen: a short glow that fades. */
+@keyframes fresh {
+  0%, 30% { background-color: color-mix(in oklch, var(--status-soon) 22%, transparent); box-shadow: inset 3px 0 0 var(--status-soon); }
+}
+.fresh { animation: fresh 2.6s ease-out; }
+
+/* A check that lands. */
+@keyframes pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.18); opacity: 1; }
+}
+.pop { animation: pop 380ms var(--ease-spring) both; }
+
+/* Done: the row breathes green once. */
+@keyframes done-glow {
+  0% { background-color: color-mix(in oklch, var(--status-done) 20%, transparent); }
+}
+.done-glow { animation: done-glow 1.4s ease-out; }
+
+/* The streaming answer's caret, after its last words. */
+.caret::after,
+.streaming > :is(p, h3, h4):last-child::after,
+.streaming > :is(ul, ol):last-child > li:last-child::after {
+  content: "";
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  border-radius: 1px;
+  background: currentColor;
+  animation: caret 1s steps(2, start) infinite;
+}
+@keyframes caret {
+  to { visibility: hidden; }
+}
+
+/* The mark: settles in once, a highlight crosses it on hover. */
+.logo-mark .logo-letter { transform-origin: 50% 60%; }
+@media (prefers-reduced-motion: no-preference) {
+  .logo-mark { animation: logo-in 600ms var(--ease-spring) both; }
+  .logo-mark .logo-letter { animation: logo-letter 700ms var(--ease-out-expo) 120ms both; }
+}
+@keyframes logo-in { from { transform: scale(0.6) rotate(-12deg); opacity: 0; } }
+@keyframes logo-letter { from { transform: translateY(18%) scale(0.8); opacity: 0; } }
+.logo-shine {
+  background: linear-gradient(110deg, transparent 30%, oklch(1 0 0 / 45%) 50%, transparent 70%) -150% 0 / 250% 100% no-repeat;
+}
+@media (hover: hover) {
+  .logo-mark:hover .logo-shine { transition: background-position 700ms var(--ease-out-expo); background-position: 150% 0; }
+}
+
+/* Cards: a faint light follows the pointer (--mx/--my set by useSpotlight in App.tsx). */
+@layer components {
+@media (hover: hover) and (pointer: fine) {
+  [data-slot="card"] { position: relative; }
+  [data-slot="card"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 300ms ease;
+    background: radial-gradient(22rem circle at var(--mx, 50%) var(--my, 50%), color-mix(in oklch, var(--foreground) 4%, transparent), transparent 60%);
+  }
+  [data-slot="card"]:hover::after { opacity: 1; }
+  .dark [data-slot="card"]::after {
+    background: radial-gradient(22rem circle at var(--mx, 50%) var(--my, 50%), oklch(1 0 0 / 5%), transparent 60%);
+  }
+}
+}
+
+@keyframes bell {
+  20% { transform: rotate(14deg); }
+  40% { transform: rotate(-10deg); }
+  60% { transform: rotate(6deg); }
+  80% { transform: rotate(-3deg); }
+}
+
+/* The sticky top bar gets a glass backing once the page scrolls under it. */
+.topbar[data-stuck] {
+  background: color-mix(in oklch, var(--background) 72%, transparent);
+  box-shadow: 0 1px 0 var(--glass-border), 0 12px 24px -18px oklch(0 0 0 / 25%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+}
+@media (width >= 64rem) {
+  .topbar[data-stuck] { background: color-mix(in oklch, var(--card) 80%, transparent); }
+}
+
+/* Theme switch: the new theme spreads from where it was asked (View Transitions, lib/theme-switch.ts). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* Settings → Interface → fewer animations: same as the system setting. */
+[data-reduce-motion] *,
+[data-reduce-motion] *::before,
+[data-reduce-motion] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0.01ms !important;
+}
+/* The agent is thinking: three dots taking turns. */
+.thinking-dots { display: inline-flex; gap: 3px; }
+.thinking-dots > span {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  animation: thinking 1.2s ease-in-out infinite;
+}
+.thinking-dots > span:nth-child(2) { animation-delay: 150ms; }
+.thinking-dots > span:nth-child(3) { animation-delay: 300ms; }
+@keyframes thinking {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shiny-text, .skeleton-sheen, .caret::after, .streaming *::after, .fresh, .pop, .done-glow, .thinking-dots > span { animation: none; }
+}

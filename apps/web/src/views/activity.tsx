@@ -8,6 +8,8 @@ import { Sensitive, usePrivacy } from "@/components/privacy"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { stagger } from "@/components/motion"
+import { RowsSkeleton } from "@/components/skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { useI18n } from "@/i18n"
@@ -22,33 +24,14 @@ import {
   type LiveJobs,
   revertCommit,
 } from "@/lib/api"
-import { jobIcon } from "@/lib/format"
+import { duration, jobIcon, useNow } from "@/lib/format"
+import { useLiveRefresh } from "@/lib/events"
 import { unlessChanged } from "@/lib/utils"
 
 function when(iso: string, locale: string) {
   return new Date(iso).toLocaleString(locale === "it" ? "it-IT" : "en-GB", { dateStyle: "short", timeStyle: "short" })
 }
 
-/** 45 s, 3:07, 1:02:05 */
-function duration(ms: number) {
-  const total = Math.max(0, Math.round(ms / 1000))
-  if (total < 60) return `${total} s`
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = String(total % 60).padStart(2, "0")
-  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`
-}
-
-/** The current time, ticking every second while `active`. */
-function useNow(active: boolean) {
-  const [now, setNow] = React.useState(() => Date.now())
-  React.useEffect(() => {
-    if (!active) return
-    const id = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(id)
-  }, [active])
-  return now
-}
 
 /** Commits made by the server for a change confirmed in the chat (apps/server/src/changes.ts). */
 const CHAT = "Chat: "
@@ -75,7 +58,7 @@ function Steps({ steps, live = false }: { steps: JobStep[]; live?: boolean }) {
       {steps.map((s, i) => {
         const Icon = s.tool ? (TOOL_ICONS[s.tool] ?? TerminalIcon) : MessageSquareTextIcon
         return (
-          <li key={i} className="flex min-w-0 items-start gap-2">
+          <li key={i} className={cn("flex min-w-0 items-start gap-2", live && "duration-300 animate-in fade-in-0 slide-in-from-bottom-1")}>
             <Icon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
             {s.tool ? (
               <span className="flex min-w-0 gap-2 text-muted-foreground">
@@ -134,7 +117,12 @@ export function Now({ live }: { live: LiveJobs | null }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg font-medium tracking-tight">
           {t.activity.now}
-          {current && <span className="size-2 animate-pulse rounded-full bg-status-soon" />}
+          {current && (
+            <span className="relative flex size-2">
+              <span className="absolute inset-0 animate-ping rounded-full bg-status-soon opacity-70 motion-reduce:hidden" />
+              <span className="relative size-2 rounded-full bg-status-soon" />
+            </span>
+          )}
         </CardTitle>
         <CardDescription>{t.activity.nowDescription}</CardDescription>
       </CardHeader>
@@ -183,13 +171,13 @@ export function Now({ live }: { live: LiveJobs | null }) {
   )
 }
 
-function RunRow({ r }: { r: JobRun }) {
+function RunRow({ r, index }: { r: JobRun; index: number }) {
   const { t, locale } = useI18n()
   const [open, setOpen] = React.useState(false)
   const steps = r.steps ?? []
   const items = r.items ?? []
   return (
-    <li className="flex flex-col gap-2 rounded-lg bg-muted/50 p-3 text-sm">
+    <li className="rise-in flex flex-col gap-2 rounded-lg bg-muted/50 p-3 text-sm" style={stagger(index)}>
       <div className="flex items-start gap-3">
         <span className="relative flex size-9 shrink-0 items-center justify-center rounded-md bg-card">
           {React.createElement(jobIcon(r.job), { className: "size-4" })}
@@ -231,7 +219,7 @@ function RunRow({ r }: { r: JobRun }) {
   )
 }
 
-function CommitRow({ c, focused, onReverted }: { c: Commit; focused: boolean; onReverted: (msg: string) => void }) {
+function CommitRow({ c, focused, onReverted, index }: { c: Commit; focused: boolean; onReverted: (msg: string) => void; index: number }) {
   const { t, locale } = useI18n()
   const { enabled: privacy } = usePrivacy()
   const [patch, setPatch] = React.useState<string | null>(null)
@@ -264,7 +252,11 @@ function CommitRow({ c, focused, onReverted }: { c: Commit; focused: boolean; on
   }
 
   return (
-    <li ref={row} className={cn("flex scroll-mt-6 flex-col gap-2 rounded-lg bg-muted/50 p-3", focused && "ring-2 ring-ring")}>
+    <li
+      ref={row}
+      className={cn("rise-in flex scroll-mt-28 flex-col gap-2 rounded-lg bg-muted/50 p-3", focused && "ring-2 ring-ring")}
+      style={stagger(index)}
+    >
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-card">
           {chat ? <MessageSquareTextIcon className="size-4" /> : <GitCommitHorizontalIcon className="size-4" />}
@@ -320,6 +312,8 @@ export function Activity({ live, focus = null }: { live: LiveJobs | null; focus?
     activity().then((d) => setData(unlessChanged(d)), (e: Error) => setError(e.message))
   }, [])
   React.useEffect(refresh, [refresh])
+  // A new commit (the agent, the chat, an undo): the server says when.
+  useLiveRefresh("activity", refresh, 30_000)
   // A run started or finished: the list and the changes are out of date.
   const current = live?.current?.id
   const first = React.useRef(true)
@@ -329,7 +323,7 @@ export function Activity({ live, focus = null }: { live: LiveJobs | null; focus?
   }, [current, refresh])
 
   return (
-    <div className="grid items-start gap-6 @4xl:grid-cols-2">
+    <div className="grid items-start gap-4 sm:gap-6 @4xl:grid-cols-2">
       <Now live={live} />
 
       <Card className="rounded-xl">
@@ -339,11 +333,11 @@ export function Activity({ live, focus = null }: { live: LiveJobs | null; focus?
         </CardHeader>
         <CardContent>
           {error && <p className="text-sm text-status-overdue">{error}</p>}
-          {!data && !error && <Skeleton className="h-40 rounded-lg" />}
+          {!data && !error && <RowsSkeleton rows={4} />}
           {data?.runs.length === 0 && <p className="text-sm text-muted-foreground">{t.activity.noRuns}</p>}
           <ul className="flex flex-col gap-2">
-            {data?.runs.map((r) => (
-              <RunRow key={r.id} r={r} />
+            {data?.runs.map((r, i) => (
+              <RunRow key={r.id} r={r} index={i} />
             ))}
           </ul>
         </CardContent>
@@ -356,11 +350,13 @@ export function Activity({ live, focus = null }: { live: LiveJobs | null; focus?
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {message && <p className="text-sm text-status-done">{message}</p>}
+          {!data && !error && <RowsSkeleton rows={3} />}
           {data?.commits.length === 0 && <p className="text-sm text-muted-foreground">{t.activity.noChanges}</p>}
           <ul className="flex flex-col gap-2">
-            {data?.commits.map((c) => (
+            {data?.commits.map((c, i) => (
               <CommitRow
                 key={c.hash}
+                index={i}
                 c={c}
                 focused={focus !== null && (c.hash.startsWith(focus) || focus.startsWith(c.hash))}
                 onReverted={(m) => {

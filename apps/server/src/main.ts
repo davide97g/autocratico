@@ -42,10 +42,13 @@ if (config.jobs) s.jobs?.start()
 s.telegram?.start()
 // The finance app's change feed (no-op until it is connected from Settings).
 s.finance.listen()
+// Changes to the data folder, pushed to the open web apps.
+s.pulse.watch(config.data)
 
 async function shutdown() {
   s.jobs?.stop()
   s.finance.stop()
+  s.pulse.stop()
   await s.telegram?.stop().catch(() => undefined)
   server.close()
   process.exit(0)

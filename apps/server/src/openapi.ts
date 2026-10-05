@@ -81,7 +81,7 @@ export const ROUTES: Route[] = [
   { method: "post", path: "/api/finance/sync", summary: "Re-read everything from the finance app now", response: z.object({ changed: z.boolean(), transactions: z.number() }) },
   { method: "post", path: "/api/finance/transactions", summary: "Record a paid occurrence as an expense in the finance app", body: FinanceExpenseInput, response: z.object({ id: z.string() }) },
   { method: "delete", path: "/api/finance/transactions/{key}", summary: "Delete the expense recorded for an occurrence", response: Ok },
-  { method: "get", path: "/api/events", summary: "Server-sent events: `finance` {rev} when the synced data changes, `ping` every 25 s" },
+  { method: "get", path: "/api/events", summary: "Server-sent events: `finance` {rev} when the synced data changes; `data`, `inbox`, `archive`, `activity`, `jobs`, `chats`, `reminders` when that part changed; `ping` every 25 s" },
   { method: "get", path: "/api/devices", summary: "Ingest tokens for shortcuts", response: z.array(Device) },
   { method: "post", path: "/api/devices", summary: "Create an ingest token for a shortcut (shown once)", body: z.object({ name: z.string() }), response: z.object({ token: z.string() }) },
   { method: "delete", path: "/api/devices/{id}", summary: "Revoke an ingest token", response: Ok },

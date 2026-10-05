@@ -7,9 +7,11 @@ import { SourcePreview } from "@/components/source"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { RowsSkeleton } from "@/components/skeletons"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useI18n } from "@/i18n"
+import { useLiveRefresh } from "@/lib/events"
+import { unlessChanged } from "@/lib/utils"
 import { type ArchiveEntry, archive as loadArchive } from "@/lib/api"
 
 const PAGE = 60
@@ -73,9 +75,12 @@ export function Archive() {
   const [kind, setKind] = React.useState<Kind>("all")
   const [shown, setShown] = React.useState(PAGE)
 
-  React.useEffect(() => {
-    loadArchive().then(setEntries, (e: Error) => setError(e.message))
+  const refresh = React.useCallback(() => {
+    loadArchive().then((a) => setEntries(unlessChanged(a)), (e: Error) => setError(e.message))
   }, [])
+  React.useEffect(refresh, [refresh])
+  // The agent files documents and the mail sync adds emails: the server says when.
+  useLiveRefresh("archive", refresh, 120_000)
 
   const q = query.trim().toLowerCase()
   const list = (entries ?? []).filter(
@@ -116,7 +121,7 @@ export function Archive() {
           </ToggleGroup>
         </div>
         {error && <p className="text-sm text-status-overdue">{error}</p>}
-        {!entries && !error && <Skeleton className="h-64 rounded-lg" />}
+        {!entries && !error && <RowsSkeleton rows={6} />}
         {entries && list.length === 0 && <p className="text-sm text-muted-foreground">{t.archive.empty}</p>}
         <ul className="flex flex-col">
           {list.slice(0, shown).map((e) => (

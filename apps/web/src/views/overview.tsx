@@ -4,6 +4,7 @@ import {
   AlarmClockIcon,
   CalendarPlusIcon,
   CheckIcon,
+  SparklesIcon,
   FolderOpenIcon,
   TriangleAlertIcon,
   ZapIcon,
@@ -11,6 +12,7 @@ import {
 import { Area, AreaChart, Bar, BarChart, XAxis } from "recharts"
 import { cn } from "cn"
 
+import { CountUp, stagger } from "@/components/motion"
 import { Sensitive } from "@/components/privacy"
 import { SeverityIcon, StatusBadge, StatusLegend } from "@/components/status"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +23,7 @@ import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useI18n } from "@/i18n"
 import type { Data, Occurrence } from "@/lib/api"
+import { FreshContext } from "@/lib/fresh"
 import { areaIcon, areaName, capitalize, parseDate } from "@/lib/format"
 import { level, ORDER, SEVERITIES, severity, STYLE } from "@/lib/status"
 import { PaymentsCard } from "@/views/payments"
@@ -70,13 +73,16 @@ export const Overview = React.memo(function Overview({
   onOpenCase,
   onOpenDeadlines,
   onOpenDeadline,
+  onAsk,
 }: {
   data: Data
   onOpenCase: (slug: string) => void
   onOpenDeadlines: () => void
   onOpenDeadline: (key: string) => void
+  onAsk: (question: string) => void
 }) {
   const { t, fmt } = useI18n()
+  const fresh = React.useContext(FreshContext)
   const [months, setMonths] = React.useState("6")
   const { agenda, today, incomplete, cases, profile } = data
   const open = agenda.filter((o) => !o.done_on)
@@ -122,9 +128,9 @@ export const Overview = React.memo(function Overview({
   )
 
   return (
-    <div className="grid grid-cols-1 gap-6 @2xl:grid-cols-2 @4xl:grid-cols-12">
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 @2xl:grid-cols-2 @4xl:grid-cols-12">
       {/* Calendar */}
-      <Card className="@2xl:col-span-2 @4xl:col-span-8">
+      <Card className="rise-in @2xl:col-span-2 @4xl:col-span-8" style={stagger(0)}>
         <CardHeader>
           <CardTitle className="text-lg font-medium tracking-tight">{t.overview.calendar}</CardTitle>
           <CardDescription className="col-start-1">{t.overview.calendarDescription(Number(months))}</CardDescription>
@@ -143,7 +149,7 @@ export const Overview = React.memo(function Overview({
             </ToggleGroup>
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1">
           <Timeline agenda={compactAgenda} today={today} months={Number(months)} onOpen={onOpenDeadlines} />
         </CardContent>
         <CardFooter className="bg-transparent">
@@ -152,10 +158,10 @@ export const Overview = React.memo(function Overview({
       </Card>
 
       {/* Money to pay */}
-      <PaymentsCard agenda={agenda} today={today} onOpen={onOpenDeadline} className="@2xl:col-span-1 @4xl:col-span-4" />
+      <PaymentsCard agenda={agenda} today={today} onOpen={onOpenDeadline} className="rise-in @2xl:col-span-1 @4xl:col-span-4" style={stagger(1)} />
 
       {/* Keep an eye on */}
-      <Card className="@4xl:col-span-4">
+      <Card className="rise-in @4xl:col-span-4" style={stagger(2)}>
         <CardHeader>
           <CardTitle className="text-lg font-medium tracking-tight">{t.overview.watch}</CardTitle>
           <CardDescription>{t.overview.watchDescription}</CardDescription>
@@ -170,10 +176,13 @@ export const Overview = React.memo(function Overview({
               <button
                 key={o.key}
                 type="button"
-                onClick={onOpenDeadlines}
-                className="flex items-center gap-3 border-b py-3 text-left outline-none last:border-b-0 hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50"
+                onClick={() => onOpenDeadline(o.key)}
+                className={cn(
+                  "group/row -mx-2 flex items-center gap-3 rounded-lg border-b px-2 py-3 text-left outline-none transition-colors last:border-b-0 hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50",
+                  fresh.has(o.key) && "fresh"
+                )}
               >
-                <span className={cn("h-8 w-1 shrink-0 rounded-full", STYLE[l].dot)} />
+                <span className={cn("h-8 w-1 shrink-0 rounded-full transition-[height] duration-300 ease-out-expo group-hover/row:h-10", STYLE[l].dot)} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{o.title}</span>
                   <span className="block text-xs text-muted-foreground">
@@ -188,14 +197,16 @@ export const Overview = React.memo(function Overview({
       </Card>
 
       {/* This year's load */}
-      <Card className="@4xl:col-span-4">
+      <Card className="rise-in @4xl:col-span-4" style={stagger(3)}>
         <CardHeader>
           <CardTitle className="text-lg font-medium tracking-tight">{t.overview.load}</CardTitle>
           <CardDescription>{t.overview.loadDescription}</CardDescription>
-          <CardAction className="text-3xl font-medium tracking-tight">{year.length}</CardAction>
+          <CardAction className="text-3xl font-medium tracking-tight">
+            <CountUp value={year.length} />
+          </CardAction>
         </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <ChartContainer config={loadConfig} className="aspect-auto h-24 w-full">
+        <CardContent className="flex flex-1 flex-col gap-5">
+          <ChartContainer config={loadConfig} className="aspect-auto h-24 min-h-24 w-full flex-1">
             <AreaChart data={load} margin={CHART_MARGIN}>
               <defs>
                 <linearGradient id="load-fill" x1="0" y1="0" x2="0" y2="1">
@@ -221,7 +232,7 @@ export const Overview = React.memo(function Overview({
       </Card>
 
       {/* Dates to add */}
-      <Card className="@2xl:col-span-2 @4xl:col-span-4">
+      <Card className="rise-in @2xl:col-span-2 @4xl:col-span-4" style={stagger(4)}>
         <CardHeader>
           <CardTitle className="text-lg font-medium tracking-tight">{t.overview.missing}</CardTitle>
           <CardDescription>{t.overview.missingDescription}</CardDescription>
@@ -244,23 +255,29 @@ export const Overview = React.memo(function Overview({
             )
           })}
         </CardContent>
-        {incomplete.length > 5 && (
-          <CardFooter className="bg-transparent">
-            <Button variant="ghost" size="sm" onClick={onOpenDeadlines}>
-              {t.overview.seeAll(incomplete.length)}
+        {incomplete.length > 0 && (
+          <CardFooter className="mt-auto flex-wrap gap-2 bg-transparent">
+            <Button variant="secondary" size="sm" className="group/find" onClick={() => onAsk(t.overview.findDatesPrompt)}>
+              <SparklesIcon data-icon="inline-start" className="transition-transform duration-300 group-hover/find:rotate-12" />
+              {t.overview.findDates}
             </Button>
+            {incomplete.length > 5 && (
+              <Button variant="ghost" size="sm" onClick={onOpenDeadlines}>
+                {t.overview.seeAll(incomplete.length)}
+              </Button>
+            )}
           </CardFooter>
         )}
       </Card>
 
       {/* Cases */}
-      <Card className="@2xl:col-span-2 @4xl:col-span-12">
-        <CardHeader className="flex flex-wrap items-center gap-x-10 gap-y-4">
+      <Card className="rise-in @2xl:col-span-2 @4xl:col-span-12" style={stagger(5)}>
+        <CardHeader className="flex flex-wrap items-center gap-x-10 gap-y-4 max-sm:gap-y-3">
           <div className="flex items-center gap-2">
             <CardTitle className="text-2xl font-medium tracking-tight">{t.overview.cases}</CardTitle>
             <Badge>{openCases.length}</Badge>
           </div>
-          <div className="flex flex-wrap gap-8">
+          <div className="grid w-full grid-cols-2 gap-x-4 gap-y-3 sm:flex sm:w-auto sm:flex-wrap sm:gap-8">
             <Stat icon={TriangleAlertIcon} label={t.overview.stats.overdue} value={count("overdue")} className={STYLE.overdue.solid} />
             <Stat icon={ZapIcon} label={t.overview.stats.urgent} value={count("urgent")} className={STYLE.urgent.solid} />
             <Stat icon={AlarmClockIcon} label={t.overview.stats.soon} value={count("soon")} className={STYLE.soon.solid} />
@@ -269,7 +286,7 @@ export const Overview = React.memo(function Overview({
         </CardHeader>
         <CardContent>
           <div className="dark">
-            <div className="relative grid gap-8 overflow-hidden rounded-lg bg-background p-6 text-foreground @2xl:grid-cols-3 @2xl:p-8">
+            <div className="relative grid gap-6 overflow-hidden rounded-lg bg-background p-5 text-foreground @2xl:grid-cols-3 @2xl:gap-8 @2xl:p-8">
               <div aria-hidden className="silk pointer-events-none absolute -inset-10" />
               {openCases.slice(0, 1).map((c) => (
                 <Block
@@ -324,12 +341,12 @@ function Stat({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className={cn("flex size-9 items-center justify-center rounded-md", value ? className : "bg-muted text-muted-foreground")}>
+      <span className={cn("flex size-9 items-center justify-center rounded-md transition-colors duration-500", value ? className : "bg-muted text-muted-foreground")}>
         <Icon className="size-4" />
       </span>
       <div className="flex flex-col leading-tight">
         <span className="text-xs text-muted-foreground">{label}</span>
-        <span className="font-mono text-lg font-medium">{value}</span>
+        <CountUp value={value} className="font-mono text-lg font-medium" />
       </div>
     </div>
   )

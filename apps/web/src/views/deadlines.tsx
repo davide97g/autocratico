@@ -10,13 +10,16 @@ import {
 import { cn } from "cn"
 
 import { Amount } from "@/components/amount"
+import { stagger } from "@/components/motion"
 import { Sensitive } from "@/components/privacy"
+import { StickyBar } from "@/components/shell"
 import { SourcePreview } from "@/components/source"
 import { SeverityIcon, StatusBadge, StatusLegend } from "@/components/status"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -32,6 +35,7 @@ import { Switch } from "@/components/ui/switch"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useI18n } from "@/i18n"
 import { type Data, type Occurrence } from "@/lib/api"
+import { useFresh } from "@/lib/fresh"
 import { areaIcon, areaName, capitalize, parseDate } from "@/lib/format"
 import { level, STYLE } from "@/lib/status"
 
@@ -79,12 +83,13 @@ export const Deadlines = React.memo(function Deadlines({
   )
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-col gap-4 sm:gap-6">
+      {/* Stays under the top bar while the months scroll by. */}
+      <StickyBar className="flex items-center gap-3">
         <ToggleGroup
           value={[filter]}
           onValueChange={(v) => v[0] && setFilter(v[0])}
-          className="no-scrollbar max-w-full overflow-x-auto rounded-lg bg-card p-1 @lg:flex-wrap"
+          className="no-scrollbar min-w-0 flex-1 overflow-x-auto rounded-lg bg-card p-1 @4xl:flex-none @4xl:flex-wrap"
           aria-label={t.deadlines.filter}
         >
           <ToggleGroupItem value={ALL} className="rounded-md px-4">
@@ -96,17 +101,18 @@ export const Deadlines = React.memo(function Deadlines({
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
-        <StatusLegend className="ml-auto" />
-        <label className="flex h-11 items-center gap-2 text-sm text-muted-foreground">
+        <StatusLegend className="ml-auto hidden @5xl:flex" />
+        <label className="flex h-11 shrink-0 items-center gap-2 text-sm text-muted-foreground @4xl:ml-auto @5xl:ml-0">
           {/* On the page background the default track (input) would not show. */}
           <Switch
             checked={showDone}
             onCheckedChange={setShowDone}
             className="data-unchecked:bg-muted-foreground/30"
           />
-          {t.deadlines.showDone}
+          <span className="hidden @lg:inline">{t.deadlines.showDone}</span>
+          <span className="@lg:hidden">{t.status.done}</span>
         </label>
-      </div>
+      </StickyBar>
 
       {items.length === 0 && (
         <Card className="rounded-xl">
@@ -121,16 +127,16 @@ export const Deadlines = React.memo(function Deadlines({
         </Card>
       )}
 
-      <div className="grid gap-6 @4xl:grid-cols-2">
-        {[...months.entries()].map(([key, list]) => (
-          <Card key={key} className="rounded-xl">
+      <div className="grid gap-4 sm:gap-6 @4xl:grid-cols-2">
+        {[...months.entries()].map(([key, list], i) => (
+          <Card key={key} className="rise-in rounded-xl" style={stagger(i)}>
             <CardHeader>
               <CardTitle className="text-xl font-medium tracking-tight">
                 {capitalize(fmt.monthYear.format(parseDate(`${key}-01`)))}
               </CardTitle>
-              <CardDescription>
+              <CardAction className="self-center text-xs text-muted-foreground">
                 {t.deadlines.count(list.length)}
-              </CardDescription>
+              </CardAction>
             </CardHeader>
             <CardContent className="flex flex-col">
               {list.map((o) => (
@@ -261,18 +267,29 @@ function Row({
   const done = Boolean(o.done_on)
   const l = level(o)
   const [open, setOpen] = React.useState(false)
+  const fresh = useFresh(o.key)
+  // Marked done here: the row glows green once.
+  const [justDone, setJustDone] = React.useState(false)
+  const markDone = () => {
+    setJustDone(true)
+    onDone(o, true)
+  }
 
   return (
-    <div className="border-b last:border-b-0">
+    <div
+      className={cn("-mx-2 rounded-lg border-b px-2 last:border-b-0", fresh && "fresh", justDone && done && "done-glow")}
+      onAnimationEnd={() => setJustDone(false)}
+    >
       <div
         className={cn(
           "flex items-center gap-3 py-3 @lg:gap-4",
+          "transition-opacity duration-500",
           done && !open && "opacity-55"
         )}
       >
         <div
           className={cn(
-            "flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md leading-none",
+            "flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-md leading-none transition-colors duration-500",
             l === "planned"
               ? "bg-primary text-primary-foreground"
               : STYLE[l].solid
@@ -338,7 +355,7 @@ function Row({
                 variant="secondary"
                 className={cn("hidden @lg:inline-flex", STYLE.done.soft)}
               >
-                <CheckIcon data-icon="inline-start" />
+                <CheckIcon data-icon="inline-start" className={cn(justDone && "pop")} />
                 {t.deadlines.doneOn(fmt.short.format(parseDate(o.done_on!)))}
               </Badge>
               <Button
@@ -360,15 +377,16 @@ function Row({
               />
               <Button
                 size="sm"
-                className="hidden rounded-lg @lg:inline-flex"
-                onClick={() => onDone(o, true)}
+                className="group/done hidden rounded-lg @lg:inline-flex"
+                onClick={markDone}
               >
+                <CheckIcon data-icon="inline-start" className="-ml-0.5 w-0 opacity-0 transition-all duration-200 group-hover/done:w-3.5 group-hover/done:opacity-100" />
                 {t.deadlines.markDone}
               </Button>
               <Button
                 size="icon-lg"
                 className="size-10 rounded-lg @lg:hidden"
-                onClick={() => onDone(o, true)}
+                onClick={markDone}
                 aria-label={t.deadlines.markDone}
               >
                 <CheckIcon />
@@ -377,7 +395,11 @@ function Row({
           )}
         </div>
       </div>
-      {open && <Details o={o} onOpenCase={onOpenCase} onOpen={onOpen} onAsk={onAsk} />}
+      {open && (
+        <div className="duration-200 animate-in fade-in-0 slide-in-from-top-1">
+          <Details o={o} onOpenCase={onOpenCase} onOpen={onOpen} onAsk={onAsk} />
+        </div>
+      )}
     </div>
   )
 }

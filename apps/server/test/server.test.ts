@@ -10,6 +10,7 @@ import { ChangeError } from "../src/changes.ts"
 import { type Claude, tools } from "../src/claude.ts"
 import { type Config, loadConfig } from "../src/config.ts"
 import { cleanSteps, Jobs, parseTriage, recorder } from "../src/jobs.ts"
+import { topicOf } from "../src/pulse.ts"
 import { outgoing } from "../src/telegram.ts"
 import { cookieOf, LOCAL, LOCAL_WRITE, owner, PASSWORD, post, setup } from "./helpers.ts"
 
@@ -640,5 +641,18 @@ describe("older filed emails", () => {
     expect(gmailLink(meta)).toBe("https://mail.google.com/mail/u/0/#all/19dd8297ba7a6af5")
     expect(gmailLink(meta, { personal: "me@example.com" })).toBe("https://mail.google.com/mail/u/?authuser=me%40example.com#all/19dd8297ba7a6af5")
     expect(gmailLink({ ...meta, account: "work" }, { personal: "me@example.com", work: "w@example.com" })).toContain("authuser=w%40example.com")
+  })
+})
+
+describe("pulse", () => {
+  it("maps data-folder paths to the topics the web app listens to", () => {
+    expect(topicOf("deadlines.toml")).toBe("data")
+    expect(topicOf(join("cases", "2026-car", "README.md"))).toBe("data")
+    expect(topicOf("inbox/2026-10-05-upload-x-abc123/item.json")).toBe("inbox")
+    expect(topicOf("archive/2026/tax/f24.pdf")).toBe("archive")
+    expect(topicOf(".git/logs/HEAD")).toBe("activity")
+    expect(topicOf(".git/objects/ab/cdef")).toBeNull()
+    expect(topicOf("secrets/auth.db")).toBeNull()
+    expect(topicOf("chats/web-1.json")).toBe("chats")
   })
 })

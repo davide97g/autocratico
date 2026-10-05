@@ -2,18 +2,39 @@ import * as React from "react"
 import { caseOpen } from "@autocratico/core"
 import { cn } from "cn"
 
-import { Chat, chatAbout } from "@/components/chat"
+import { toast } from "sonner"
+
+import { Chat, chatAbout, chatAsk, chatNew } from "@/components/chat"
+import { type CommandActions, CommandPalette, GO_KEYS, ShortcutsDialog } from "@/components/command"
 import { DropToInbox } from "@/components/drop-to-inbox"
 import { type ExpenseAsk, ExpenseDialog } from "@/components/finance"
+import { dismissSplash } from "@/components/logo"
 import { usePrivacy } from "@/components/privacy"
-import { Sidebar, TabBar, TopBar, type View, VIEWS } from "@/components/shell"
+import { SEARCH_ID, Sidebar, TabBar, TopBar, type View, VIEWS } from "@/components/shell"
+import { ViewSkeleton } from "@/components/skeletons"
+import { useTheme } from "@/components/theme-provider"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Toaster } from "@/components/ui/sonner"
 import { useI18n } from "@/i18n"
 import { Tour } from "@/components/tour"
-import { type Data, type FinanceData, financeData, loadData, markDone, type Occurrence, type Session, session as loadSession, Unauthenticated } from "@/lib/api"
-import { useServerEvents } from "@/lib/events"
+import {
+  activity as loadActivity,
+  type Data,
+  type FinanceData,
+  financeData,
+  loadData,
+  markDone,
+  type Occurrence,
+  runJob,
+  type Session,
+  session as loadSession,
+  Unauthenticated,
+} from "@/lib/api"
+import { useLiveRefresh, useServerEvents } from "@/lib/events"
+import { changedKeys, FreshContext } from "@/lib/fresh"
 import { useLiveJobs } from "@/lib/live"
+import { usePrefs } from "@/lib/prefs"
+import { otherTheme, switchTheme } from "@/lib/theme-switch"
 import { unlessChanged } from "@/lib/utils"
 import { level } from "@/lib/status"
 import { Activity } from "@/views/activity"
@@ -67,6 +88,35 @@ function useMedia(query: string) {
   )
   return React.useSyncExternalStore(subscribe, () => window.matchMedia(query).matches)
 }
+
+/** Cards light up under the pointer (index.css): one listener for the whole page, at most once a frame. */
+function useSpotlight() {
+  React.useEffect(() => {
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return
+    let frame = 0
+    let last: PointerEvent | null = null
+    const onMove = (e: PointerEvent) => {
+      last = e
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        const card = (last?.target as Element | null)?.closest?.<HTMLElement>('[data-slot="card"]')
+        if (!card || !last) return
+        const r = card.getBoundingClientRect()
+        card.style.setProperty("--mx", `${last.clientX - r.left}px`)
+        card.style.setProperty("--my", `${last.clientY - r.top}px`)
+      })
+    }
+    document.addEventListener("pointermove", onMove, { passive: true })
+    return () => {
+      document.removeEventListener("pointermove", onMove)
+      cancelAnimationFrame(frame)
+    }
+  }, [])
+}
+
+/** How long a changed occurrence keeps its glow. */
+const FRESH_MS = 3_000
 
 /**
  * While `active`, mirrors the visual viewport (the part above the iOS keyboard) into CSS variables
@@ -128,6 +178,17 @@ export function App() {
   React.useEffect(check, [check])
   const signedOut = React.useCallback(() => setSession((s) => s && { ...s, authenticated: false, user: null }), [])
 
+  // The launch screen leaves once there is something to show (Main waits for the register).
+  const showsMain = Boolean(session?.owner && session.authenticated && !(session.user && !session.user.onboarded))
+  React.useEffect(() => {
+    if (failed || (session && !showsMain)) dismissSplash()
+  }, [failed, session, showsMain])
+  React.useEffect(() => {
+    // Whatever happens, never stuck behind the logo.
+    const id = window.setTimeout(dismissSplash, 8000)
+    return () => window.clearTimeout(id)
+  }, [])
+
   if (failed) return <p className="p-6 text-sm text-status-overdue">{failed}</p>
   if (!session) return null
   // First run (no owner), or an owner who never finished the onboarding.
@@ -159,8 +220,10 @@ function Main({
   tour: boolean
   onTour: (open: boolean) => void
 }) {
-  const { t } = useI18n()
+  const { t, locale, setLocale } = useI18n()
   const { setEnabled: setPrivacy } = usePrivacy()
+  const { setTheme } = useTheme()
+  const { prefs, set: setPref } = usePrefs()
   const [data, setData] = React.useState<Data | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [view, setView] = React.useState<View>(() => routeFromHash().view)
@@ -168,8 +231,13 @@ function Main({
   const [commit, setCommit] = React.useState<string | null>(() => routeFromHash().commit)
   const [search, setSearch] = React.useState("")
   const [openCase, setOpenCase] = React.useState<string | null>(null)
-  const [compact, setCompact] = usePreference("autocratico.sidebar-compact", false)
+  const compact = prefs.compact
+  const setCompact = React.useCallback((v: boolean | ((before: boolean) => boolean)) => setPref("compact", v), [setPref])
   const [chatOpen, setChatOpen] = usePreference("autocratico.chat-open", false)
+  const [command, setCommand] = React.useState(false)
+  const [shortcuts, setShortcuts] = React.useState(false)
+  const [fresh, setFresh] = React.useState<ReadonlySet<string>>(() => new Set())
+  useSpotlight()
   const wide = useMedia("(min-width: 72rem)")
   const wider = useMedia("(min-width: 96rem)")
   const touch = useMedia("(pointer: coarse)")
@@ -181,11 +249,67 @@ function Main({
     if (!window.matchMedia("(min-width: 72rem)").matches) setChatOpen(false)
   }, [setChatOpen])
 
+  // Notices read the latest preferences and texts without making the loaders change identity.
+  const latest = React.useRef({
+    t,
+    liveNotices: prefs.liveNotices,
+    go: (() => undefined) as (v: View) => void,
+    openDeadline: (() => undefined) as (key: string) => void,
+  })
+  const current = React.useRef<Data | null>(null)
+  const freshTimer = React.useRef<number | undefined>(undefined)
   const reload = React.useCallback(() => {
-    loadData().then((d) => setData(unlessChanged(d)), (e: Error) => (e instanceof Unauthenticated ? onSignedOut() : setError(e.message)))
+    loadData().then(
+      (d) => {
+        const before = current.current
+        const next = unlessChanged(d)(before)
+        current.current = next
+        setData(next)
+        // Changed elsewhere (the agent, the chat, another device): they glow once, with a notice.
+        const keys = before && before !== next ? changedKeys(before, next) : []
+        if (!keys.length) return
+        setFresh(new Set(keys))
+        window.clearTimeout(freshTimer.current)
+        freshTimer.current = window.setTimeout(() => setFresh(new Set()), FRESH_MS)
+        const { t, liveNotices, openDeadline } = latest.current
+        // Counted per deadline: a monthly payment changes all of its occurrences at once.
+        const changed = new Set(next.agenda.filter((o) => keys.includes(o.key)).map((o) => o.id)).size
+        if (liveNotices)
+          toast(t.live.changed(changed), {
+            id: "register-changed",
+            description: t.live.changedBody,
+            action: changed === 1 ? { label: t.live.open, onClick: () => openDeadline(keys[0]) } : undefined,
+          })
+      },
+      (e: Error) => (e instanceof Unauthenticated ? onSignedOut() : setError(e.message))
+    )
   }, [onSignedOut])
-  // When the agent finishes, deadlines and cases may have changed.
-  const live = useLiveJobs(reload)
+  React.useEffect(() => {
+    if (data || error) dismissSplash()
+  }, [data, error])
+  React.useEffect(reload, [reload])
+  // Deadlines, cases, profile: read again as soon as the server says they changed.
+  useLiveRefresh("data", reload, 60_000)
+  // When the agent finishes: the data may have changed, and a notice says how it went.
+  const onAgentDone = React.useCallback(() => {
+    reload()
+    if (!latest.current.liveNotices) return
+    loadActivity().then(
+      ({ runs }) => {
+        const run = runs[0]
+        if (!run || !run.finished || Date.now() - new Date(run.finished).getTime() > 60_000) return
+        const { t, go } = latest.current
+        const show = run.ok ? toast.success : toast.error
+        show(run.ok ? t.live.agentDone : t.live.agentFailed, {
+          id: `run-${run.id}`,
+          description: `${t.activity.jobs[run.job] ?? run.job}: ${run.summary}`,
+          action: { label: t.live.view, onClick: () => go("activity") },
+        })
+      },
+      () => undefined
+    )
+  }, [reload])
+  const live = useLiveJobs(onAgentDone)
 
   // The finance app's data: loaded once the Finance view opens, then kept fresh by the server's events.
   const [finance, setFinance] = React.useState<FinanceData | null>(null)
@@ -193,11 +317,9 @@ function Main({
   const reloadFinance = React.useCallback(() => {
     financeData().then((f) => setFinance(unlessChanged(f)), (e: Error) => (e instanceof Unauthenticated ? onSignedOut() : setError(e.message)))
   }, [onSignedOut])
-  useServerEvents(
-    React.useCallback(() => {
-      if (financeWanted.current) reloadFinance()
-    }, [reloadFinance])
-  )
+  useServerEvents("finance", () => {
+    if (financeWanted.current) reloadFinance()
+  })
   React.useEffect(() => {
     if (view !== "finance") return
     financeWanted.current = true
@@ -206,7 +328,6 @@ function Main({
   const [expense, setExpense] = React.useState<ExpenseAsk | null>(null)
 
   React.useEffect(() => {
-    reload()
     const onHash = () => {
       const r = routeFromHash()
       setView(r.view)
@@ -217,27 +338,7 @@ function Main({
     }
     window.addEventListener("hashchange", onHash)
     return () => window.removeEventListener("hashchange", onHash)
-  }, [reload, setChatOpen])
-
-  React.useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      const target = e.target as HTMLElement
-      if (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
-        if (e.key === "Escape") target.blur()
-        return
-      }
-      const k = e.key.toLowerCase()
-      if (k === "c") setChatOpen((v) => !v)
-      else if (k === "b") setCompact((v) => !v)
-      else if (k === "p") setPrivacy((v) => !v)
-      else if (e.key === "Escape") setChatOpen(false)
-      else return
-      e.preventDefault() // the key must not end up in the chat input that just opened
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [setChatOpen, setCompact, setPrivacy])
+  }, [setChatOpen])
 
   // Stable callbacks: the views are memoized, so a live poll re-renders the shell but not them.
   const go = React.useCallback((v: View) => {
@@ -255,7 +356,18 @@ function Main({
     setDeadline(key)
     window.scrollTo({ top: 0 })
   }, [])
+  React.useEffect(() => {
+    latest.current = { t, liveNotices: prefs.liveNotices, go, openDeadline }
+  })
   const closeChat = React.useCallback(() => setChatOpen(false), [setChatOpen])
+  /** Asks Claude from anywhere (the palette, the sidebar): the chat opens on the answer. */
+  const ask = React.useCallback(
+    (q: string) => {
+      chatAsk(q)
+      setChatOpen(true)
+    },
+    [setChatOpen]
+  )
   const askAbout = React.useCallback(
     (o: Occurrence) => {
       chatAbout({ key: o.key, title: o.title })
@@ -264,16 +376,98 @@ function Main({
     [setChatOpen]
   )
 
+  const commandActions = React.useMemo<CommandActions>(
+    () => ({
+      onView: go,
+      onOpenDeadline: openDeadline,
+      onOpenCase: (slug) => {
+        setOpenCase(slug)
+        go("cases")
+      },
+      onAsk: ask,
+      onChat: () => setChatOpen(true),
+      onNewChat: () => {
+        chatNew()
+        setChatOpen(true)
+      },
+      onPrivacy: () => setPrivacy((v) => !v),
+      onSidebar: () => setCompact((v) => !v),
+      onTheme: () => switchTheme(setTheme, otherTheme()),
+      onLanguage: () => setLocale(locale === "it" ? "en" : "it"),
+      onRunJob: (job) => {
+        toast(t.command.started(t.activity.jobs[job] ?? job), { id: `job-${job}`, action: { label: t.live.view, onClick: () => go("activity") } })
+        runJob(job).catch((e: Error) => toast.error(e.message))
+      },
+      onShortcuts: () => setShortcuts(true),
+    }),
+    [go, openDeadline, ask, setChatOpen, setPrivacy, setCompact, setTheme, setLocale, locale, t]
+  )
+
+  // Keyboard: ⌘K anywhere; single keys and "g then …" only when not typing.
+  React.useEffect(() => {
+    let goPending = 0
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        setCommand((v) => !v)
+        return
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const target = e.target as HTMLElement
+      if (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
+        if (e.key === "Escape") target.blur()
+        return
+      }
+      // A dialog (the palette, a confirmation) has the keyboard.
+      if (document.querySelector('[role="dialog"][data-open], [role="alertdialog"][data-open]')) return
+      const k = e.key.toLowerCase()
+      if (goPending && Date.now() - goPending < 1200) {
+        goPending = 0
+        const v = (Object.keys(GO_KEYS) as View[]).find((id) => GO_KEYS[id] === k)
+        if (v) {
+          e.preventDefault()
+          go(v)
+        }
+        return
+      }
+      goPending = 0
+      if (k === "g") goPending = Date.now()
+      else if (k === "c") setChatOpen((v) => !v)
+      else if (k === "b") setCompact((v) => !v)
+      else if (k === "p") setPrivacy((v) => !v)
+      else if (e.key === "?") setShortcuts(true)
+      else if (e.key === "/") document.getElementById(SEARCH_ID)?.focus()
+      else if (e.key === "Escape") setChatOpen(false)
+      else return
+      e.preventDefault() // the key must not end up in the input that just got focus
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [go, setChatOpen, setCompact, setPrivacy])
+
   const onSearch = (s: string) => {
     setSearch(s)
     if (s && (view !== "deadlines" || deadline)) go("deadlines")
   }
 
+  // The notice's Undo calls the latest onDone, without a notice of its own.
+  const onDoneRef = React.useRef<(o: Occurrence, done: boolean, undoable?: boolean) => Promise<void>>(async () => undefined)
   const onDone = React.useCallback(
-    async (o: Occurrence, done: boolean) => {
+    async (o: Occurrence, done: boolean, undoable = true) => {
       try {
         const done_on = await markDone(o.key, done)
-        setData((d) => d && { ...d, agenda: d.agenda.map((x) => (x.key === o.key ? { ...x, done_on } : x)) })
+        setData((d) => {
+          const next = d && { ...d, agenda: d.agenda.map((x) => (x.key === o.key ? { ...x, done_on } : x)) }
+          current.current = next
+          return next
+        })
+        if (undoable)
+          toast.success(done ? t.live.markedDone : t.live.markedUndone, {
+            id: `done-${o.key}`,
+            description: o.title,
+            action: { label: t.live.undo, onClick: () => void onDoneRef.current(o, !done, false) },
+            duration: 7000,
+          })
         // A payment: offer to record it in the finance app, or to delete what was recorded for it.
         if (o.amount_basis !== null) {
           const f = await financeData().catch(() => null)
@@ -285,6 +479,10 @@ function Main({
     },
     [t]
   )
+
+  React.useEffect(() => {
+    onDoneRef.current = onDone
+  })
 
   const onOpenCase = React.useCallback(
     (slug: string) => {
@@ -338,9 +536,11 @@ function Main({
           onCompact={setCompact}
           chatOpen={chatOpen}
           onChat={() => setChatOpen((v) => !v)}
+          onAsk={ask}
+          live={live}
         />
 
-        <main className="@container flex min-w-0 flex-col gap-8">
+        <main className="@container flex min-w-0 flex-col gap-5 lg:gap-8">
           <TopBar
             title={title}
             today={data?.today ?? null}
@@ -352,6 +552,7 @@ function Main({
             onChat={() => setChatOpen((v) => !v)}
             busy={live?.current && view !== "activity" ? t.activity.busy : null}
             onBusy={() => go("activity")}
+            onCommand={() => setCommand(true)}
           />
 
           {error && (
@@ -361,16 +562,12 @@ function Main({
             </Alert>
           )}
 
-          {!data && !error && (
-            <div className="grid gap-6 @4xl:grid-cols-3">
-              <Skeleton className="h-72 rounded-xl @4xl:col-span-2" />
-              <Skeleton className="h-72 rounded-xl" />
-            </div>
-          )}
+          {!data && !error && <ViewSkeleton view={view} />}
 
-          <div key={deadline ? `deadline:${deadline}` : view} className="view-in flex min-w-0 flex-col gap-8">
+          <FreshContext.Provider value={fresh}>
+          <div key={deadline ? `deadline:${deadline}` : view} className="view-in flex min-w-0 flex-col gap-5 lg:gap-8">
           {data && view === "overview" && (
-            <Overview data={data} onOpenCase={onOpenCase} onOpenDeadlines={openDeadlines} onOpenDeadline={openDeadline} />
+            <Overview data={data} onOpenCase={onOpenCase} onOpenDeadlines={openDeadlines} onOpenDeadline={openDeadline} onAsk={ask} />
           )}
           {data && view === "deadlines" && !deadline && (
             <Deadlines data={data} search={search} onDone={onDone} onOpenCase={onOpenCase} onOpen={openDeadline} onAsk={askAbout} />
@@ -404,9 +601,11 @@ function Main({
                 go("overview")
                 onTour(true)
               }}
+              onShortcuts={() => setShortcuts(true)}
             />
           )}
           </div>
+          </FreshContext.Provider>
         </main>
 
         {chatDocked && chat}
@@ -430,6 +629,9 @@ function Main({
       <p className="px-gutter py-5 text-xs text-muted-foreground lg:px-6">{t.app.footer}</p>
       {tour && data && <Tour onClose={() => onTour(false)} />}
       <DropToInbox onOpenInbox={openInbox} />
+      <CommandPalette open={command} onOpenChange={setCommand} data={data} actions={commandActions} />
+      <ShortcutsDialog open={shortcuts} onOpenChange={setShortcuts} />
+      <Toaster />
       <ExpenseDialog
         ask={expense}
         onClose={() => {

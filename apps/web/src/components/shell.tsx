@@ -1,11 +1,13 @@
 import * as React from "react"
 import {
   ArchiveIcon,
+  ArrowUpIcon,
   BellIcon,
   BookOpenIcon,
   CalendarClockIcon,
   CalendarIcon,
   ChartLineIcon,
+  ChevronRightIcon,
   EyeIcon,
   EyeOffIcon,
   FolderOpenIcon,
@@ -23,9 +25,11 @@ import {
 } from "lucide-react"
 import { cn } from "cn"
 
+import { Kbd, MOD } from "@/components/kbd"
+import { Logo } from "@/components/logo"
+import { ShinyText } from "@/components/motion"
 import { Sensitive, usePrivacy } from "@/components/privacy"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -34,7 +38,9 @@ import { Switch } from "@/components/ui/switch"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { LOCALES, type Locale, useI18n } from "@/i18n"
-import { capitalize, parseDate } from "@/lib/format"
+import type { LiveJobs } from "@/lib/api"
+import { type Connection, useConnection } from "@/lib/events"
+import { capitalize, duration, parseDate, useNow } from "@/lib/format"
 import { STYLE } from "@/lib/status"
 
 export type View = "overview" | "deadlines" | "cases" | "inbox" | "finance" | "profile" | "archive" | "catalog" | "activity" | "settings"
@@ -54,6 +60,43 @@ export const VIEWS: { id: View; icon: LucideIcon; group: "agenda" | "archive" | 
 
 /** `busy`: a job (the agent, usually) is running on the server. */
 export type Counts = Partial<Record<View, number>> & { urgent: number; busy: boolean }
+
+/** The id of the search box, for the `/` shortcut. */
+export const SEARCH_ID = "deadline-search"
+
+/**
+ * A highlight that slides to the active item of a list (the sidebar, the tab bar) instead of jumping:
+ * returns the container's ref and the highlight's style, measured from the item marked `data-active`.
+ */
+function useSlidingHighlight<T extends HTMLElement>(deps: unknown[]) {
+  const ref = React.useRef<T>(null)
+  const [box, setBox] = React.useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  const [moved, setMoved] = React.useState(false)
+  React.useLayoutEffect(() => {
+    const root = ref.current
+    if (!root) return
+    const measure = () => {
+      const el = root.querySelector<HTMLElement>("[data-active]")
+      if (!el || !el.offsetParent) return setBox(null)
+      setBox((before) => {
+        const next = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }
+        if (before && before.x === next.x && before.y === next.y && before.w === next.w && before.h === next.h) return before
+        if (before) setMoved(true)
+        return next
+      })
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(root)
+    return () => ro.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-measured when the active item or the layout changes
+  }, deps)
+  const style: React.CSSProperties | undefined = box
+    ? { transform: `translate(${box.x}px, ${box.y}px)`, width: box.w, height: box.h }
+    : { opacity: 0 }
+  // The first placement does not slide in from the corner.
+  return [ref, style, moved] as const
+}
 
 function NavItem({
   id,
@@ -78,24 +121,30 @@ function NavItem({
 }) {
   const button = (
     <Button
-      variant={active ? "default" : "ghost"}
+      variant="ghost"
       size="lg"
-      className={cn("relative h-10 shrink-0 gap-3 rounded-lg px-3", compact ? "lg:w-10 lg:justify-center lg:px-0" : "justify-start")}
+      className={cn(
+        "group/nav relative z-10 h-9 shrink-0 gap-3 rounded-lg px-3 transition-colors duration-200",
+        active ? "text-primary-foreground hover:bg-transparent hover:text-primary-foreground dark:hover:bg-transparent" : "text-foreground/80",
+        compact ? "lg:h-10 lg:w-10 lg:justify-center lg:px-0" : "justify-start"
+      )}
       aria-current={active ? "page" : undefined}
       aria-label={compact ? name : undefined}
+      data-active={active || undefined}
       onClick={onClick}
       data-tour={id}
     />
   )
   const content = (
     <>
-      <Icon data-icon="inline-start" />
+      <Icon data-icon="inline-start" className="transition-transform duration-200 group-hover/nav:scale-110 group-active/nav:scale-95" />
       <span className={cn(compact && "lg:sr-only")}>{name}</span>
       {busy && <Spinner className={cn("ml-auto size-3.5 opacity-70", compact && "lg:absolute lg:top-1 lg:right-1 lg:size-3")} />}
       {count != null && count > 0 && (
         <span
+          key={count}
           className={cn(
-            "ml-auto rounded-sm px-1.5 py-0.5 font-mono text-[0.7rem] leading-none",
+            "pop ml-auto rounded-sm px-1.5 py-0.5 font-mono text-[0.7rem] leading-none",
             alert ? STYLE.urgent.solid : active ? "bg-primary-foreground/15" : "bg-muted text-muted-foreground",
             compact && "lg:hidden"
           )}
@@ -158,6 +207,114 @@ export function LanguageSwitch({ compact, touch = false }: { compact: boolean; t
   )
 }
 
+/** What the agent is doing right now, in one line: the job, how long, its latest step. */
+function useAgentLine(live: LiveJobs | null) {
+  const { t } = useI18n()
+  const current = live?.current ?? null
+  const now = useNow(Boolean(current))
+  if (!current) return live && (live.waiting.length || live.triage) ? { title: t.sidebar.agentQueued, job: null, time: null, step: null } : null
+  const last = current.steps?.at(-1)
+  const step = last ? (last.tool ? `${t.chat.tools[last.tool] ?? last.tool} ${last.text}` : last.text.split("\n").at(-1)?.trim()) : null
+  return {
+    title: t.sidebar.agentWorking,
+    job: t.activity.jobs[current.job] ?? current.job,
+    time: duration(now - new Date(current.started).getTime()),
+    step: step || null,
+  }
+}
+
+/** The sidebar's Claude panel: ask from here, see the agent at work. */
+function ClaudePanel({
+  chatOpen,
+  onChat,
+  onAsk,
+  live,
+  onBusy,
+}: {
+  chatOpen: boolean
+  onChat: () => void
+  onAsk: (q: string) => void
+  live: LiveJobs | null
+  onBusy: () => void
+}) {
+  const { t } = useI18n()
+  const [draft, setDraft] = React.useState("")
+  const agent = useAgentLine(live)
+
+  return (
+    <div className="relative flex shrink-0 flex-col gap-3 overflow-hidden rounded-lg bg-primary p-3.5 text-primary-foreground">
+      <span className="chrome-orb absolute -top-5 -right-5 size-16 opacity-80" aria-hidden />
+      {agent ? (
+        <button
+          type="button"
+          onClick={onBusy}
+          className="group/agent relative -m-1 flex flex-col gap-1 rounded-md p-1 text-left outline-none transition-colors hover:bg-primary-foreground/8 focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
+        >
+          <span className="flex items-center gap-2 text-xs font-medium">
+            <span className="relative flex size-2">
+              <span className="absolute inset-0 animate-ping rounded-full bg-status-soon opacity-70 motion-reduce:hidden" />
+              <span className="relative size-2 rounded-full bg-status-soon" />
+            </span>
+            <ShinyText>{agent.title}</ShinyText>
+            <ChevronRightIcon className="ml-auto size-3.5 opacity-50 transition-transform group-hover/agent:translate-x-0.5" />
+          </span>
+          {agent.job && (
+            <span className="text-[0.7rem] text-primary-foreground/60">
+              {agent.job} · {t.sidebar.agentFor(agent.time!)}
+            </span>
+          )}
+          {agent.step && (
+            <span key={agent.step} className="truncate font-mono text-[0.68rem] text-primary-foreground/50 duration-300 animate-in fade-in-0 slide-in-from-bottom-1">
+              {agent.step}
+            </span>
+          )}
+        </button>
+      ) : (
+        <span className="relative flex items-center gap-2 pr-8 text-sm font-medium" title={t.sidebar.askClaudeHint}>
+          <SparklesIcon className="size-4" />
+          {t.sidebar.askClaude}
+        </span>
+      )}
+      <form
+        className="relative flex items-center gap-1 rounded-md bg-primary-foreground/10 p-1 pl-2.5 ring-1 ring-primary-foreground/10 transition-shadow focus-within:ring-primary-foreground/40"
+        onSubmit={(e) => {
+          e.preventDefault()
+          const q = draft.trim()
+          if (!q) return onChat()
+          onAsk(q)
+          setDraft("")
+        }}
+      >
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={t.sidebar.askPlaceholder}
+          aria-label={t.sidebar.askClaude}
+          className="h-7 min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-primary-foreground/45"
+        />
+        <Button
+          type="submit"
+          size="icon-xs"
+          variant="secondary"
+          aria-label={t.sidebar.askSend}
+          className={cn("shrink-0 transition-[opacity,scale]", !draft.trim() && "scale-90 opacity-60")}
+        >
+          <ArrowUpIcon />
+        </Button>
+      </form>
+      <button
+        type="button"
+        onClick={onChat}
+        aria-pressed={chatOpen}
+        className="relative flex items-center gap-2 self-start rounded-sm text-xs text-primary-foreground/70 outline-none transition-colors hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
+      >
+        {chatOpen ? t.sidebar.closeChat : t.sidebar.openChat}
+        <Kbd className="h-4 min-w-4 bg-primary-foreground/10 text-[0.6rem] text-primary-foreground/70 ring-primary-foreground/15">C</Kbd>
+      </button>
+    </div>
+  )
+}
+
 export function Sidebar({
   view,
   onView,
@@ -167,6 +324,8 @@ export function Sidebar({
   onCompact,
   chatOpen,
   onChat,
+  onAsk,
+  live,
 }: {
   view: View
   onView: (v: View) => void
@@ -176,6 +335,8 @@ export function Sidebar({
   onCompact: (v: boolean) => void
   chatOpen: boolean
   onChat: () => void
+  onAsk: (q: string) => void
+  live: LiveJobs | null
 }) {
   const { enabled, setEnabled } = usePrivacy()
   const { t } = useI18n()
@@ -188,18 +349,17 @@ export function Sidebar({
         .toUpperCase()
     : "?"
   const groups = ["agenda", "archive", "system"] as const
+  const [navRef, highlightStyle, highlightSlides] = useSlidingHighlight<HTMLElement>([view, compact])
 
   return (
     <aside
       className={cn(
-        "hidden min-w-0 flex-col gap-6 rounded-xl bg-card p-4 transition-[width] lg:sticky lg:flex lg:top-6 lg:h-[calc(100svh-6rem)] lg:gap-7",
+        "hidden min-w-0 flex-col gap-5 rounded-xl bg-card p-4 transition-[width] duration-300 ease-out-expo lg:sticky lg:top-6 lg:flex lg:h-[calc(100svh-6rem)]",
         compact ? "lg:w-18 lg:items-center lg:px-3 lg:py-5" : "lg:w-60 lg:p-5"
       )}
     >
-      <div className={cn("flex items-center gap-3 px-1", compact && "lg:flex-col lg:px-0")}>
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary font-mono text-sm font-semibold text-primary-foreground">
-          A
-        </span>
+      <div className={cn("flex shrink-0 items-center gap-3 px-1", compact && "lg:flex-col lg:px-0")}>
+        <Logo className="size-8" />
         <span className={cn("mr-auto text-sm font-semibold tracking-tight", compact && "lg:hidden")}>{t.app.name}</span>
         <Tooltip>
           <TooltipTrigger
@@ -219,12 +379,23 @@ export function Sidebar({
         </Tooltip>
       </div>
 
-      <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:gap-6 lg:overflow-visible" aria-label={t.sidebar.sections}>
+      {/* Scrolls on its own when the window is short, so the panel and the profile below always fit. */}
+      <nav
+        ref={navRef}
+        className="no-scrollbar relative -mx-1 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-1 py-0.5"
+        aria-label={t.sidebar.sections}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute top-0 left-0 rounded-lg bg-primary shadow-sm",
+            highlightSlides && "transition-[transform,width,height,opacity] duration-300 ease-out-expo motion-reduce:transition-none"
+          )}
+          style={highlightStyle}
+        />
         {groups.map((g) => (
-          <div key={g} className={cn("flex gap-1 lg:flex-col", compact && "lg:items-center")}>
-            <span className={cn("hidden px-3 pb-1.5 text-xs text-muted-foreground lg:block", compact && "lg:sr-only")}>
-              {t.sidebar.groups[g]}
-            </span>
+          <div key={g} className={cn("flex flex-col gap-0.5", compact && "lg:items-center")}>
+            <span className={cn("px-3 pb-1 text-xs text-muted-foreground", compact && "lg:sr-only")}>{t.sidebar.groups[g]}</span>
             {VIEWS.filter((v) => v.group === g).map((v) => (
               <NavItem
                 key={v.id}
@@ -243,7 +414,7 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className={cn("mt-auto hidden flex-col gap-4 lg:flex", compact && "lg:items-center")}>
+      <div className={cn("flex shrink-0 flex-col gap-4", compact && "lg:items-center")}>
         {compact ? (
           <Tooltip>
             <TooltipTrigger
@@ -251,7 +422,7 @@ export function Sidebar({
                 <Button
                   size="icon-lg"
                   variant={chatOpen ? "default" : "secondary"}
-                  className="size-10 rounded-lg"
+                  className="relative size-10 rounded-lg"
                   onClick={onChat}
                   aria-pressed={chatOpen}
                   aria-label={t.sidebar.askClaude}
@@ -259,21 +430,17 @@ export function Sidebar({
               }
             >
               <SparklesIcon />
+              {counts.busy && (
+                <span className="absolute -top-0.5 -right-0.5 flex size-2.5">
+                  <span className="absolute inset-0 animate-ping rounded-full bg-status-soon opacity-70 motion-reduce:hidden" />
+                  <span className="relative size-2.5 rounded-full bg-status-soon ring-2 ring-card" />
+                </span>
+              )}
             </TooltipTrigger>
             <TooltipContent side="right">{t.sidebar.askClaude} (C)</TooltipContent>
           </Tooltip>
         ) : (
-          <div className="relative flex flex-col gap-3 overflow-hidden rounded-lg bg-primary p-4 text-primary-foreground">
-            <span className="chrome-orb absolute -top-5 -right-5 size-16 opacity-80" aria-hidden />
-            <SparklesIcon className="size-4" />
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium">{t.sidebar.askClaude}</span>
-              <span className="text-xs text-primary-foreground/60">{t.sidebar.askClaudeHint}</span>
-            </div>
-            <Button variant="secondary" size="sm" className="self-start" onClick={onChat} aria-pressed={chatOpen}>
-              {chatOpen ? t.sidebar.closeChat : t.sidebar.openChat}
-            </Button>
-          </div>
+          <ClaudePanel chatOpen={chatOpen} onChat={onChat} onAsk={onAsk} live={live} onBusy={() => onView("activity")} />
         )}
 
         <div className={cn("flex items-center gap-3 border-t pt-4", compact && "flex-col border-t-0 pt-0")}>
@@ -299,6 +466,83 @@ export function Sidebar({
   )
 }
 
+const CONNECTION_DOT: Record<Connection, string> = {
+  live: "bg-status-done",
+  connecting: "bg-status-soon",
+  offline: "bg-muted-foreground",
+}
+
+/** Whether updates arrive by themselves: a dot on the date, explained on hover. */
+function LiveDot() {
+  const { t } = useI18n()
+  const c = useConnection()
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<span tabIndex={0} aria-label={t.topbar.live[c]} className="relative flex size-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring" />}>
+        {c === "live" && <span className="absolute inset-0 animate-ping rounded-full bg-status-done opacity-60 [animation-duration:2.4s] motion-reduce:hidden" />}
+        <span className={cn("relative size-2 rounded-full transition-colors duration-500", CONNECTION_DOT[c])} />
+      </TooltipTrigger>
+      <TooltipContent>{t.topbar.live[c]}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+/**
+ * True once the page has scrolled the sentinel (placed just above a sticky bar) under the bar's sticky offset:
+ * the bar then gets its glass. Without `bar`, the offset is the top of the window.
+ */
+export function useStuck<T extends HTMLElement>(bar?: React.RefObject<HTMLElement | null>) {
+  const sentinel = React.useRef<T>(null)
+  const [stuck, setStuck] = React.useState(false)
+  React.useEffect(() => {
+    const el = sentinel.current
+    if (!el) return
+    let io: IntersectionObserver | null = null
+    const observe = () => {
+      io?.disconnect()
+      const top = bar?.current ? parseFloat(getComputedStyle(bar.current).top) || 0 : 0
+      io = new IntersectionObserver(([e]) => setStuck(!e.isIntersecting && e.boundingClientRect.top < window.innerHeight / 2), {
+        threshold: 0,
+        rootMargin: `${-Math.round(top)}px 0px 0px 0px`,
+      })
+      io.observe(el)
+    }
+    observe()
+    // The offset changes with the breakpoint.
+    const m = window.matchMedia("(min-width: 64rem)")
+    m.addEventListener("change", observe)
+    return () => {
+      io?.disconnect()
+      m.removeEventListener("change", observe)
+    }
+  }, [bar])
+  return { sentinel, stuck }
+}
+
+/**
+ * A bar that sticks under the top bar (filters, tabs of a view) and turns to glass once it does.
+ * Phones: under the compact bar. Desktop: under the sticky top bar.
+ */
+export function StickyBar({ children, className }: { children: React.ReactNode; className?: string }) {
+  const bar = React.useRef<HTMLDivElement>(null)
+  const { sentinel, stuck } = useStuck<HTMLDivElement>(bar)
+  return (
+    <>
+      <div ref={sentinel} aria-hidden className="-mb-4 h-0 sm:-mb-6" />
+      <div
+        ref={bar}
+        data-stuck={stuck || undefined}
+        className={cn(
+          "topbar sticky top-[calc(env(safe-area-inset-top)+3.75rem)] z-10 -mx-2 rounded-xl px-2 py-1.5 transition-[background-color,box-shadow] duration-300 lg:top-[5.75rem] lg:-mx-3 lg:px-3",
+          className
+        )}
+      >
+        {children}
+      </div>
+    </>
+  )
+}
+
 export function TopBar({
   title,
   today,
@@ -310,6 +554,7 @@ export function TopBar({
   onChat,
   busy,
   onBusy,
+  onCommand,
 }: {
   title: string
   today: string | null
@@ -322,109 +567,176 @@ export function TopBar({
   /** Shows "agent at work", linking to the activity: null when nothing runs or the activity is on screen. */
   busy: string | null
   onBusy: () => void
+  onCommand: () => void
 }) {
   const { enabled, setEnabled } = usePrivacy()
   const { t, fmt } = useI18n()
   const d = today ? parseDate(today) : null
+  const { sentinel, stuck } = useStuck<HTMLDivElement>()
 
   return (
-    <header className="flex flex-wrap items-center gap-3 pt-1">
-      <div className="mr-auto flex min-w-0 flex-col gap-0.5">
-        {d && (
-          <span className="text-sm text-muted-foreground sm:hidden">
-            {capitalize(fmt.weekdayLong.format(d))}, {fmt.long.format(d)}
-          </span>
+    <>
+      <div ref={sentinel} aria-hidden className="-mb-5 h-0 lg:-mb-8" />
+      {/* Phones: the large title scrolls away and a compact bar slides in with the same essentials. */}
+      <div
+        data-stuck={stuck || undefined}
+        aria-hidden={!stuck}
+        inert={!stuck}
+        className="topbar fixed inset-x-0 top-0 z-30 flex items-center gap-2 px-gutter pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 transition-[translate,opacity] duration-300 ease-out-expo not-data-stuck:pointer-events-none not-data-stuck:-translate-y-full not-data-stuck:opacity-0 lg:hidden"
+      >
+        <Logo className="size-7" />
+        <span className="mr-auto truncate text-base font-semibold tracking-tight">{title}</span>
+        {busy && (
+          <Button variant="ghost" size="icon-lg" className="size-10 rounded-lg" onClick={onBusy} aria-label={busy}>
+            <Spinner />
+          </Button>
         )}
-        <h1 className="truncate text-3xl font-medium tracking-tight sm:text-4xl">{title}</h1>
-      </div>
-
-      {busy && (
-        <Button variant="outline" className="h-11 gap-2 rounded-lg border-transparent bg-card px-3" onClick={onBusy} aria-label={busy}>
-          <Spinner className="text-muted-foreground" />
-          <span className="hidden max-w-48 truncate text-sm sm:inline">{busy}</span>
+        <Button variant="ghost" size="icon-lg" className="size-10 rounded-lg" onClick={onCommand} aria-label={t.topbar.command}>
+          <SearchIcon />
         </Button>
-      )}
-
-      {d && (
-        <div className="hidden h-11 items-center gap-3 rounded-lg bg-card py-1 pr-4 pl-1 sm:flex">
-          <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <CalendarIcon className="size-4" />
-          </span>
-          <span className="flex flex-col text-xs leading-tight">
-            <span className="font-medium">{fmt.long.format(d)}</span>
-            <span className="text-muted-foreground capitalize">{fmt.weekdayLong.format(d)}</span>
-          </span>
-        </div>
-      )}
-
-      <InputGroup className="order-last h-11 w-full rounded-lg border-transparent bg-card pl-1 sm:order-none sm:w-72">
-        <InputGroupAddon>
-          <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <SearchIcon className="size-4" />
-          </span>
-        </InputGroupAddon>
-        <InputGroupInput
-          placeholder={t.topbar.search}
-          value={search}
-          onChange={(e) => onSearch(e.target.value)}
-          aria-label={t.topbar.search}
-        />
-      </InputGroup>
-
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button size="icon-lg" className="relative hidden size-11 rounded-lg lg:inline-flex" onClick={onBell} aria-label={t.topbar.within30Label} />
-          }
-        >
-          <BellIcon />
-          {upcoming > 0 && (
-            <Badge variant="secondary" className="absolute -top-1 -right-1">
-              {upcoming}
-            </Badge>
-          )}
-        </TooltipTrigger>
-        <TooltipContent>{t.topbar.within30(upcoming)}</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              size="icon-lg"
-              variant={enabled ? "default" : "outline"}
-              className={cn("size-11 rounded-lg", !enabled && "border-transparent bg-card")}
-              onClick={() => setEnabled(!enabled)}
-              aria-pressed={enabled}
-              aria-label={t.topbar.privacy}
-              data-tour="privacy"
-            />
-          }
-        >
-          {enabled ? <EyeOffIcon /> : <EyeIcon />}
-        </TooltipTrigger>
-        <TooltipContent>{enabled ? t.topbar.showData : t.topbar.hideData} (P)</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              size="icon-lg"
-              variant={chatOpen ? "default" : "outline"}
-              className={cn("size-11 rounded-lg", !chatOpen && "border-transparent bg-card")}
-              onClick={onChat}
-              aria-pressed={chatOpen}
-              aria-label={t.sidebar.askClaude}
-              data-tour="chat"
-            />
-          }
+        <Button
+          variant={chatOpen ? "default" : "ghost"}
+          size="icon-lg"
+          className="size-10 rounded-lg"
+          onClick={onChat}
+          aria-pressed={chatOpen}
+          aria-label={t.sidebar.askClaude}
         >
           <SparklesIcon />
-        </TooltipTrigger>
-        <TooltipContent>{t.sidebar.askClaude} (C)</TooltipContent>
-      </Tooltip>
-    </header>
+        </Button>
+      </div>
+
+      <header
+        data-stuck={stuck || undefined}
+        className="topbar group/top z-20 flex flex-wrap items-center gap-3 rounded-xl transition-[background-color,box-shadow] duration-300 lg:sticky lg:top-3 lg:-mx-3 lg:px-3 lg:py-2"
+      >
+        <div className="mr-auto flex min-w-0 flex-col gap-0.5">
+          {d && (
+            <span className="flex items-center gap-2 text-sm text-muted-foreground sm:hidden">
+              {capitalize(fmt.weekdayLong.format(d))}, {fmt.long.format(d)}
+              <LiveDot />
+            </span>
+          )}
+          <h1
+            key={title}
+            className="truncate text-3xl font-medium tracking-tight duration-300 animate-in fade-in-0 slide-in-from-bottom-1 sm:text-4xl"
+          >
+            {title}
+          </h1>
+        </div>
+
+        {busy && (
+          <Button
+            variant="outline"
+            className="h-11 gap-2 rounded-lg border-transparent bg-card px-3 duration-300 animate-in fade-in-0 zoom-in-95"
+            onClick={onBusy}
+            aria-label={busy}
+          >
+            <Spinner className="text-muted-foreground" />
+            <ShinyText className="hidden max-w-48 truncate text-sm sm:inline">{busy}</ShinyText>
+          </Button>
+        )}
+
+        {d && (
+          <div className="hidden h-11 items-center gap-3 rounded-lg bg-card py-1 pr-4 pl-1 sm:flex">
+            <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <CalendarIcon className="size-4" />
+            </span>
+            <span className="flex flex-col text-xs leading-tight">
+              <span className="font-medium">{fmt.long.format(d)}</span>
+              <span className="text-muted-foreground capitalize">{fmt.weekdayLong.format(d)}</span>
+            </span>
+            <LiveDot />
+          </div>
+        )}
+
+        <InputGroup className="order-last h-11 w-full rounded-lg border-transparent bg-card pl-1 transition-[width,box-shadow] duration-300 ease-out-expo sm:order-none sm:w-72 xl:focus-within:w-80">
+          <InputGroupAddon>
+            <span className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <SearchIcon className="size-4" />
+            </span>
+          </InputGroupAddon>
+          <InputGroupInput
+            id={SEARCH_ID}
+            placeholder={t.topbar.search}
+            value={search}
+            onChange={(e) => onSearch(e.target.value)}
+            aria-label={t.topbar.search}
+          />
+          <InputGroupAddon align="inline-end" className="hidden pointer-fine:flex">
+            <button
+              type="button"
+              onClick={onCommand}
+              aria-label={t.topbar.command}
+              title={t.topbar.command}
+              className="flex items-center gap-0.5 rounded-md p-1 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <Kbd>{MOD}</Kbd>
+              <Kbd>K</Kbd>
+            </button>
+          </InputGroupAddon>
+        </InputGroup>
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button size="icon-lg" className="relative hidden size-11 rounded-lg lg:inline-flex" onClick={onBell} aria-label={t.topbar.within30Label} />
+            }
+          >
+            <BellIcon className={cn(upcoming > 0 && "origin-top group-hover/button:animate-[bell_600ms_ease-in-out]")} />
+            {upcoming > 0 && (
+              <span
+                key={upcoming}
+                className="pop absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-secondary px-1 font-mono text-[0.7rem] text-secondary-foreground ring-2 ring-background"
+              >
+                {upcoming}
+              </span>
+            )}
+          </TooltipTrigger>
+          <TooltipContent>{t.topbar.within30(upcoming)}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                size="icon-lg"
+                variant={enabled ? "default" : "outline"}
+                className={cn("size-11 rounded-lg", !enabled && "border-transparent bg-card")}
+                onClick={() => setEnabled(!enabled)}
+                aria-pressed={enabled}
+                aria-label={t.topbar.privacy}
+                data-tour="privacy"
+              />
+            }
+          >
+            <span key={String(enabled)} className="pop flex">
+              {enabled ? <EyeOffIcon /> : <EyeIcon />}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{enabled ? t.topbar.showData : t.topbar.hideData} (P)</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                size="icon-lg"
+                variant={chatOpen ? "default" : "outline"}
+                className={cn("size-11 rounded-lg", !chatOpen && "border-transparent bg-card")}
+                onClick={onChat}
+                aria-pressed={chatOpen}
+                aria-label={t.sidebar.askClaude}
+                data-tour="chat"
+              />
+            }
+          >
+            <SparklesIcon className="transition-transform duration-300 group-hover/button:scale-110 group-hover/button:rotate-12" />
+          </TooltipTrigger>
+          <TooltipContent>{t.sidebar.askClaude} (C)</TooltipContent>
+        </Tooltip>
+      </header>
+    </>
   )
 }
 
@@ -437,6 +749,7 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
   const { enabled, setEnabled } = usePrivacy()
   const [more, setMore] = React.useState(false)
   const inMore = MORE.some((v) => v.id === view)
+  const [barRef, highlightStyle, highlightSlides] = useSlidingHighlight<HTMLDivElement>([view, more])
 
   const tab = (id: View | "more", Icon: LucideIcon, label: string, active: boolean, onClick: () => void, badge?: number, busy?: boolean) => (
     <button
@@ -444,18 +757,20 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
       type="button"
       onClick={onClick}
       aria-current={active ? "page" : undefined}
+      data-active={active || undefined}
       data-tour={id}
       className={cn(
-        "relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[0.68rem] font-medium transition-[background-color,color,scale] duration-150 outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-95",
-        active ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+        "relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[0.68rem] font-medium transition-[color,scale] duration-200 outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-95",
+        active ? "text-primary-foreground" : "text-muted-foreground"
       )}
     >
-      <Icon className="size-5" />
+      <Icon className={cn("size-5 transition-transform duration-300 ease-spring", active && "-translate-y-px scale-110")} />
       <span className="max-w-full truncate px-1">{label}</span>
       {badge != null && badge > 0 && (
         <span
+          key={badge}
           className={cn(
-            "absolute top-1.5 left-1/2 ml-2 min-w-4 rounded-full px-1 font-mono text-[0.6rem] leading-4 ring-2",
+            "pop absolute top-1.5 left-1/2 ml-2 min-w-4 rounded-full px-1 font-mono text-[0.6rem] leading-4 ring-2",
             STYLE.urgent.solid,
             active ? "ring-primary" : "ring-card"
           )}
@@ -474,10 +789,21 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
         className="pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-linear-to-t from-background from-70% to-transparent px-gutter pt-4 pb-safe lg:hidden"
         aria-label={t.sidebar.sections}
       >
-        <div className="pointer-events-auto mx-auto mb-2 flex h-16 max-w-lg gap-1 rounded-2xl bg-card/85 p-1.5 shadow-lg ring-1 ring-glass-border backdrop-blur-xl">
+        <div
+          ref={barRef}
+          className="pointer-events-auto relative mx-auto mb-2 flex h-16 max-w-lg gap-1 rounded-2xl bg-card/85 p-1.5 shadow-lg ring-1 ring-glass-border backdrop-blur-xl"
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute top-0 left-0 rounded-xl bg-primary",
+              highlightSlides && "transition-[transform,width,opacity] duration-300 ease-out-expo motion-reduce:transition-none"
+            )}
+            style={highlightStyle}
+          />
           {TABS.map((id) => {
             const v = VIEWS.find((x) => x.id === id)!
-            return tab(id, v.icon, t.views[id], view === id, () => onView(id), id === "deadlines" ? counts.deadlines : undefined)
+            return tab(id, v.icon, t.views[id], view === id && !more, () => onView(id), id === "deadlines" ? counts.deadlines : undefined)
           })}
           {tab("more", EllipsisIcon, t.sidebar.more, inMore || more, () => setMore(true), undefined, counts.busy)}
         </div>
@@ -490,11 +816,12 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
             <SheetTitle className="mr-auto pt-3 text-lg font-medium tracking-tight">{t.sidebar.more}</SheetTitle>
           </SheetHeader>
           <div className="flex flex-col gap-1 px-3 py-2">
-            {MORE.map((v) => (
+            {MORE.map((v, i) => (
               <Button
                 key={v.id}
                 variant={view === v.id ? "default" : "ghost"}
-                className="h-12 justify-start gap-3 rounded-xl px-3 text-base"
+                className="rise-in h-12 justify-start gap-3 rounded-xl px-3 text-base"
+                style={{ "--i": i } as React.CSSProperties}
                 aria-current={view === v.id ? "page" : undefined}
                 onClick={() => {
                   setMore(false)

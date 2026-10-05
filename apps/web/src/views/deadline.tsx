@@ -45,7 +45,7 @@ export const DeadlinePage = React.memo(function DeadlinePage({
 
   if (!o) {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:gap-6">
         {back}
         <Card className="rounded-xl">
           <Empty>
@@ -76,7 +76,7 @@ export const DeadlinePage = React.memo(function DeadlinePage({
   const related = [...byId.values()].map((list) => list.find((x) => !x.done_on) ?? list.at(-1)!)
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {back}
 
       <Card className="rounded-xl">
@@ -139,7 +139,7 @@ export const DeadlinePage = React.memo(function DeadlinePage({
         </CardContent>
       </Card>
 
-      <div className="grid items-start gap-6 @4xl:grid-cols-3">
+      <div className="grid items-start gap-4 sm:gap-6 @4xl:grid-cols-3">
         <div className="flex min-w-0 flex-col gap-6 @4xl:col-span-2">
           {o.notes && (
             <Card className="rounded-xl">
