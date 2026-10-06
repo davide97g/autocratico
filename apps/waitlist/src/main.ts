@@ -7,7 +7,7 @@ import { createApp } from "./app.ts"
 import { pgStore } from "./db.ts"
 import { jevJudge } from "./jev.ts"
 
-const origins = (process.env.WAITLIST_ORIGINS ?? "https://get-autocratico.davideghiotto.it,http://localhost:5190")
+const origins = (process.env.WAITLIST_ORIGINS ?? "https://autocratico.it,https://www.autocratico.it,http://localhost:5190")
   .split(",")
   .map((o) => o.trim().replace(/\/$/, ""))
   .filter(Boolean)

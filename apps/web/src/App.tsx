@@ -168,10 +168,10 @@ function routeFromHash(): { view: View; deadline: string | null; commit: string 
   return { view: VIEWS.some((v) => v.id === h) ? (h as View) : "overview", deadline: null, commit: null }
 }
 
-export function App() {
+export function App({ tour: startTour = false }: { tour?: boolean }) {
   const [session, setSession] = React.useState<Session | null>(null)
   const [failed, setFailed] = React.useState<string | null>(null)
-  const [tour, setTour] = React.useState(false)
+  const [tour, setTour] = React.useState(startTour)
   const check = React.useCallback(() => {
     loadSession().then(setSession, (e: Error) => setFailed(e.message))
   }, [])

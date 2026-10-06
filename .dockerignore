@@ -8,3 +8,4 @@ CLAUDE.local.md
 .claude
 **/__pycache__
 .DS_Store
+**/dist-demo

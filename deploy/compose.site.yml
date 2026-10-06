@@ -1,5 +1,5 @@
 # Autocratico landing page on the homelab (Dokploy compose app). Public: no Cloudflare Access.
-# The Cloudflare tunnel on the host points get-autocratico.<domain> at http://localhost:8791.
+# The Cloudflare tunnel on the host points autocratico.it (and www) at http://localhost:8791.
 # nginx serves the static page and proxies /api/waitlist to the waitlist service, which stores
 # addresses in its own Postgres. Nothing here touches the register's data. See docs/deploy-homelab.md.
 services:
@@ -35,7 +35,7 @@ services:
       PGDATABASE: waitlist
       PGPASSWORD: ${WAITLIST_DB_PASSWORD:?set WAITLIST_DB_PASSWORD (e.g. openssl rand -hex 24)}
       TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:?set TYPESAFE_API_KEY (Jev checks the addresses)}
-      WAITLIST_ORIGINS: ${WAITLIST_ORIGINS:-https://get-autocratico.davideghiotto.it}
+      WAITLIST_ORIGINS: ${WAITLIST_ORIGINS:-https://autocratico.it,https://www.autocratico.it}
     # No ports: only nginx reaches it, on the compose network.
     depends_on:
       db:

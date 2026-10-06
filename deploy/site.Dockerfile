@@ -9,7 +9,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/site/package.json apps/site/
 RUN pnpm install --frozen-lockfile --filter @autocratico/site
 COPY apps/site apps/site
-ARG SITE_URL=https://get-autocratico.davideghiotto.it/
+ARG SITE_URL=https://autocratico.it/
 # Optional: Google Analytics 4 (empty = no analytics, no cookie banner) and the data controller on privacy.html.
 ARG GA_MEASUREMENT_ID=
 ARG SITE_OWNER=

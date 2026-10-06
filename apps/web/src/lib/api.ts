@@ -139,7 +139,12 @@ export const inbox = () => request<InboxItem[]>("/api/inbox")
 export const inboxItem = (id: string) => request<InboxDetail>(`/api/inbox/${id}`)
 /** An original file (inbox/, archive/): `view` and `thumb` show images inline, otherwise a download. */
 export const fileUrl = (path: string, as?: "view" | "thumb") =>
-  `${API_BASE}/api/file?path=${encodeURIComponent(path)}${as ? `&as=${as}` : ""}`
+  fileUrlOverride?.(path) ?? `${API_BASE}/api/file?path=${encodeURIComponent(path)}${as ? `&as=${as}` : ""}`
+let fileUrlOverride: ((path: string) => string) | null = null
+/** The demo build draws its own made-up files in the page (src/demo): `<img>` and `<a>` never reach fetch. */
+export function setFileUrl(f: (path: string) => string) {
+  fileUrlOverride = f
+}
 export const isImage = (path: string) => /\.(jpe?g|png|webp|gif)$/i.test(path)
 /** What a source path is (email, inbox item, file) with its text and files. */
 export const source = (path: string) => request<SourceInfo>(`/api/source?path=${encodeURIComponent(path)}`)

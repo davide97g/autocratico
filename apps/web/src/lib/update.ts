@@ -48,7 +48,7 @@ function reloadIfIdle() {
 }
 
 export function registerUpdates() {
-  if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return
+  if (__DEMO__ || !import.meta.env.PROD || !("serviceWorker" in navigator)) return
   const sw = navigator.serviceWorker
 
   // The first install also claims the page: that is not an update.

@@ -21,7 +21,8 @@ function initialLocale(): Locale {
   } catch {
     // storage unavailable: fall back to the browser language
   }
-  return navigator.language.toLowerCase().startsWith("it") ? "it" : "en"
+  // The public demo is for an Italian audience: it starts in Italian, the switch stays.
+  return __DEMO__ || navigator.language.toLowerCase().startsWith("it") ? "it" : "en"
 }
 
 function formats(tag: string) {

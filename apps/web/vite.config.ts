@@ -28,12 +28,39 @@ function apiServer(): Plugin {
   }
 }
 
-export default defineConfig({
+// The public demo (`--mode demo`, demo.autocratico.it): the same app, its server pretended in the page.
+function demoPage(): Plugin {
+  return {
+    name: "autocratico-demo-page",
+    transformIndexHtml: (html) =>
+      html.replace(
+        "<title>Autocratico</title>",
+        `<title>Autocratico · Demo</title>\n    <meta name="description" content="Prova Autocratico con un registro inventato: scadenze, pratiche, email e spese. Niente account, niente viene salvato." />`
+      ),
+  }
+}
+
+export default defineConfig(({ mode }) => {
+  const demo = mode === "demo"
+  const gaId = demo ? (process.env.GA_MEASUREMENT_ID?.trim() ?? "") : ""
+  if (gaId && !/^G-[A-Z0-9]{4,16}$/.test(gaId)) throw new Error(`GA_MEASUREMENT_ID looks wrong: ${gaId}`)
+  const siteUrl = process.env.SITE_URL?.trim() || "https://autocratico.it"
+  return {
+  define: {
+    __DEMO__: JSON.stringify(demo),
+    __DEMO_GA_ID__: JSON.stringify(gaId),
+    __DEMO_SITE_URL__: JSON.stringify(demo ? siteUrl : ""),
+  },
+  build: { outDir: demo ? "dist-demo" : "dist" },
   plugins: [
     react(),
     tailwindcss(),
-    apiServer(),
+    // The demo has no server, and neither do the tests: nothing to start.
+    !demo && mode !== "test" && apiServer(),
+    demo && demoPage(),
     VitePWA({
+      // No service worker in the demo: nothing cached, a reload always gets the latest build.
+      disable: demo,
       registerType: "autoUpdate",
       // Registered by the app (src/lib/update.ts), which also checks for new builds and reloads when idle.
       injectRegister: false,
@@ -91,6 +118,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: { "/api": `http://127.0.0.1:${API_PORT}` },
+    proxy: demo ? undefined : { "/api": `http://127.0.0.1:${API_PORT}` },
   },
+  }
 })

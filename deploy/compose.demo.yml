@@ -1,0 +1,24 @@
+# Autocratico public demo on the homelab (Dokploy compose app). Public: no Cloudflare Access.
+# The Cloudflare tunnel on the host points demo.autocratico.it at http://localhost:8793.
+# Static files only: no volumes, no secrets, no network shared with the real app. The made-up
+# register is generated and kept in each visitor's browser tab. See docs/deploy-homelab.md.
+services:
+  demo:
+    build:
+      context: ..
+      dockerfile: deploy/demo.Dockerfile
+      args:
+        GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
+        SITE_URL: ${SITE_URL:-https://autocratico.it}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8793:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 32m

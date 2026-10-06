@@ -27,6 +27,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Public demo builds, and the real build leaves it out
+        run: |
+          pnpm --filter @autocratico/web build:demo
+          ! grep -rlE "autocratico\.demo|DemoEventSource" apps/web/dist
       - name: Init produces a working data folder
         run: |
           export AUTOCRATICO_DATA="$RUNNER_TEMP/data"
@@ -39,3 +43,4 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker build -f deploy/Dockerfile -t autocratico .
+      - run: docker build -f deploy/demo.Dockerfile -t autocratico-demo .

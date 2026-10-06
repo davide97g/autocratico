@@ -12,3 +12,4 @@ __pycache__/
 
 # Trailer renders, stems, model weights (apps/video)
 /var/
+dist-demo/

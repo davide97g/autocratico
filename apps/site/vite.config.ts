@@ -2,8 +2,10 @@ import { defineConfig, type Plugin } from "vite"
 
 // Absolute address the page is served from: canonical link, Open Graph, sitemap.
 // Override with SITE_URL to build for another host (e.g. a preview deploy).
-const SITE_URL = (process.env.SITE_URL ?? "https://get-autocratico.davideghiotto.it/").replace(/\/?$/, "/")
+const SITE_URL = (process.env.SITE_URL ?? "https://autocratico.it/").replace(/\/?$/, "/")
 const REPO_URL = "https://github.com/davide97g/autocratico"
+// The public demo (apps/web built with --mode demo): the whole app, with a made-up register.
+const DEMO_URL = process.env.DEMO_URL?.trim() || "https://demo.autocratico.it/"
 // Google Analytics 4 measurement ID (G-XXXXXXXXXX). Unset: no analytics and no cookie banner.
 const GA_ID = process.env.GA_MEASUREMENT_ID?.trim() ?? ""
 if (GA_ID && !/^G-[A-Z0-9]{4,16}$/.test(GA_ID)) throw new Error(`GA_MEASUREMENT_ID looks wrong: ${GA_ID}`)
@@ -17,6 +19,7 @@ function seo(): Plugin {
     s
       .replaceAll("%SITE_URL%", SITE_URL)
       .replaceAll("%REPO_URL%", REPO_URL)
+      .replaceAll("%DEMO_URL%", DEMO_URL)
       .replaceAll("%SITE_OWNER%", OWNER)
       .replaceAll("%CONTACT_HREF%", CONTACT ? `mailto:${CONTACT}` : `${REPO_URL}/issues`)
       .replaceAll("%CONTACT%", CONTACT || "le issue del repository")
