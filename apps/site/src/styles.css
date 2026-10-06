@@ -927,6 +927,75 @@ code {
 .hints__note {
   margin-left: auto;
 }
+
+/* Under the preview: the whole app, on its own site (demo.autocratico.it). */
+.fullcta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 32px;
+  margin-top: 22px;
+  padding: clamp(20px, 3vw, 30px) clamp(20px, 3.4vw, 36px);
+  border-radius: var(--r-card);
+  background: var(--ink);
+  color: var(--ink-fg);
+  box-shadow: 0 24px 48px -28px oklch(0.17 0 0 / 0.55);
+}
+.fullcta__copy {
+  display: grid;
+  gap: 8px;
+  max-width: 62ch;
+}
+.fullcta__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.fullcta__tag svg {
+  width: 14px;
+  height: 14px;
+}
+.fullcta__title {
+  margin: 0;
+  font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.fullcta__body {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+.fullcta__btn {
+  flex-shrink: 0;
+  background: var(--ink-fg);
+  color: var(--ink);
+}
+.fullcta__btn:hover {
+  transform: translateY(-1px);
+}
+.fullcta__btn svg {
+  transition: transform 0.25s var(--ease);
+}
+.fullcta__btn:hover svg {
+  transform: translate(2px, -2px);
+}
+@media (max-width: 720px) {
+  .fullcta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .fullcta__btn {
+    white-space: normal;
+  }
+}
 @media (pointer: coarse) {
   .hints li:not(.hints__note) {
     display: none;

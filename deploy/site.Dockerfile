@@ -10,11 +10,13 @@ COPY apps/site/package.json apps/site/
 RUN pnpm install --frozen-lockfile --filter @autocratico/site
 COPY apps/site apps/site
 ARG SITE_URL=https://autocratico.it/
+# The public demo the page links to (deploy/compose.demo.yml).
+ARG DEMO_URL=https://demo.autocratico.it/
 # Optional: Google Analytics 4 (empty = no analytics, no cookie banner) and the data controller on privacy.html.
 ARG GA_MEASUREMENT_ID=
 ARG SITE_OWNER=
 ARG SITE_CONTACT_EMAIL=
-RUN SITE_URL="$SITE_URL" GA_MEASUREMENT_ID="$GA_MEASUREMENT_ID" SITE_OWNER="$SITE_OWNER" SITE_CONTACT_EMAIL="$SITE_CONTACT_EMAIL" \
+RUN SITE_URL="$SITE_URL" DEMO_URL="$DEMO_URL" GA_MEASUREMENT_ID="$GA_MEASUREMENT_ID" SITE_OWNER="$SITE_OWNER" SITE_CONTACT_EMAIL="$SITE_CONTACT_EMAIL" \
     pnpm --filter @autocratico/site build
 
 FROM nginxinc/nginx-unprivileged:1.29-alpine

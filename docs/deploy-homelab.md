@@ -120,7 +120,7 @@ Upgrading from a version with device pairing: the register is kept, old device c
    - `GA_MEASUREMENT_ID` (optional): `G-XXXXXXXXXX`. Empty = no analytics and no cookie banner. Build argument: redeploy after changing it.
    - `SITE_OWNER`, `SITE_CONTACT_EMAIL`: the data controller shown on `privacy.html` (GDPR). Build arguments.
    - `WAITLIST_ORIGINS` (optional): origins allowed to post, default `https://autocratico.it,https://www.autocratico.it`.
-   `SITE_URL` is a build argument in `deploy/site.Dockerfile` (canonical link, Open Graph, sitemap).
+   - `SITE_URL`, `DEMO_URL` (optional): the page's own address (canonical link, Open Graph, sitemap) and the public demo it links to; defaults `https://autocratico.it/` and `https://demo.autocratico.it/`. Build arguments.
 2. Cloudflare: tunnel public hostnames `autocratico.it` and `www.autocratico.it` → `http://localhost:8791`, proxied CNAMEs. No Access application: the page is meant to be public.
 3. Check on the box: `curl -s http://127.0.0.1:8791/healthz` → `ok`; `docker compose -p <project> logs waitlist` shows `listening` and no `TYPESAFE_API_KEY is not set` warning.
 

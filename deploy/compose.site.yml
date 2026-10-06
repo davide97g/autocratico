@@ -8,6 +8,8 @@ services:
       context: ..
       dockerfile: deploy/site.Dockerfile
       args:
+        SITE_URL: ${SITE_URL:-https://autocratico.it/}
+        DEMO_URL: ${DEMO_URL:-https://demo.autocratico.it/}
         GA_MEASUREMENT_ID: ${GA_MEASUREMENT_ID:-}
         SITE_OWNER: ${SITE_OWNER:-}
         SITE_CONTACT_EMAIL: ${SITE_CONTACT_EMAIL:-}
