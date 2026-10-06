@@ -130,7 +130,7 @@ export const Overview = React.memo(function Overview({
   return (
     <div className="grid grid-cols-1 gap-4 sm:gap-6 @2xl:grid-cols-2 @4xl:grid-cols-12">
       {/* Calendar */}
-      <Card className="rise-in @2xl:col-span-2 @4xl:col-span-8" style={stagger(0)}>
+      <Card className="rise-in self-start @2xl:col-span-2 @4xl:col-span-8" style={stagger(0)}>
         <CardHeader>
           <CardTitle className="text-lg font-medium tracking-tight">{t.overview.calendar}</CardTitle>
           <CardDescription className="col-start-1">{t.overview.calendarDescription(Number(months))}</CardDescription>

@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useI18n } from "@/i18n"
 import type { Occurrence } from "@/lib/api"
 import { areaName, parseDate } from "@/lib/format"
-import { level, severity, STYLE } from "@/lib/status"
+import { level, ORDER, severity, STYLE } from "@/lib/status"
 
 const LANE_HEIGHT = 40
 
@@ -62,10 +62,14 @@ export function Timeline({
     return time >= start && time <= end
   })
 
-  const rows = [...new Set(inWindow.map((o) => o.area))].map((area) => ({
-    area,
-    items: W ? layout(inWindow.filter((o) => o.area === area), start, end, W) : [],
-  }))
+  // Most urgent area on top: by the level of its most pressing deadline, then by how soon it falls.
+  const rank = (o: Occurrence) => ORDER.indexOf(level(o)) * 100_000 + o.days
+  const rows = [...new Set(inWindow.map((o) => o.area))]
+    .map((area) => {
+      const own = inWindow.filter((o) => o.area === area)
+      return { area, urgency: Math.min(...own.map(rank)), items: W ? layout(own, start, end, W) : [] }
+    })
+    .sort((a, b) => a.urgency - b.urgency)
 
   const ticks: { x: number; label: string }[] = []
   const tick = parseDate(today)
@@ -77,11 +81,8 @@ export function Timeline({
   }
 
   return (
-    // Wide layout: rows share the height the card gets from its row (at least their lanes), so no empty block below.
-    <div
-      className="grid h-full grid-cols-[4.25rem_minmax(0,1fr)] gap-x-2 @md:grid-cols-[5.5rem_minmax(0,1fr)] @md:gap-x-4 @4xl:[grid-template-rows:repeat(var(--rows),minmax(min-content,1fr))_auto]"
-      style={{ "--rows": Math.max(1, rows.length) } as React.CSSProperties}
-    >
+    // Each row is as tall as its lanes, so busy areas get room and quiet ones stay compact.
+    <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-x-2 @md:grid-cols-[5.5rem_minmax(0,1fr)] @md:gap-x-4">
       {rows.map(({ area, items }, i) => {
         const height = Math.max(1, ...items.map((p) => p.lane + 1)) * LANE_HEIGHT + 8
         return (
