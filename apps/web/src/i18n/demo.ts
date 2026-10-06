@@ -68,6 +68,22 @@ const it = {
   consentYes: "Va bene",
   consentNo: "No, grazie",
   privacy: "Privacy",
+  copyPrompt: "Copia prompt",
+  copyPromptShort: "Prompt",
+  copyPromptHint: "Copia il prompt per far installare Autocratico a Claude Code",
+  copied: "Copiato",
+  copyFailed: "Copia non riuscita",
+  fork: "Fork su GitHub",
+  forkShort: "Fork",
+  prompt: (repo: string) => `Installa Autocratico (${repo}) su questo computer e aiutami a configurarlo.
+
+1. Fai il fork del repository sul mio account GitHub e clonalo (gh repo fork davide97g/autocratico --clone). Se non uso GitHub, clonalo e basta.
+2. Prima di toccare qualcosa leggi README.md e AGENTS.md.
+3. Controlla i requisiti (Node.js 24, pnpm, Python 3.11, Claude Code) e dimmi cosa manca prima di installare.
+4. Lancia ./setup.sh --start e aprimi http://127.0.0.1:8790: l'onboarding chiede nome e masterpass.
+5. Poi guidami, un passo alla volta: Telegram (docs/telegram.md), Gmail in sola lettura (docs/gmail.md) e, se voglio un server sempre acceso, docs/deploy-homelab.md.
+
+I miei dati restano nella cartella data/: non va mai committata né pubblicata.`,
 }
 
 export type DemoMessages = typeof it
@@ -138,6 +154,22 @@ const en: DemoMessages = {
   consentYes: "Fine",
   consentNo: "No, thanks",
   privacy: "Privacy",
+  copyPrompt: "Copy prompt",
+  copyPromptShort: "Prompt",
+  copyPromptHint: "Copy the prompt that has Claude Code install Autocratico",
+  copied: "Copied",
+  copyFailed: "Could not copy",
+  fork: "Fork on GitHub",
+  forkShort: "Fork",
+  prompt: (repo: string) => `Install Autocratico (${repo}) on this computer and help me set it up.
+
+1. Fork the repository to my GitHub account and clone it (gh repo fork davide97g/autocratico --clone). If I don't use GitHub, just clone it.
+2. Before changing anything, read README.md and AGENTS.md.
+3. Check the requirements (Node.js 24, pnpm, Python 3.11, Claude Code) and tell me what is missing before installing.
+4. Run ./setup.sh --start and open http://127.0.0.1:8790 for me: the onboarding asks for a name and a masterpass.
+5. Then walk me through, one step at a time: Telegram (docs/telegram.md), read-only Gmail (docs/gmail.md) and, if I want an always-on server, docs/deploy-homelab.md.
+
+My data stays in the data/ folder: it must never be committed or published.`,
 }
 
 export const DEMO_MESSAGES: Record<Locale, DemoMessages> = { it, en }

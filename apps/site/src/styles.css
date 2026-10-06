@@ -3170,6 +3170,15 @@ details[open] p {
   line-height: 1.8;
   overflow-x: auto;
 }
+.term--prompt pre {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.term--prompt .term__bar {
+  gap: 12px;
+}
 .term__p {
   color: var(--ink-muted);
   user-select: none;

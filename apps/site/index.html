@@ -221,7 +221,8 @@
           </p>
           <div class="ctas">
             <a class="btn btn--primary btn--lg" href="#demo" data-track="demo">Prova la demo <i data-lucide="arrow-down-right"></i></a>
-            <a class="btn btn--ghost btn--lg" href="%REPO_URL%" rel="noopener" data-track="github">Codice su GitHub</a>
+            <button class="btn btn--ghost btn--lg" type="button" data-copy-prompt data-track="copy_prompt"><i data-lucide="copy"></i><span>Copia prompt</span></button>
+            <a class="btn btn--ghost btn--lg" href="%REPO_URL%/fork" target="_blank" rel="noopener" data-track="fork"><i data-lucide="git-fork"></i>Fork su GitHub</a>
           </div>
           <ul class="proof" aria-label="In breve">
             <li><i data-lucide="lock"></i>Gira sul tuo server</li>
@@ -845,13 +846,31 @@
 <span class="term__p">$</span> ./setup.sh --start</pre>
             <p class="term__out mono">Pronto su http://127.0.0.1:8790</p>
           </div>
+          <div class="term term--prompt rv">
+            <div class="term__bar">
+              <span><i data-lucide="sparkles"></i> Oppure fallo fare a Claude Code: incolla questo prompt</span>
+              <button class="tbtn tbtn--dark" type="button" data-copy-prompt data-track="copy_prompt"><i data-lucide="copy"></i><span>Copia prompt</span></button>
+            </div>
+            <pre class="mono" id="agent-prompt">Installa Autocratico (%REPO_URL%) su questo computer e aiutami a configurarlo.
+
+1. Fai il fork del repository sul mio account GitHub e clonalo (gh repo fork davide97g/autocratico --clone). Se non uso GitHub, clonalo e basta.
+2. Prima di toccare qualcosa leggi README.md e AGENTS.md.
+3. Controlla i requisiti (Node.js 24, pnpm, Python 3.11, Claude Code) e dimmi cosa manca prima di installare.
+4. Lancia ./setup.sh --start e aprimi http://127.0.0.1:8790: l'onboarding chiede nome e masterpass.
+5. Poi guidami, un passo alla volta: Telegram (docs/telegram.md), Gmail in sola lettura (docs/gmail.md) e, se voglio un server sempre acceso, docs/deploy-homelab.md.
+
+I miei dati restano nella cartella data/: non va mai committata né pubblicata.</pre>
+          </div>
           <ul class="reqs rv" aria-label="Requisiti">
             <li>Node.js 24</li>
             <li>pnpm</li>
             <li>Python 3.11</li>
             <li>Claude Code, per chat e agente</li>
           </ul>
-          <a class="btn btn--primary rv" href="%REPO_URL%" rel="noopener" data-track="github">Codice su GitHub <i data-lucide="arrow-up-right"></i></a>
+          <div class="ctas rv">
+            <a class="btn btn--primary" href="%REPO_URL%/fork" target="_blank" rel="noopener" data-track="fork"><i data-lucide="git-fork"></i>Fork su GitHub</a>
+            <a class="btn btn--ghost" href="%REPO_URL%" rel="noopener" data-track="github">Codice su GitHub <i data-lucide="arrow-up-right"></i></a>
+          </div>
           <p class="install__alt rv">Preferisci non installare niente? <a href="%DEMO_URL%" target="_blank" rel="noopener" data-track="demo_full">Prova la demo completa</a> o <a href="#lista" data-track="waitlist">entra in lista d'attesa</a></p>
         </div>
       </section>

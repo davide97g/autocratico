@@ -1,5 +1,5 @@
 import * as React from "react"
-import { FlaskConicalIcon, MinusIcon, RotateCcwIcon } from "lucide-react"
+import { CheckIcon, CopyIcon, FlaskConicalIcon, GitForkIcon, MinusIcon, RotateCcwIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { useI18n } from "@/i18n"
@@ -8,9 +8,12 @@ import { track } from "@/demo/analytics"
 
 const KEY = "autocratico.demo-bar"
 export const WAITLIST_URL = `${__DEMO_SITE_URL__.replace(/\/+$/, "")}/#lista`
+/** The public repository: forking it is how anyone gets their own Autocratico. */
+export const REPO_URL = "https://github.com/davide97g/autocratico"
 
 /**
- * Always on screen in the demo: made-up data, nothing saved, start over, the waiting list.
+ * Always on screen in the demo: made-up data, nothing saved, start over, the prompt that has
+ * Claude Code install Autocratico, the fork on GitHub, the waiting list.
  * Above the tab bar on phones, bottom centre elsewhere; it folds into a small chip.
  */
 export function DemoBar({ onRestart }: { onRestart: () => void }) {
@@ -30,6 +33,17 @@ export function DemoBar({ onRestart }: { onRestart: () => void }) {
     } catch {
       // storage unavailable
     }
+  }
+  const [copied, setCopied] = React.useState<"yes" | "no" | null>(null)
+  const copyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(d.prompt(REPO_URL))
+      setCopied("yes")
+      track("app_demo_copy_prompt")
+    } catch {
+      setCopied("no")
+    }
+    window.setTimeout(() => setCopied(null), 2000)
   }
   const restart = () => {
     if (!window.confirm(d.restartConfirm)) return
@@ -73,6 +87,37 @@ export function DemoBar({ onRestart }: { onRestart: () => void }) {
             variant="secondary"
             size="xs"
             className="shrink-0 rounded-full"
+            onClick={copyPrompt}
+            title={d.copyPromptHint}
+            aria-label={d.copyPromptHint}
+          >
+            {copied === "yes" ? <CheckIcon data-icon="inline-start" /> : <CopyIcon data-icon="inline-start" />}
+            <span className="sm:hidden">{copied === "yes" ? d.copied : d.copyPromptShort}</span>
+            <span className="hidden sm:inline">{copied === "yes" ? d.copied : copied === "no" ? d.copyFailed : d.copyPrompt}</span>
+          </Button>
+          <Button
+            variant="secondary"
+            size="xs"
+            className="shrink-0 rounded-full"
+            aria-label={d.fork}
+            render={
+              <a
+                href={`${REPO_URL}/fork`}
+                target="_blank"
+                rel="noopener"
+                onClick={() => track("app_demo_fork", { location: "bar" })}
+              />
+            }
+            nativeButton={false}
+          >
+            <GitForkIcon data-icon="inline-start" />
+            <span className="sm:hidden">{d.forkShort}</span>
+            <span className="hidden sm:inline">{d.fork}</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="xs"
+            className="hidden shrink-0 rounded-full text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground sm:inline-flex"
             render={
               <a
                 href={WAITLIST_URL}

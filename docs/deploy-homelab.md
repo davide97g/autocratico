@@ -170,4 +170,4 @@ GA4 property setup: Admin → Data streams → Web, URL of the landing page → 
 
 Locally: `pnpm --filter @autocratico/web dev:demo` (no API server is started), or `docker compose -f deploy/compose.demo.yml up --build` → http://127.0.0.1:8793.
 
-Events sent to Google Analytics after consent (never what people type, upload or name their register): `app_demo_start`, `app_demo_generate` (`named`), `app_demo_ready` (`tour`), `app_demo_view` (`view`), `app_demo_ask` (`question`: the category of the scripted answer), `app_demo_upload` (`files`), `app_demo_reset`, `app_demo_waitlist`.
+Events sent to Google Analytics after consent (never what people type, upload or name their register): `app_demo_start`, `app_demo_generate` (`named`), `app_demo_ready` (`tour`), `app_demo_view` (`view`), `app_demo_ask` (`question`: the category of the scripted answer), `app_demo_upload` (`files`), `app_demo_reset`, `app_demo_waitlist`, `app_demo_copy_prompt` (the prompt that has Claude Code fork and install Autocratico), `app_demo_fork`.

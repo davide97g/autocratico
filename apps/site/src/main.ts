@@ -431,6 +431,28 @@ if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
   $(".privacy__head span").textContent = "Prossime"
 }
 
+// ---- the prompt for Claude Code (hero and install): fork, install, set up ----
+{
+  const text = $("#agent-prompt").textContent!.trim()
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-copy-prompt]")) {
+    const label = btn.querySelector("span")!
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(text)
+        label.textContent = "Copiato"
+        swapIcon(btn, "check")
+      } catch {
+        document.getElementById("installa")?.scrollIntoView({ behavior: "smooth" })
+        label.textContent = "Copialo qui sotto"
+      }
+      setTimeout(() => {
+        label.textContent = "Copia prompt"
+        swapIcon(btn, "copy")
+      }, 2000)
+    })
+  }
+}
+
 // ---- install: copy the commands ----
 {
   const btn = $<HTMLButtonElement>("#copy")
