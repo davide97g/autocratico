@@ -74,7 +74,7 @@ Monorepo (pnpm + Turborepo): `apps/web` (PWA), `apps/server` (Hono, Node 24), `p
 | `node apps/server/src/cli.ts setup-code \| reset-password \| token \| devices \| telegram \| job NAME` | first setup, masterpass reset, admin |
 | `python3 scripts/upcoming.py [days]` | upcoming deadlines and dates still missing |
 | `python3 scripts/ics.py` | writes `data/out/autocratico.ics` |
-| `python3 scripts/gmail.py accounts \| login --account N \| sync --all` | read-only Gmail, several accounts, see [docs/gmail.md](docs/gmail.md) |
+| `python3 scripts/gmail.py accounts \| login --account N \| sync --all \| fetch "LINK"` | read-only Gmail, several accounts, links pasted in the chat, see [docs/gmail.md](docs/gmail.md) |
 
 ## Data layout
 

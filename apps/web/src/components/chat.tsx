@@ -12,6 +12,7 @@ import {
   GlobeIcon,
   InboxIcon,
   type LucideIcon,
+  MailIcon,
   MessagesSquareIcon,
   SearchIcon,
   SparklesIcon,
@@ -24,13 +25,14 @@ import {
 } from "lucide-react"
 import { cn } from "cn"
 
+import { GmailLinkCard, refreshGmailPreviews } from "@/components/gmail-link"
 import { Markdown } from "@/components/markdown"
 import { ShinyText, stagger } from "@/components/motion"
 import { Sensitive } from "@/components/privacy"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useI18n } from "@/i18n"
-import { asksToConfirm, type Confirmation, splitConfirmations, stripActions } from "@autocratico/core"
+import { asksToConfirm, type Confirmation, gmailLinks, splitConfirmations, stripActions, withoutGmailLinks } from "@autocratico/core"
 
 import { chat as loadChat, chats, deleteChat, type ChatSummary, type Chat as SavedChat } from "@/lib/api"
 import { ask, type ChatEvent } from "@/lib/chat"
@@ -90,6 +92,7 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
   WebSearch: GlobeIcon,
   WebFetch: GlobeIcon,
   Bash: TerminalIcon,
+  Gmail: MailIcon,
 }
 
 function fromServer(c: SavedChat): Conversation {
@@ -287,6 +290,37 @@ function Answer({ m }: { m: ClaudeMessage }) {
   )
 }
 
+/** The user's question: its text in a bubble, each Gmail link in it as a card that opens the email. */
+function Question({ text }: { text: string }) {
+  const links = gmailLinks(text)
+  const rest = links.length ? withoutGmailLinks(text) : text
+  return (
+    <div className="ml-8 flex origin-bottom-right flex-col gap-2 duration-300 animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2">
+      {rest && (
+        <div className="max-w-full self-end rounded-lg bg-primary px-3.5 py-2.5 break-words text-primary-foreground">
+          <Markdown text={rest} className="[&_p]:my-0" />
+        </div>
+      )}
+      {links.map((l) => (
+        <GmailLinkCard key={l} link={l} expandable />
+      ))}
+    </div>
+  )
+}
+
+/** Gmail links being typed, after a pause: the draft changes with every key. */
+function useDraftLinks(draft: string): string[] {
+  const [links, setLinks] = React.useState<string[]>([])
+  React.useEffect(() => {
+    const found = gmailLinks(draft)
+    const update = () => setLinks((l) => (l.join(" ") === found.join(" ") ? l : found))
+    if (!found.length) return update()
+    const timer = window.setTimeout(update, 350)
+    return () => window.clearTimeout(timer)
+  }, [draft])
+  return links
+}
+
 function History({
   current,
   onOpen,
@@ -389,6 +423,7 @@ export const Chat = React.memo(function Chat({
   const [draft, setDraft] = React.useState("")
   const [abort, setAbort] = React.useState<AbortController | null>(null)
   const [history, setHistory] = React.useState(false)
+  const draftLinks = useDraftLinks(draft)
   const bottom = React.useRef<HTMLDivElement>(null)
   const input = React.useRef<HTMLTextAreaElement>(null)
 
@@ -491,6 +526,8 @@ export const Chat = React.memo(function Chat({
     } finally {
       setAbort(null)
       release()
+      // The server saved the linked conversations: their cards can open them now.
+      refreshGmailPreviews(gmailLinks(message))
     }
   }
 
@@ -594,12 +631,7 @@ export const Chat = React.memo(function Chat({
           <div className="flex flex-col gap-4 sm:gap-6">
             {conversation.messages.map((m, i) =>
               m.role === "user" ? (
-                <div
-                  key={i}
-                  className="ml-8 origin-bottom-right self-end rounded-lg bg-primary px-3.5 py-2.5 text-primary-foreground duration-300 animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2"
-                >
-                  <Markdown text={m.text} className="[&_p]:my-0" />
-                </div>
+                <Question key={i} text={m.text} />
               ) : (
                 <div key={i} className="duration-300 animate-in fade-in-0 slide-in-from-bottom-1">
                   <Answer m={m} />
@@ -649,6 +681,13 @@ export const Chat = React.memo(function Chat({
             >
               <XIcon />
             </Button>
+          </div>
+        )}
+        {draftLinks.length > 0 && (
+          <div className="mb-2 flex flex-col gap-2">
+            {draftLinks.map((l) => (
+              <GmailLinkCard key={l} link={l} hint={t.chat.gmail.onSend} />
+            ))}
           </div>
         )}
         <div className="flex items-end gap-2 rounded-lg bg-muted p-1.5 pl-3 focus-within:ring-3 focus-within:ring-ring/50">

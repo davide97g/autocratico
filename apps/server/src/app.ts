@@ -17,6 +17,7 @@ import type { Config } from "./config.ts"
 import { type Finance, FinanceError } from "./finance.ts"
 import type { DataRepo } from "./git.ts"
 import { Gmail, GmailError } from "./gmail.ts"
+import { type GmailLinks, GmailLinkError } from "./gmail-links.ts"
 import { IMAGE_TYPES, thumbnail } from "./images.ts"
 import { documentFile, type Inbox, MAX_UPLOAD, type Upload } from "./inbox.ts"
 import { JOB_NAMES, type JobName, type Jobs } from "./jobs.ts"
@@ -49,6 +50,8 @@ export type Services = {
   finance: Finance
   /** What changed, for the open web apps (`/api/events`). */
   pulse: Pulse
+  /** Gmail links in the chat: preview, and the conversation saved for the agent. */
+  gmailLinks: GmailLinks
   /** Override for tests: Gmail setup with a fake Google. */
   gmail?: Gmail
   /** Override for tests: verifies the Cloudflare Access JWT. */
@@ -124,6 +127,7 @@ export function createApp(s: Services) {
   })
   app.onError((e, c) => {
     if (e instanceof GmailError) return c.json({ error: e.message }, e.status)
+    if (e instanceof GmailLinkError) return c.json({ error: e.message, code: e.code }, e.status)
     if (e instanceof FinanceError) return c.json({ error: e.message }, e.status)
     if (e instanceof AccountError) {
       if (e.retryAfter) c.header("Retry-After", String(e.retryAfter))
@@ -285,7 +289,13 @@ export function createApp(s: Services) {
       const instructions = [view && `The user is looking at the «${view}» section of the web app.`, aboutDeadline(about)].filter(Boolean).join("\n") || undefined
       const lang = locale === "en" ? "en" : "it"
       try {
-        for await (const e of claude.run({ prompt: message, profile: "read", session: chat.session, locale, instructions, signal, actions: true })) {
+        // Gmail links: the conversations are saved in the archive first, and the agent told where.
+        const prompt = await s.gmailLinks.prompt(message, async (step) => {
+          answer.tools.push(step)
+          if (!out.aborted) await send({ type: "tool", ...step })
+        })
+        if (signal.aborted) return
+        for await (const e of claude.run({ prompt, profile: "read", session: chat.session, locale, instructions, signal, actions: true })) {
           if (e.type === "session") chat.session = e.id
           else if (e.type === "text") answer.text += e.text
           else if (e.type === "block" && answer.text) answer.text += "\n\n"
@@ -469,6 +479,8 @@ export function createApp(s: Services) {
     if (!origin) return c.json({ error: "missing Origin" }, 400)
     return c.json(gmail.authorize(c.req.param("name"), origin))
   })
+  // What a Gmail link pasted in the chat points to; nothing is saved until the message is sent.
+  app.get("/api/gmail/preview", async (c) => c.json(await s.gmailLinks.preview(c.req.query("link") ?? "")))
   app.post("/api/gmail/complete", async (c) => {
     userOf(c)
     const body = z.object({ url: z.string().min(1).max(4000) }).safeParse(await c.req.json().catch(() => null))

@@ -54,6 +54,20 @@ forums and bulk mail (a `List-Unsubscribe` header, not Important) are archived w
 the agent (the Inbox shows them, "Process again" sends one anyway). Each run downloads at most
 300 messages per account, Important first, so a first sync of a busy mailbox spreads over a few runs.
 
+## Gmail links in the chat
+
+Paste the address of an email from Gmail's web app (`https://mail.google.com/mail/u/0/#inbox/FMfcg…`)
+in the chat, on the web or on Telegram. While you type, the web app shows a card with its subject,
+sender, date, the start of the text and the attachments (`GET /api/gmail/preview`). When you send,
+the server saves the conversation in `archive/email/` like the sync does, but without an inbox
+item, and tells the agent which folders hold it; the agent reads it there and offers to file what
+matters. Every connected account is tried, so the `u/0` in the address does not matter.
+
+The letters at the end of the address are Gmail's web id for the conversation; `scripts/gmail.py`
+turns them into the id the API wants. Links to drafts and to some messages you sent use another
+kind of id that the API cannot open: forward those, or paste their text. From the command line:
+`python3 scripts/gmail.py preview "LINK"` (nothing saved) and `python3 scripts/gmail.py fetch "LINK"`.
+
 In "testing" mode Google expires refresh tokens after 7 days, which breaks unattended sync
 every week (the server tells you on Telegram when a sync fails). For the always-on server,
 set the audience to **In production** (https://console.cloud.google.com/auth/audience →

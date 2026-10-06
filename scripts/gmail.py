@@ -6,11 +6,20 @@ Usage:
   python3 scripts/gmail.py search [--account NAME] "QUERY"   list matching messages without downloading them
   python3 scripts/gmail.py sync [--account NAME | --all] [QUERY]
                                                              download messages and attachments into data/archive/email/
+  python3 scripts/gmail.py preview [--account NAME] [--json] LINK
+                                                             what a Gmail link points to, without downloading it
+  python3 scripts/gmail.py fetch [--account NAME] [--json] LINK
+                                                             download the conversation a Gmail link points to
   python3 scripts/gmail.py logout [--account NAME]           revoke the token and delete it
 
 Accounts are listed in gmail.toml as [[account]] tables (name, query); a top-level `query`
 is the account "default". QUERY uses Gmail search syntax (e.g. 'label:paperwork newer_than:1y');
 without it, sync uses the account's query.
+
+LINK is the address of a conversation in Gmail's web app (https://mail.google.com/mail/u/0/#inbox/FMfcg…)
+or its API id; without --account, every connected account is tried. preview reads the archive when
+the conversation is there; fetch saves the messages not saved yet, without an inbox item (the chat
+that asked for it decides). --json prints one JSON object, with "error" and "code" on failure.
 
 New messages from the last INBOX_DAYS days also get an item in data/inbox/, so that the
 autocratico server's agent files them (deadlines, cases). Gmail's own markers sort them: Important
@@ -26,7 +35,9 @@ Tokens are saved in data/secrets/gmail/<name>.json (0600). Setup: docs/gmail.md.
 from __future__ import annotations
 
 import base64
+import fcntl
 import hashlib
+import html
 import html.parser
 import json
 import os
@@ -42,6 +53,7 @@ import webbrowser
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 from store import DATA_DIR
 
@@ -62,7 +74,11 @@ API = "https://gmail.googleapis.com/gmail/v1/users/me"
 
 
 class GmailError(Exception):
-    pass
+    """`code`, for --json: not-a-link, unsupported, no-account, not-found, failed."""
+
+    def __init__(self, message: str, code: str = "failed"):
+        super().__init__(message)
+        self.code = code
 
 
 # ---------- accounts ----------
@@ -104,7 +120,7 @@ def _use(name: str) -> None:
 
 def _client() -> dict:
     if not CREDENTIALS.exists():
-        raise GmailError(f"{CREDENTIALS} is missing: download it from Google Cloud (see docs/gmail.md)")
+        raise GmailError(f"{CREDENTIALS} is missing: download it from Google Cloud (see docs/gmail.md)", "no-account")
     data = json.loads(CREDENTIALS.read_text())
     # "Web application" clients (set up from the web app) refresh tokens the same way; `login`
     # here needs a "Desktop app" client, since it listens on 127.0.0.1.
@@ -121,6 +137,8 @@ def _post(url: str, fields: dict) -> dict:
             return json.load(r)
     except urllib.error.HTTPError as e:
         raise GmailError(f"{url}: HTTP {e.code} {e.read().decode(errors='replace')}") from None
+    except (urllib.error.URLError, TimeoutError) as e:
+        raise GmailError(f"{url}: unreachable: {getattr(e, 'reason', e)}") from None
 
 
 def _save_token(token: dict) -> None:
@@ -205,7 +223,7 @@ def login(manual: bool = False) -> None:
 
 def _access_token() -> str:
     if not TOKEN.exists():
-        raise GmailError(f"{TOKEN.stem}: not connected: run `python3 scripts/gmail.py login --account {TOKEN.stem}` first")
+        raise GmailError(f"{TOKEN.stem}: not connected: run `python3 scripts/gmail.py login --account {TOKEN.stem}` first", "no-account")
     token = json.loads(TOKEN.read_text())
     if time.time() < token.get("expires_at", 0):
         return token["access_token"]
@@ -251,10 +269,15 @@ def _get(url: str, params: dict | None = None) -> dict:
             body = e.read().decode(errors="replace")
             quota = e.code == 429 or (e.code == 403 and ("Quota exceeded" in body or "rateLimitExceeded" in body))
             if not quota or attempt == 6:
-                raise GmailError(f"Gmail API HTTP {e.code}: {body[:300]}") from None
+                # 400 is what an id that was never Gmail's gets ("Invalid id value").
+                missing = e.code == 404 or (e.code == 400 and "Invalid id" in body)
+                raise GmailError(f"Gmail API HTTP {e.code}: {body[:300]}", "not-found" if missing else "failed") from None
             wait = min(60, 5 * 2**attempt)
-            print(f"  Gmail quota reached, waiting {wait}s…", flush=True)
+            # stderr: stdout is the result, JSON with --json.
+            print(f"  Gmail quota reached, waiting {wait}s…", file=sys.stderr, flush=True)
             time.sleep(wait)
+        except (urllib.error.URLError, TimeoutError) as e:
+            raise GmailError(f"Gmail unreachable: {getattr(e, 'reason', e)}") from None
     raise AssertionError("unreachable")
 
 
@@ -385,20 +408,99 @@ def _inbox_item(account: str, folder: str, h: dict, when: datetime, attachments:
     tmp.replace(path / "item.json")
 
 
-def _remember_mailbox(account: str, address: str) -> None:
+def _mailboxes() -> dict[str, str]:
     """archive/email/.mailboxes.json: Gmail address of each account, for links to the messages."""
+    path = DESTINATION / ".mailboxes.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def _remember_mailbox(account: str, address: str) -> None:
     if not address:
         return
-    path = DESTINATION / ".mailboxes.json"
-    known = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    known = _mailboxes()
     if known.get(account) != address:
         known[account] = address
-        path.write_text(json.dumps(known, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        DESTINATION.mkdir(parents=True, exist_ok=True)
+        (DESTINATION / ".mailboxes.json").write_text(json.dumps(known, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def _mailbox(account: str) -> str:
+    """The Gmail address of the account in use, asked to Gmail the first time."""
+    address = _mailboxes().get(account) or _get(f"{API}/profile").get("emailAddress", "")
+    _remember_mailbox(account, address)
+    return address
+
+
+def _index() -> dict[str, str]:
+    """index.json: message id -> folder in archive/email."""
+    return json.loads(INDEX.read_text()) if INDEX.exists() else {}
+
+
+def _record(message_id: str, folder: str) -> None:
+    """Adds a message to index.json, re-read under a lock: a sync and a fetch may run at the same time."""
+    with (DESTINATION / ".index.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        index = _index()
+        index[message_id] = folder
+        tmp = INDEX.with_name("index.json.tmp")
+        tmp.write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        tmp.replace(INDEX)
+
+
+def _sent(m: dict, h: dict) -> str:
+    """When the message was sent (its Date header), else when Gmail received it."""
+    try:
+        return parsedate_to_datetime(h["date"]).isoformat() if "date" in h else _date(m).isoformat()
+    except (TypeError, ValueError):
+        return _date(m).isoformat()
+
+
+def _save(m: dict, account: str, mailbox: str) -> tuple[Path, list[str]]:
+    """Writes one message (format full) to archive/email/<date>-<subject>-<id6>/: message.md and its attachments."""
+    i = m["id"]
+    h = _headers(m)
+    folder = DESTINATION / f"{_date(m):%Y-%m-%d}-{_slug(h.get('subject', ''))}-{i[-6:]}"
+    folder.mkdir(parents=True, exist_ok=True)
+
+    text, html_text, attachments = None, None, []
+    for p in _parts(m["payload"]):
+        body = p.get("body", {})
+        if p.get("filename") and body.get("attachmentId"):
+            data = _get(f"{API}/messages/{i}/attachments/{body['attachmentId']}")["data"]
+            name = _file_name(p["filename"], attachments)
+            (folder / name).write_bytes(_b64(data))
+            attachments.append(name)
+        elif p.get("mimeType") == "text/plain" and body.get("data") and text is None:
+            text = _b64(body["data"]).decode("utf-8", errors="replace")
+        elif p.get("mimeType") == "text/html" and body.get("data") and html_text is None:
+            html_text = _b64(body["data"]).decode("utf-8", errors="replace")
+    if text is None:
+        text = _from_html(html_text) if html_text else ""
+
+    lines = [
+        "---",
+        f"id: {i}",
+        f"account: {account}",
+        f"mailbox: {mailbox}",
+        f"thread: {m['threadId']}",
+        f"date: {_sent(m, h)}",
+        f"from: {json.dumps(h.get('from', ''), ensure_ascii=False)}",
+        f"to: {json.dumps(h.get('to', ''), ensure_ascii=False)}",
+        f"subject: {json.dumps(h.get('subject', ''), ensure_ascii=False)}",
+        f"labels: {json.dumps(m.get('labelIds', []))}",
+        f"attachments: {json.dumps(attachments, ensure_ascii=False)}",
+        "---",
+        "",
+        text.strip(),
+        "",
+    ]
+    (folder / "message.md").write_text("\n".join(lines), encoding="utf-8")
+    return folder, attachments
 
 
 def sync(query: str, limit: int = 5000, account: str = "default", per_run: int = PER_RUN) -> None:
     DESTINATION.mkdir(parents=True, exist_ok=True)
-    index = json.loads(INDEX.read_text()) if INDEX.exists() else {}
+    index = _index()
     important = [i for i in _list(f"({query}) is:important", limit) if i not in index]
     seen = set(important)
     rest = [i for i in _list(query, limit) if i not in index and i not in seen]
@@ -410,53 +512,231 @@ def sync(query: str, limit: int = 5000, account: str = "default", per_run: int =
     _remember_mailbox(account, mailbox)
     for i in ids:
         m = _get(f"{API}/messages/{i}", {"format": "full"})
-        h = _headers(m)
+        folder, attachments = _save(m, account, mailbox)
         when = _date(m)
-        folder = DESTINATION / f"{when:%Y-%m-%d}-{_slug(h.get('subject', ''))}-{i[-6:]}"
-        folder.mkdir(exist_ok=True)
-
-        text, html_text, attachments = None, None, []
-        for p in _parts(m["payload"]):
-            body = p.get("body", {})
-            if p.get("filename") and body.get("attachmentId"):
-                data = _get(f"{API}/messages/{i}/attachments/{body['attachmentId']}")["data"]
-                name = _file_name(p["filename"], attachments)
-                (folder / name).write_bytes(_b64(data))
-                attachments.append(name)
-            elif p.get("mimeType") == "text/plain" and body.get("data") and text is None:
-                text = _b64(body["data"]).decode("utf-8", errors="replace")
-            elif p.get("mimeType") == "text/html" and body.get("data") and html_text is None:
-                html_text = _b64(body["data"]).decode("utf-8", errors="replace")
-        if text is None:
-            text = _from_html(html_text) if html_text else ""
-
-        try:
-            sent = parsedate_to_datetime(h["date"]).isoformat() if "date" in h else when.isoformat()
-        except (TypeError, ValueError):
-            sent = when.isoformat()
-        lines = [
-            "---",
-            f"id: {i}",
-            f"account: {account}",
-            f"mailbox: {mailbox}",
-            f"thread: {m['threadId']}",
-            f"date: {sent}",
-            f"from: {json.dumps(h.get('from', ''), ensure_ascii=False)}",
-            f"to: {json.dumps(h.get('to', ''), ensure_ascii=False)}",
-            f"subject: {json.dumps(h.get('subject', ''), ensure_ascii=False)}",
-            f"labels: {json.dumps(m.get('labelIds', []))}",
-            f"attachments: {json.dumps(attachments, ensure_ascii=False)}",
-            "---",
-            "",
-            text.strip(),
-            "",
-        ]
-        (folder / "message.md").write_text("\n".join(lines), encoding="utf-8")
         if (datetime.now() - when).days <= INBOX_DAYS:
-            _inbox_item(account, folder.name, h, when, attachments, m.get("labelIds", []))
-        index[i] = folder.name
-        INDEX.write_text(json.dumps(index, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            _inbox_item(account, folder.name, _headers(m), when, attachments, m.get("labelIds", []))
+        _record(i, folder.name)
         print(f"  {folder.relative_to(DATA_DIR)}  ({len(attachments)} attachments)")
+
+
+# ---------- links ----------
+
+# Gmail's web app names a conversation with these 40 letters: a number that, written in base 64,
+# is the text "f:<thread id in decimal>" ("thread-f:" in older links, "msg-f:" for one message).
+# The API wants the same id in hex. Older links carry the hex id itself.
+_LETTERS = "BCDFGHJKLMNPQRSTVWXZbcdfghjklmnpqrstvwxz"
+_B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+_API_ID = re.compile(r"^[0-9a-f]{12,20}$")
+
+
+def _unletter(token: str) -> str:
+    n = 0
+    for c in token:
+        n = n * len(_LETTERS) + _LETTERS.index(c)
+    digits = ""
+    while n:
+        n, r = divmod(n, 64)
+        digits = _B64[r] + digits
+    try:
+        return base64.b64decode(digits + "=" * (-len(digits) % 4)).decode("ascii")
+    except (ValueError, UnicodeDecodeError):
+        return ""
+
+
+def _permanent(text: str) -> tuple[str, str]:
+    """("thread" or "message", hex id) from "f:123", "thread-f:123" or "msg-f:123"."""
+    m = re.fullmatch(r"(thread-|msg-)?([af]):(r?-?\d+)", text)
+    if not m:
+        raise GmailError("not a link to a Gmail conversation", "not-a-link")
+    if m.group(2) == "a" or not m.group(3).isdigit():
+        raise GmailError("the Gmail API cannot open this kind of link (drafts, some sent messages)", "unsupported")
+    return ("message" if m.group(1) == "msg-" else "thread"), format(int(m.group(3)), "x")
+
+
+def parse_link(link: str) -> tuple[str, str, str]:
+    """(kind, id, address) for a Gmail web link or an API id: kind "thread" or "message", the id in hex
+    as the API wants it, and the mailbox address the link names (authuser=, /u/<address>/) or ""."""
+    text = link.strip().strip("<>")
+    if _API_ID.match(text):
+        return "thread", text, ""
+    url = urllib.parse.urlsplit(text)
+    if url.scheme not in ("http", "https") or url.hostname != "mail.google.com":
+        raise GmailError("not a Gmail link", "not-a-link")
+    query = urllib.parse.parse_qs(url.query)
+    parts = url.path.split("/")
+    named = query.get("authuser", []) + ([urllib.parse.unquote(parts[parts.index("u") + 1])] if "u" in parts[:-1] else [])
+    address = next((a for a in named if "@" in a), "")
+    for key in ("permmsgid", "permthid"):
+        if query.get(key):
+            return (*_permanent(query[key][0]), address)
+    if query.get("th") and _API_ID.match(query["th"][0]):
+        return "thread", query["th"][0], address
+    # #inbox/<id>, #label/<name>/<id>, #search/<query>/<id>, maybe followed by ?projector=1
+    last = url.fragment.split("?")[0].rstrip("/").rsplit("/", 1)[-1]
+    if _API_ID.match(last):
+        return "thread", last, address
+    if len(last) >= 16 and all(c in _LETTERS for c in last):
+        return (*_permanent(_unletter(last)), address)
+    raise GmailError("not a link to a Gmail conversation: open the email in Gmail and copy the address", "not-a-link")
+
+
+def _connected(address: str = "") -> list[str]:
+    """Accounts with a token, the one whose mailbox is `address` first."""
+    names = []
+    for name in accounts():
+        _use(name)
+        if TOKEN.exists():
+            names.append(name)
+    known = _mailboxes()
+    return sorted(names, key=lambda n: known.get(n, "").lower() != address.lower()) if address else names
+
+
+def _lookup(kind: str, ident: str) -> dict:
+    """The conversation (format full) with this id, or the one holding the message with this id."""
+    if kind == "thread":
+        try:
+            return _get(f"{API}/threads/{ident}", {"format": "full"})
+        except GmailError as e:
+            if e.code != "not-found":
+                raise
+    thread = _get(f"{API}/messages/{ident}", {"format": "minimal"})["threadId"]
+    return _get(f"{API}/threads/{thread}", {"format": "full"})
+
+
+def _find(parsed: tuple[str, str, str], account: str | None) -> tuple[str, dict]:
+    """The account that has the conversation, and the conversation."""
+    kind, ident, address = parsed
+    names = [account] if account else _connected(address)
+    if not names:
+        raise GmailError("no Gmail account is connected: set one up in Settings", "no-account")
+    failed: GmailError | None = None
+    for name in names:
+        _use(name)
+        try:
+            return name, _lookup(kind, ident)
+        except GmailError as e:
+            if e.code != "not-found":
+                failed = e  # this account is broken: another one may still have it
+    raise failed or GmailError("not found in the connected Gmail accounts", "not-found")
+
+
+# Messages saved before the English schema used Italian keys (same list as apps/server/src/sources.ts).
+_ITALIAN_KEYS = {"data": "date", "da": "from", "a": "to", "oggetto": "subject", "etichette": "labels", "allegati": "attachments", "casella": "account"}
+
+
+def _read_message(folder: Path, limit: int = -1) -> tuple[dict, str]:
+    """message.md's header (key: value lines, JSON when quoted) and its body."""
+    with (folder / "message.md").open(encoding="utf-8", errors="replace") as f:
+        text = f.read(limit)
+    head, _, body = text.removeprefix("---\n").partition("\n---\n")
+    meta: dict = {}
+    for line in head.splitlines():
+        key, sep, value = line.partition(": ")
+        if not sep:
+            continue
+        try:
+            meta[key] = json.loads(value) if value[:1] in '"[' else value
+        except ValueError:
+            meta[key] = value
+    for old, key in _ITALIAN_KEYS.items():
+        if old in meta:
+            meta.setdefault(key, meta[old])
+    return meta, body.strip()
+
+
+def _saved(ident: str) -> list[Path]:
+    """Folders in archive/email of the conversation with this id (or the one holding this message), oldest first."""
+    if not DESTINATION.exists():
+        return []
+    heads = {f.parent: _read_message(f.parent, 4096)[0] for f in DESTINATION.glob("*/message.md")}
+    thread = next((h.get("thread") for h in heads.values() if h.get("id") == ident), None) or ident
+    return sorted((p for p, h in heads.items() if h.get("thread") == thread), key=lambda p: str(heads[p].get("date", "")))
+
+
+def _snippet(text: str) -> str:
+    text = " ".join(text.split())
+    return text if len(text) <= 280 else text[:279].rstrip() + "…"
+
+
+def _from_archive(folders: list[Path]) -> dict:
+    messages = [_read_message(f) for f in folders]
+    (first, _), (last, body) = messages[0], messages[-1]
+    return {
+        "account": last.get("account", ""),
+        "mailbox": last.get("mailbox", ""),
+        "thread": last.get("thread", ""),
+        "subject": first.get("subject", ""),
+        "from": last.get("from", ""),
+        "date": last.get("date") or None,
+        "snippet": _snippet(body),
+        "messages": len(folders),
+        "attachments": [a for meta, _ in messages for a in meta.get("attachments", [])],
+        "folders": [f"archive/email/{f.name}" for f in folders],
+    }
+
+
+def _from_gmail(account: str, mailbox: str, thread: dict, folders: list[str]) -> dict:
+    messages = thread.get("messages", [])
+    first, last = _headers(messages[0]), _headers(messages[-1])
+    return {
+        "account": account,
+        "mailbox": mailbox,
+        "thread": thread["id"],
+        "subject": first.get("subject", ""),
+        "from": last.get("from", ""),
+        "date": _sent(messages[-1], last),
+        "snippet": _snippet(html.unescape(messages[-1].get("snippet", ""))),
+        "messages": len(messages),
+        "attachments": [p["filename"] for m in messages for p in _parts(m["payload"]) if p.get("filename") and p.get("body", {}).get("attachmentId")],
+        "folders": folders,
+    }
+
+
+def preview(link: str, account: str | None = None) -> dict:
+    """What `link` points to, without downloading it: from the archive when the conversation is there."""
+    parsed = parse_link(link)
+    saved = _saved(parsed[1])
+    if saved and not account:
+        return _from_archive(saved)
+    name, thread = _find(parsed, account)
+    index = _index()
+    folders = [f"archive/email/{index[m['id']]}" for m in thread.get("messages", []) if m["id"] in index]
+    return _from_gmail(name, _mailbox(name), thread, folders)
+
+
+def fetch(link: str, account: str | None = None) -> dict:
+    """Saves the messages of the conversation `link` points to that are not in archive/email yet.
+    No inbox item: whoever asked for it decides whether it gets filed."""
+    parsed = parse_link(link)
+    try:
+        name, thread = _find(parsed, account)
+    except GmailError as e:
+        saved = _saved(parsed[1])
+        if not saved:
+            raise
+        return {**_from_archive(saved), "new": 0, "stale": str(e)}  # Gmail unreachable: what the archive has
+    mailbox = _mailbox(name)
+    DESTINATION.mkdir(parents=True, exist_ok=True)
+    folders, new = [], 0
+    for m in thread.get("messages", []):
+        known = _index().get(m["id"])
+        if not (known and (DESTINATION / known / "message.md").exists()):
+            folder, _ = _save(m, name, mailbox)
+            _record(m["id"], folder.name)
+            known, new = folder.name, new + 1
+        folders.append(f"archive/email/{known}")
+    return {**_from_gmail(name, mailbox, thread, folders), "new": new}
+
+
+def _show(r: dict) -> None:
+    print(r["subject"] or "(no subject)")
+    print(f"  {r['from']}  {r['date'] or ''}  [{r['account']}]")
+    print(f"  {r['messages']} messages" + (f", attachments: {', '.join(r['attachments'])}" if r["attachments"] else ""))
+    for f in r["folders"]:
+        print(f"  {f}")
+    if r["snippet"]:
+        print(f"\n{r['snippet']}")
 
 
 def _query(account: str, given: str | None) -> str:
@@ -471,16 +751,19 @@ def _query(account: str, given: str | None) -> str:
 def main() -> None:
     args = sys.argv[1:]
     command = args.pop(0) if args else ""
-    account, every, manual = "default", False, False
+    account, every, manual, as_json = "default", False, False, False
+    chosen: str | None = None
     rest: list[str] = []
     while args:
         a = args.pop(0)
         if a == "--account" and args:
-            account = args.pop(0)
+            account = chosen = args.pop(0)
         elif a == "--all":
             every = True
         elif a == "--manual":
             manual = True
+        elif a == "--json":
+            as_json = True
         else:
             rest.append(a)
     try:
@@ -497,6 +780,14 @@ def main() -> None:
         elif command == "search" and rest:
             _use(account)
             search(rest[0])
+        elif command in ("preview", "fetch") and rest:
+            if chosen:
+                _use(chosen)
+            result = (preview if command == "preview" else fetch)(rest[0], chosen)
+            if as_json:
+                print(json.dumps(result, ensure_ascii=False))
+            else:
+                _show(result)
         elif command == "sync":
             names = list(accounts()) if every else [account]
             failed = []
@@ -518,6 +809,8 @@ def main() -> None:
             print(__doc__)
             sys.exit(2)
     except GmailError as e:
+        if as_json:
+            print(json.dumps({"error": str(e), "code": e.code}, ensure_ascii=False))
         print(f"error: {e}", file=sys.stderr)
         sys.exit(1)
 

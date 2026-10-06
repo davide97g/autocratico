@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import type { GmailSetup } from "@autocratico/core"
+import type { GmailPreview, GmailSetup } from "@autocratico/core"
 import { describe, expect, it } from "vitest"
 
 import { Account } from "../src/account.ts"
@@ -190,5 +190,80 @@ describe("Gmail setup", () => {
     expect(existsSync(join(data, "secrets", "gmail", "work.json"))).toBe(false)
     s = await json<GmailSetup>(app.request("/api/gmail", { headers: h }))
     expect(s.accounts.map((a) => a.name)).toEqual(["personal"]) // from example/
+  })
+})
+
+describe("Gmail links in the chat", () => {
+  // A link from Gmail's web app: the letters stand for the thread 199e22cd1b5badb3.
+  const LINK = "https://mail.google.com/mail/u/0/#inbox/FMfcgzQcqHbhCqwDnCNJKsrwkgKScRpp"
+  const FOLDER = "archive/email/2025-10-14-avviso-tari-5badb3"
+
+  /** A server on a copy of example/ whose archive already has that conversation (no network needed). */
+  function withArchived() {
+    const { app, s, data } = setup()
+    mkdirSync(join(data, FOLDER), { recursive: true })
+    writeFileSync(
+      join(data, FOLDER, "message.md"),
+      [
+        "---",
+        "id: 199e22cd1b5badb3",
+        "account: personal",
+        "mailbox: maria@example.com",
+        "thread: 199e22cd1b5badb3",
+        "date: 2025-10-14T12:03:32+02:00",
+        'from: "Comune di Esempio <tributi@comune.example.it>"',
+        'subject: "Avviso TARI 2025"',
+        'attachments: ["avviso.pdf"]',
+        "---",
+        "",
+        "Gentile contribuente,   in allegato l'avviso.",
+        "",
+      ].join("\n")
+    )
+    return { app, s, data }
+  }
+
+  it("previews a link from the archive, and says why others can't be", async () => {
+    const { app } = withArchived()
+    const h = await owner(app)
+    const ask = (link: string) => app.request(`/api/gmail/preview?link=${encodeURIComponent(link)}`, { headers: h })
+    const r = await ask(LINK)
+    expect(r.status).toBe(200)
+    const p = await json<GmailPreview>(r)
+    expect(p).toMatchObject({ thread: "199e22cd1b5badb3", account: "personal", subject: "Avviso TARI 2025", messages: 1, attachments: ["avviso.pdf"], folders: [FOLDER] })
+    expect(p.snippet).toBe("Gentile contribuente, in allegato l'avviso.")
+    expect(p.link).toBe("https://mail.google.com/mail/u/?authuser=maria%40example.com#all/199e22cd1b5badb3")
+    // The same conversation by its hex id, or as one message (permmsgid), in an older link.
+    expect((await ask("https://mail.google.com/mail/u/0/#all/199e22cd1b5badb3")).status).toBe(200)
+    expect((await ask("https://mail.google.com/mail/u/0/?view=om&permmsgid=msg-f:1845951161591115187")).status).toBe(200)
+
+    // Not archived and no account connected (example/ has no tokens).
+    const missing = await ask("https://mail.google.com/mail/u/0/#inbox/1a0fc52bf5615af5")
+    expect(missing.status).toBe(409)
+    expect((await json<{ code: string }>(missing)).code).toBe("no-account")
+    expect((await ask("https://mail.google.com/mail/u/0/#inbox")).status).toBe(400)
+    expect((await ask("--all")).status).toBe(400)
+    expect((await app.request(`/api/gmail/preview?link=${encodeURIComponent(LINK)}`, { headers: LOCAL })).status).toBe(401)
+  })
+
+  it("saves the linked conversation before the agent answers and tells it where", async () => {
+    const { app, s } = withArchived()
+    const me = await owner(app)
+    const prompts: string[] = []
+    s.claude.run = async function* (o) {
+      prompts.push(o.prompt)
+      yield { type: "end", cost: null, duration_ms: 1 }
+    }
+    const out = await (await post(app, "/api/chat", { message: `Cos'è questa? ${LINK}` }, me)).text()
+    // No account can be asked: the archive's copy is used.
+    expect(prompts[0]).toContain(`Cos'è questa? ${LINK}\n\n[Server: The Gmail link is the conversation from the "personal" mailbox, saved in ${FOLDER}/`)
+    expect(prompts[0]).toContain("this is the copy already in the archive")
+    expect(out).toContain(`{"type":"tool","name":"Gmail","detail":"${FOLDER}"}`)
+
+    await (await post(app, "/api/chat", { message: "https://mail.google.com/mail/u/0/#inbox/1a0fc52bf5615af5" }, me)).text()
+    expect(prompts[1]).toContain("[Server: The Gmail link could not be opened: no Gmail account is connected")
+    // Messages without links reach the agent as typed.
+    await (await post(app, "/api/chat", { message: "Quanto pago a ottobre?" }, me)).text()
+    expect(prompts[2]).toBe("Quanto pago a ottobre?")
   })
 })

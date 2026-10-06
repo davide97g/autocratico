@@ -59,7 +59,7 @@ export function parseMessage(md: string): { meta: Record<string, string>; body: 
 const ITALIAN_KEYS: Record<string, string> = { data: "date", da: "from", a: "to", oggetto: "subject", etichette: "labels", allegati: "attachments", casella: "account" }
 
 /** Gmail addresses by mailbox name, written by scripts/gmail.py at each sync. */
-function mailboxes(data: string): Record<string, string> {
+export function mailboxes(data: string): Record<string, string> {
   try {
     return JSON.parse(read(join(data, "archive", "email", ".mailboxes.json"))) as Record<string, string>
   } catch {

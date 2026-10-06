@@ -198,6 +198,29 @@ export const ArchiveEntry = z.object({
 })
 export type ArchiveEntry = z.infer<typeof ArchiveEntry>
 
+/**
+ * The conversation a Gmail link points to (`scripts/gmail.py preview` / `fetch`): read from the
+ * archive when it is there, else from the connected account that has it.
+ */
+export const GmailPreview = z.object({
+  /** Mailbox name in gmail.toml. */
+  account: z.string(),
+  thread: z.string(),
+  /** The first message's subject. */
+  subject: z.string(),
+  /** Sender, date and text of the latest message. */
+  from: z.string(),
+  date: z.string().nullable(),
+  snippet: z.string(),
+  messages: z.number().int(),
+  attachments: z.array(z.string()),
+  /** archive/email/<folder> of each message saved, oldest first (all of them after a fetch). */
+  folders: z.array(z.string()),
+  /** The conversation in Gmail's web app, in the mailbox that has it. */
+  link: z.string().nullable(),
+})
+export type GmailPreview = z.infer<typeof GmailPreview>
+
 // ---------- Reminders ----------
 
 /** A one-off reminder, set from the chat; sent on Telegram when due. Stored in reminders.json. */

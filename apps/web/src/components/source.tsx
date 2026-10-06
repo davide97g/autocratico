@@ -15,9 +15,10 @@ const KIND_ICON: Record<SourceInfo["kind"], LucideIcon> = { email: MailIcon, inb
 /**
  * Where something comes from: the email (text, attachments, a link to it in Gmail), the inbox item,
  * the file, or the web page. `path` is a deadline's `source` or an archive path. `large` shows the
- * whole text at reading size, for a page of its own.
+ * whole text at reading size, for a page of its own; `header={false}` only the text and the files,
+ * under a card that already says what it is (a Gmail link in the chat).
  */
-export function SourcePreview({ path, large = false, className }: { path: string; large?: boolean; className?: string }) {
+export function SourcePreview({ path, large = false, header = true, className }: { path: string; large?: boolean; header?: boolean; className?: string }) {
   const { t, locale } = useI18n()
   const { enabled: privacy } = usePrivacy()
   const web = /^https?:\/\//i.test(path)
@@ -63,33 +64,35 @@ export function SourcePreview({ path, large = false, className }: { path: string
   const when = info.date && !Number.isNaN(Date.parse(info.date)) ? new Date(info.date).toLocaleString(locale === "it" ? "it-IT" : "en-GB", { dateStyle: "medium", timeStyle: "short" }) : null
   return (
     <div className={cn("flex min-w-0 flex-col gap-3 rounded-lg bg-muted/50 p-3", className)}>
-      <div className="flex items-start gap-3">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-card">
-          <Icon className="size-4" />
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
-          <span className="font-medium">
-            <Sensitive>{info.title}</Sensitive>
+      {header && (
+        <div className="flex items-start gap-3">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-card">
+            <Icon className="size-4" />
           </span>
-          <span className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-            <span>{t.sources.kinds[info.kind]}</span>
-            {info.from && (
-              <span className="min-w-0 truncate">
-                · <Sensitive>{info.from}</Sensitive>
-              </span>
-            )}
-            {when && <span>· {when}</span>}
-            {info.account && <span>· {info.account}</span>}
-          </span>
-          <span className="truncate font-mono text-[0.7rem] text-muted-foreground">{info.path}</span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
+            <span className="font-medium">
+              <Sensitive>{info.title}</Sensitive>
+            </span>
+            <span className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+              <span>{t.sources.kinds[info.kind]}</span>
+              {info.from && (
+                <span className="min-w-0 truncate">
+                  · <Sensitive>{info.from}</Sensitive>
+                </span>
+              )}
+              {when && <span>· {when}</span>}
+              {info.account && <span>· {info.account}</span>}
+            </span>
+            <span className="truncate font-mono text-[0.7rem] text-muted-foreground">{info.path}</span>
+          </div>
+          {info.link && (
+            <Button variant="secondary" size="sm" className="shrink-0" render={<a href={info.link} target="_blank" rel="noreferrer" />} nativeButton={false}>
+              <ExternalLinkIcon data-icon="inline-start" />
+              {t.sources.openGmail}
+            </Button>
+          )}
         </div>
-        {info.link && (
-          <Button variant="secondary" size="sm" className="shrink-0" render={<a href={info.link} target="_blank" rel="noreferrer" />} nativeButton={false}>
-            <ExternalLinkIcon data-icon="inline-start" />
-            {t.sources.openGmail}
-          </Button>
-        )}
-      </div>
+      )}
       {info.text &&
         (privacy ? (
           <p className="text-xs text-muted-foreground">{t.sources.textHidden}</p>

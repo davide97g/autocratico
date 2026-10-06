@@ -11,6 +11,7 @@ import type {
   FinanceExpenseInput,
   FinanceSetup,
   GmailAccountInput,
+  GmailPreview,
   GmailSetup,
   InboxDetail,
   InboxItem,
@@ -30,6 +31,7 @@ export type {
   FinanceSetup,
   FinanceTransaction,
   GmailAccount,
+  GmailPreview,
   GmailSetup,
   Activity,
   ArchiveEntry,
@@ -138,6 +140,8 @@ export const isImage = (path: string) => /\.(jpe?g|png|webp|gif)$/i.test(path)
 /** What a source path is (email, inbox item, file) with its text and files. */
 export const source = (path: string) => request<SourceInfo>(`/api/source?path=${encodeURIComponent(path)}`)
 export const archive = () => request<ArchiveEntry[]>("/api/archive")
+/** What a Gmail link points to; an ApiError's status says why not (400, 404, 409, 422, 502). */
+export const gmailPreview = (link: string) => request<GmailPreview>(`/api/gmail/preview?link=${encodeURIComponent(link)}`)
 export const setInboxStatus = (id: string, status: "new" | "ignored") => post<{ ok: boolean }>(`/api/inbox/${id}/status`, { status })
 
 export function ingest(n: { files: File[]; text: string; title?: string }): Promise<InboxItem> {

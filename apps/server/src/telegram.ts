@@ -13,6 +13,7 @@ import { Bot, type Context, InlineKeyboard } from "grammy"
 
 import { type Claude, friendlyError } from "./claude.ts"
 import type { Config } from "./config.ts"
+import type { GmailLinks } from "./gmail-links.ts"
 import { locks, readJson, writeSecret } from "./files.ts"
 import type { Inbox, Upload } from "./inbox.ts"
 import type { Button, Jobs, Notifier } from "./jobs.ts"
@@ -166,6 +167,7 @@ type Deps = {
   reminders: Reminders
   transcriber: Transcriber
   changes: Changes
+  gmailLinks: GmailLinks
   jobs: () => Jobs | null
 }
 
@@ -476,7 +478,9 @@ export class Telegram implements Notifier {
           await ctx.api.editMessageText(chatId, sent.message_id, preview).catch(() => undefined)
         }
       }
-      for await (const e of this.#d.claude.run({ prompt: text, profile: "read", session: chat.session, locale: this.#d.config.locale, actions: true })) {
+      // Gmail links: the conversations are saved in the archive first, and the agent told where.
+      const prompt = await this.#d.gmailLinks.prompt(text, (step) => tools.push(step))
+      for await (const e of this.#d.claude.run({ prompt, profile: "read", session: chat.session, locale: this.#d.config.locale, actions: true })) {
         if (e.type === "session") chat.session = e.id
         else if (e.type === "text") answer += e.text
         else if (e.type === "block" && answer) answer += "\n\n"

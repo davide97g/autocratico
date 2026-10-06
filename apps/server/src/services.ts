@@ -6,6 +6,7 @@ import { Changes } from "./changes.ts"
 import { Claude } from "./claude.ts"
 import type { Config } from "./config.ts"
 import { Finance } from "./finance.ts"
+import { GmailLinks, gmailScript } from "./gmail-links.ts"
 import { DataRepo } from "./git.ts"
 import { Inbox } from "./inbox.ts"
 import { Reminders } from "./reminders.ts"
@@ -38,10 +39,11 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     reminders,
     finance,
     pulse,
+    gmailLinks: new GmailLinks(config.data, gmailScript(config)),
     ...overrides,
   }
   if (config.telegramToken && overrides.telegram === undefined) {
-    s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, reminders, transcriber: s.transcriber, changes: s.changes, jobs: () => s.jobs })
+    s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, reminders, transcriber: s.transcriber, changes: s.changes, gmailLinks: s.gmailLinks, jobs: () => s.jobs })
   }
   if (overrides.jobs === undefined) {
     s.jobs = new Jobs({ config, store, inbox, claude, repo, reminders, finance, pulse: s.pulse, notifier: () => s.telegram })

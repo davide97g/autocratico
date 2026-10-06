@@ -7,6 +7,7 @@ import {
   documentRefs,
   isDocumentPath,
   fileName,
+  gmailLinks,
   level,
   parseDeadlines,
   parseWhatsAppExport,
@@ -15,6 +16,7 @@ import {
   reminders,
   slug,
   today,
+  withoutGmailLinks,
 } from "../src/index.ts"
 
 describe("dates", () => {
@@ -239,5 +241,24 @@ describe("first-run datasets", () => {
     expect(empty.cases).toEqual([])
     expect(empty.profile).toEqual({})
     expect(loadData(resolve(root, "example"), "2026-10-04").agenda.length).toBeGreaterThan(0)
+  })
+})
+
+describe("Gmail links", () => {
+  const web = "https://mail.google.com/mail/u/0/#inbox/FMfcgzQcqHbhCqwDnCNJKsrwkgKScRpp"
+  it("finds links that name a conversation", () => {
+    expect(gmailLinks(`Guarda (${web}). E questa: https://mail.google.com/mail/u/1/#all/199e22cd1b5badb3, grazie`)).toEqual([
+      web,
+      "https://mail.google.com/mail/u/1/#all/199e22cd1b5badb3",
+    ])
+    expect(gmailLinks("https://mail.google.com/mail/u/0/?ik=a1&view=om&permmsgid=msg-f:1845951161591115187")).toHaveLength(1)
+    expect(gmailLinks(`${web} ${web}`)).toEqual([web])
+    // Gmail pages that are not one email, and other sites.
+    expect(gmailLinks("https://mail.google.com/mail/u/0/#inbox https://mail.google.com/mail/u/0/#label/Agenzia-Entrate")).toEqual([])
+    expect(gmailLinks("https://example.com/mail/u/0/#inbox/FMfcgzQcqHbhCqwDnCNJKsrwkgKScRpp")).toEqual([])
+  })
+  it("leaves the rest of the message for the bubble", () => {
+    expect(withoutGmailLinks(`Cos'è?\n\n${web}\n\n`)).toBe("Cos'è?")
+    expect(withoutGmailLinks(web)).toBe("")
   })
 })
