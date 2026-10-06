@@ -325,39 +325,50 @@ function Row({
           </div>
         </button>
 
-        <div className="flex shrink-0 items-center gap-1 @lg:gap-1.5">
-          {o.case && (
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          {done ? (
+            <Badge
+              variant="secondary"
+              className={cn("hidden @lg:inline-flex", STYLE.done.soft)}
+            >
+              <CheckIcon
+                data-icon="inline-start"
+                className={cn(justDone && "pop")}
+              />
+              {t.deadlines.doneOn(fmt.short.format(parseDate(o.done_on!)))}
+            </Badge>
+          ) : (
+            <StatusBadge
+              level={l}
+              days={o.days}
+              className="hidden @lg:inline-flex"
+            />
+          )}
+          <div className="flex items-center gap-1 @lg:gap-1.5">
+            {o.case && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-9 rounded-lg @lg:size-7"
+                onClick={() => onOpenCase(o.case!)}
+                aria-label={t.deadlines.openCase}
+              >
+                <FolderOpenIcon />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon-sm"
               className="size-9 rounded-lg @lg:size-7"
-              onClick={() => onOpenCase(o.case!)}
-              aria-label={t.deadlines.openCase}
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              aria-label={open ? t.deadlines.hideDetails : t.deadlines.details}
             >
-              <FolderOpenIcon />
+              <ChevronDownIcon
+                className={cn("transition-transform", open && "rotate-180")}
+              />
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="size-9 rounded-lg @lg:size-7"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            aria-label={open ? t.deadlines.hideDetails : t.deadlines.details}
-          >
-            <ChevronDownIcon
-              className={cn("transition-transform", open && "rotate-180")}
-            />
-          </Button>
-          {done ? (
-            <>
-              <Badge
-                variant="secondary"
-                className={cn("hidden @lg:inline-flex", STYLE.done.soft)}
-              >
-                <CheckIcon data-icon="inline-start" className={cn(justDone && "pop")} />
-                {t.deadlines.doneOn(fmt.short.format(parseDate(o.done_on!)))}
-              </Badge>
+            {done ? (
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -367,37 +378,40 @@ function Row({
               >
                 <Undo2Icon />
               </Button>
-            </>
-          ) : (
-            <>
-              <StatusBadge
-                level={l}
-                days={o.days}
-                className="hidden @lg:inline-flex"
-              />
-              <Button
-                size="sm"
-                className="group/done hidden rounded-lg @lg:inline-flex"
-                onClick={markDone}
-              >
-                <CheckIcon data-icon="inline-start" className="-ml-0.5 w-0 opacity-0 transition-all duration-200 group-hover/done:w-3.5 group-hover/done:opacity-100" />
-                {t.deadlines.markDone}
-              </Button>
-              <Button
-                size="icon-lg"
-                className="size-10 rounded-lg @lg:hidden"
-                onClick={markDone}
-                aria-label={t.deadlines.markDone}
-              >
-                <CheckIcon />
-              </Button>
-            </>
-          )}
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  className="group/done hidden rounded-lg @lg:inline-flex"
+                  onClick={markDone}
+                >
+                  <CheckIcon
+                    data-icon="inline-start"
+                    className="-ml-0.5 w-0 opacity-0 transition-all duration-200 group-hover/done:w-3.5 group-hover/done:opacity-100"
+                  />
+                  {t.deadlines.markDone}
+                </Button>
+                <Button
+                  size="icon-lg"
+                  className="size-10 rounded-lg @lg:hidden"
+                  onClick={markDone}
+                  aria-label={t.deadlines.markDone}
+                >
+                  <CheckIcon />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
       {open && (
-        <div className="duration-200 animate-in fade-in-0 slide-in-from-top-1">
-          <Details o={o} onOpenCase={onOpenCase} onOpen={onOpen} onAsk={onAsk} />
+        <div className="animate-in duration-200 fade-in-0 slide-in-from-top-1">
+          <Details
+            o={o}
+            onOpenCase={onOpenCase}
+            onOpen={onOpen}
+            onAsk={onAsk}
+          />
         </div>
       )}
     </div>
