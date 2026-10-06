@@ -3,8 +3,8 @@ import * as React from "react"
 import { API_BASE } from "@/lib/api"
 
 /** What the server announces on `/api/events` (apps/server/src/pulse.ts, plus the finance mirror). */
-export type Topic = "data" | "inbox" | "archive" | "activity" | "jobs" | "chats" | "reminders" | "finance"
-const TOPICS: Topic[] = ["data", "inbox", "archive", "activity", "jobs", "chats", "reminders", "finance"]
+export type Topic = "data" | "inbox" | "archive" | "activity" | "jobs" | "chats" | "reminders" | "finance" | "usage"
+const TOPICS: Topic[] = ["data", "inbox", "archive", "activity", "jobs", "chats", "reminders", "finance", "usage"]
 
 export type Connection = "connecting" | "live" | "offline"
 

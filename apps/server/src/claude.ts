@@ -12,10 +12,11 @@ import { existsSync, readdirSync } from "node:fs"
 import { homedir } from "node:os"
 import { join, relative } from "node:path"
 
-import { type ChatEvent, localNow } from "@autocratico/core"
+import { type ChatEvent, localNow, type UsageSource } from "@autocratico/core"
 
 import { ACTION_INSTRUCTIONS } from "./chat-actions.ts"
 import type { Config } from "./config.ts"
+import { tokens, type Usage } from "./usage.ts"
 
 // Pages Claude may open to check a rule. `*.x` needs Claude Code 2.1.172 or later.
 export const DOMAINS = ["gov.it", "inps.it", "normattiva.it", "gazzettaufficiale.it", "europa.eu", "aci.it"]
@@ -50,7 +51,7 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
     }
   }
   // Server-owned files stay out of the agent's reach.
-  const owned = ["state.json", "reminders.json", "chats/**", "jobs/**", "inbox/*/item.json", "finance/**", ".git/**"].flatMap((p) => [
+  const owned = ["state.json", "reminders.json", "usage.json", "chats/**", "jobs/**", "inbox/*/item.json", "finance/**", ".git/**"].flatMap((p) => [
     `Edit(${abs(data)}/${p})`,
     `Write(${abs(data)}/${p})`,
   ])
@@ -103,6 +104,8 @@ export type RunOptions = {
   signal?: AbortSignal
   /** The answer may carry reminder/inbox blocks for the server (chat only). */
   actions?: boolean
+  /** Who asked, for the usage card: the web chat by default for `read`, the triage job for `triage`. */
+  source?: UsageSource
 }
 
 /** Plain-language text for errors from `claude -p`, shown in the chat and on Telegram. */
@@ -131,9 +134,11 @@ export function friendlyError(message: string, locale: "it" | "en"): string {
 
 export class Claude {
   readonly config: Config
+  readonly usage: Usage | null
 
-  constructor(config: Config) {
+  constructor(config: Config, usage: Usage | null = null) {
     this.config = config
+    this.usage = usage
   }
 
   get available(): boolean {
@@ -190,6 +195,14 @@ export class Claude {
     // The send time goes in the message itself, so a resumed conversation always has the current one.
     child.stdin.end(`[Sent ${localNow(this.config.timeZone)}, ${this.config.timeZone}]\n\n${o.prompt}`)
 
+    const source = o.source ?? (o.profile === "triage" ? "triage" : "chat")
+    const meter: Meter = {
+      limits: (info) => void this.usage?.limits(info).catch((e: Error) => console.error(`usage: ${e.message}`)),
+      result: (e) =>
+        void this.usage
+          ?.run({ source, cost: num(e.total_cost_usd), duration_ms: num(e.duration_ms), error: e.is_error === true, ...tokens(e.usage) })
+          .catch((err: Error) => console.error(`usage: ${err.message}`)),
+    }
     let finished = false
     let failed = false
     let rest = ""
@@ -199,7 +212,7 @@ export class Claude {
         const lines = rest.split("\n")
         rest = lines.pop() ?? ""
         for (const line of lines) {
-          for (const e of translate(line, [data, root])) {
+          for (const e of translate(line, [data, root], meter)) {
             if (e.type === "end") finished = true
             if (e.type === "error") {
               failed = true
@@ -209,7 +222,7 @@ export class Claude {
           }
         }
       }
-      for (const e of translate(rest, [data, root])) {
+      for (const e of translate(rest, [data, root], meter)) {
         if (e.type === "end") finished = true
         if (e.type === "error") failed = true
         yield e
@@ -242,7 +255,12 @@ export class Claude {
   }
 }
 
-function* translate(line: string, bases: string[]): Generator<ChatEvent> {
+/** Where the subscription's limits and each run's tokens go (the usage card), beside the chat events. */
+type Meter = { limits: (info: unknown) => void; result: (e: Record<string, any>) => void }
+
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null)
+
+function* translate(line: string, bases: string[], meter?: Meter): Generator<ChatEvent> {
   if (!line.trim()) return
   let e: Record<string, any>
   try {
@@ -260,7 +278,10 @@ function* translate(line: string, bases: string[]): Generator<ChatEvent> {
     for (const c of e.message?.content ?? []) {
       if (c.type === "tool_use") yield { type: "tool", name: String(c.name ?? ""), detail: detail(c.input ?? {}, bases) }
     }
+  } else if (e.type === "rate_limit_event") {
+    meter?.limits(e.rate_limit_info)
   } else if (e.type === "result") {
+    meter?.result(e)
     if (e.is_error) {
       const details = Array.isArray(e.errors) ? e.errors.map(String).join("; ") : ""
       yield { type: "error", message: [e.subtype, e.result, details].filter(Boolean).map(String).join(": ") || "error" }

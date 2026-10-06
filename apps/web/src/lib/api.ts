@@ -22,6 +22,7 @@ import type {
   Session,
   SourceInfo,
   Status,
+  Usage,
 } from "@autocratico/core"
 
 export type {
@@ -55,6 +56,9 @@ export type {
   Session,
   SourceInfo,
   Status,
+  Usage,
+  UsageRun,
+  UsageSource,
   Value,
 } from "@autocratico/core"
 
@@ -179,6 +183,7 @@ export const telegramPair = () => post<{ code: string; bot: string | null }>("/a
 export const telegramUnpair = (id: number) => post<{ ok: boolean }>(`/api/telegram/chats/${id}`, undefined, "DELETE")
 
 export const reminders = () => request<Reminder[]>("/api/reminders")
+export const usage = () => request<Usage>("/api/usage")
 export const cancelReminder = (id: string) => post<{ ok: boolean }>(`/api/reminders/${id}`, undefined, "DELETE")
 
 export const financeSetup = () => request<FinanceSetup>("/api/finance")

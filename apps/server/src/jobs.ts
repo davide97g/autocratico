@@ -465,6 +465,7 @@ export class Jobs {
     const { text, error } = await claude.complete(
       {
         profile: "read",
+        source: "digest",
         locale: config.locale,
         signal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
         prompt:

@@ -539,3 +539,47 @@ export const FinanceData = z.object({
   deadlines: z.array(z.object({ id: z.string(), finance_category: z.string().nullable(), finance_recurring: z.string().nullable() })),
 })
 export type FinanceData = z.infer<typeof FinanceData>
+
+/** One limit window of the Claude subscription (`five_hour`, `seven_day`, `seven_day_opus`…), as Claude Code reports it. */
+export const UsageWindow = z.object({
+  id: z.string(),
+  /** 0..1 of the window's allowance; null when Claude Code did not say. */
+  utilization: z.number().nullable(),
+  resets_at: z.string().nullable(),
+})
+export type UsageWindow = z.infer<typeof UsageWindow>
+
+/** The subscription's limits as of the latest agent run (`rate_limit_event` in `claude -p` output). */
+export const UsageLimits = z.object({
+  at: z.string(),
+  /** allowed, allowed_warning or rejected. */
+  status: z.string(),
+  windows: z.array(UsageWindow),
+  overage: z.object({ status: z.string().nullable(), using: z.boolean() }),
+})
+export type UsageLimits = z.infer<typeof UsageLimits>
+
+export const USAGE_SOURCES = ["chat", "telegram", "triage", "digest"] as const
+export type UsageSource = (typeof USAGE_SOURCES)[number]
+
+/** One finished agent run: what it took, priced at API list rates by Claude Code (the subscription pays nothing extra). */
+export const UsageRun = z.object({
+  at: z.string(),
+  source: z.enum(USAGE_SOURCES),
+  cost: z.number().nullable(),
+  duration_ms: z.number().nullable(),
+  input: z.number().int(),
+  output: z.number().int(),
+  cache_read: z.number().int(),
+  cache_write: z.number().int(),
+  error: z.boolean(),
+})
+export type UsageRun = z.infer<typeof UsageRun>
+
+/** data/usage.json (server-owned) and GET /api/usage: latest limits, their history, the agent's runs. */
+export const Usage = z.object({
+  limits: UsageLimits.nullable(),
+  samples: z.array(z.object({ at: z.string(), windows: z.record(z.string(), z.number()) })),
+  runs: z.array(UsageRun),
+})
+export type Usage = z.infer<typeof Usage>

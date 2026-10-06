@@ -6,7 +6,7 @@
 import { type FSWatcher, watch } from "node:fs"
 import { sep } from "node:path"
 
-export const TOPICS = ["data", "inbox", "archive", "activity", "jobs", "chats", "reminders"] as const
+export const TOPICS = ["data", "inbox", "archive", "activity", "jobs", "chats", "reminders", "usage"] as const
 export type Topic = (typeof TOPICS)[number]
 
 /** Changes close together become one event: the agent writes several files in a row. */
@@ -25,6 +25,7 @@ export function topicOf(path: string): Topic | null {
   if (top === "archive") return "archive"
   if (top === "chats") return "chats"
   if (top === "reminders.json") return "reminders"
+  if (top === "usage.json") return "usage"
   if (top === "jobs") return "jobs"
   return null
 }

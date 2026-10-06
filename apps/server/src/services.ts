@@ -15,11 +15,13 @@ import { Pulse } from "./pulse.ts"
 import { Store } from "./store.ts"
 import { Telegram } from "./telegram.ts"
 import { Transcriber } from "./transcribe.ts"
+import { Usage } from "./usage.ts"
 
 export function services(config: Config, overrides: Partial<Services> = {}): Services {
   const store = new Store(config.data, config.timeZone)
   const inbox = new Inbox(config.data)
-  const claude = new Claude(config)
+  const usage = new Usage(config.data)
+  const claude = new Claude(config, usage)
   const repo = new DataRepo(config.data)
   const reminders = new Reminders(config.data, config.timeZone)
   const finance = overrides.finance ?? new Finance(config.data, { timeZone: config.timeZone })
@@ -39,6 +41,7 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     reminders,
     finance,
     pulse,
+    usage,
     gmailLinks: new GmailLinks(config.data, gmailScript(config)),
     ...overrides,
   }

@@ -654,5 +654,42 @@ describe("pulse", () => {
     expect(topicOf(".git/objects/ab/cdef")).toBeNull()
     expect(topicOf("secrets/auth.db")).toBeNull()
     expect(topicOf("chats/web-1.json")).toBe("chats")
+    expect(topicOf("usage.json")).toBe("usage")
+  })
+})
+
+describe("usage", () => {
+  it("records the subscription's limits and each run from the agent's stream", async () => {
+    const { Claude } = await import("../src/claude.ts")
+    const { Usage } = await import("../src/usage.ts")
+    const { app, s, data } = setup()
+    const fake = join(data, "fake-claude.sh")
+    const lines = [
+      { type: "system", subtype: "init", session_id: "11111111-1111-1111-1111-111111111111" },
+      { type: "rate_limit_event", rate_limit_info: { status: "allowed", unifiedWindows: { five_hour: { utilization: 0.25, resetsAt: 1791289200 }, seven_day: { utilization: 0.59, resetsAt: 1791298800 } } } },
+      { type: "result", total_cost_usd: 0.0162, duration_ms: 1200, usage: { input_tokens: 9, output_tokens: 36, cache_read_input_tokens: 14160, cache_creation_input_tokens: 7311 } },
+    ]
+    writeFileSync(fake, `#!/bin/sh\ncat >/dev/null\ncat <<'EOF'\n${lines.map((l) => JSON.stringify(l)).join("\n")}\nEOF\n`, { mode: 0o755 })
+    const usage = new Usage(data)
+    const c = new Claude(loadConfig({ data, jobs: false, claude: fake }), usage)
+    const { error } = await c.complete({ prompt: "?", profile: "read", source: "telegram" })
+    expect(error).toBeNull()
+    await new Promise((r) => setTimeout(r, 50))
+    const u = usage.view()
+    expect(u.limits?.windows.map((w) => [w.id, w.utilization])).toEqual([["five_hour", 0.25], ["seven_day", 0.59]])
+    expect(u.samples).toHaveLength(1)
+    expect(u.runs).toMatchObject([{ source: "telegram", cost: 0.0162, input: 9, output: 36, cache_read: 14160, cache_write: 7311, error: false }])
+    // Same numbers again: no new sample.
+    await c.complete({ prompt: "?", profile: "triage" })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(usage.view().samples).toHaveLength(1)
+    expect(usage.view().runs.map((r) => r.source)).toEqual(["telegram", "triage"])
+
+    const me = await owner(app)
+    expect(s.usage.file).toBe(join(data, "usage.json"))
+    const r = await app.request("/api/usage", { headers: me })
+    expect(r.status).toBe(200)
+    expect(((await r.json()) as { runs: unknown[] }).runs).toHaveLength(2)
+    expect((await app.request("/api/usage", { headers: LOCAL })).status).toBe(401)
   })
 })

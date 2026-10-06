@@ -27,6 +27,7 @@ import { setPersonName, writeProfile } from "./profile.ts"
 import type { Store } from "./store.ts"
 import { finishAnswer } from "./chat-actions.ts"
 import type { Pulse } from "./pulse.ts"
+import type { Usage } from "./usage.ts"
 import type { Reminders } from "./reminders.ts"
 import type { Telegram } from "./telegram.ts"
 import type { Transcriber } from "./transcribe.ts"
@@ -50,6 +51,8 @@ export type Services = {
   finance: Finance
   /** What changed, for the open web apps (`/api/events`). */
   pulse: Pulse
+  /** The Claude subscription's limits and the agent's runs, for the Settings card. */
+  usage: Usage
   /** Gmail links in the chat: preview, and the conversation saved for the agent. */
   gmailLinks: GmailLinks
   /** Override for tests: Gmail setup with a fake Google. */
@@ -435,6 +438,8 @@ export function createApp(s: Services) {
     return c.json(JobRun.parse(run))
   })
 
+  app.get("/api/usage", (c) => c.json(s.usage.view()))
+
   app.get("/api/status", (c) => {
     const items = inbox.list()
     const status: Status = {
@@ -522,7 +527,7 @@ export function createApp(s: Services) {
 
   /**
    * Server events for the open web app: `finance` with the mirror's revision when it changes, and one event
-   * per topic of `pulse.ts` (data, inbox, archive, activity, jobs, chats, reminders) when something there changed.
+   * per topic of `pulse.ts` (data, inbox, archive, activity, jobs, chats, reminders, usage) when something there changed.
    */
   app.get("/api/events", (c) =>
     streamSSE(c, async (sse) => {

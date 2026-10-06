@@ -19,6 +19,7 @@ import { cn } from "cn"
 
 import { FinanceCard } from "@/components/finance"
 import { GmailCard } from "@/components/gmail"
+import { UsageCard } from "@/components/usage"
 import { Sensitive } from "@/components/privacy"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -621,6 +622,7 @@ export function Settings({
         <ServerCard s={s} onRefresh={refresh} />
       </div>
       <div className="flex flex-col gap-4 sm:gap-6">
+        <UsageCard />
         <GmailCard />
         <FinanceCard />
         <TelegramCard enabled={s.telegram.enabled} />

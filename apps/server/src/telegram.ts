@@ -480,7 +480,7 @@ export class Telegram implements Notifier {
       }
       // Gmail links: the conversations are saved in the archive first, and the agent told where.
       const prompt = await this.#d.gmailLinks.prompt(text, (step) => tools.push(step))
-      for await (const e of this.#d.claude.run({ prompt, profile: "read", session: chat.session, locale: this.#d.config.locale, actions: true })) {
+      for await (const e of this.#d.claude.run({ prompt, profile: "read", session: chat.session, locale: this.#d.config.locale, actions: true, source: "telegram" })) {
         if (e.type === "session") chat.session = e.id
         else if (e.type === "text") answer += e.text
         else if (e.type === "block" && answer) answer += "\n\n"

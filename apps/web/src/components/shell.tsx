@@ -27,6 +27,7 @@ import { cn } from "cn"
 
 import { Kbd, MOD } from "@/components/kbd"
 import { Logo } from "@/components/logo"
+import { UsageMeter } from "@/components/usage"
 import { ShinyText } from "@/components/motion"
 import { Sensitive, usePrivacy } from "@/components/privacy"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -230,12 +231,14 @@ function ClaudePanel({
   onAsk,
   live,
   onBusy,
+  onUsage,
 }: {
   chatOpen: boolean
   onChat: () => void
   onAsk: (q: string) => void
   live: LiveJobs | null
   onBusy: () => void
+  onUsage: () => void
 }) {
   const { t } = useI18n()
   const [draft, setDraft] = React.useState("")
@@ -311,6 +314,7 @@ function ClaudePanel({
         {chatOpen ? t.sidebar.closeChat : t.sidebar.openChat}
         <Kbd className="h-4 min-w-4 bg-primary-foreground/10 text-[0.6rem] text-primary-foreground/70 ring-primary-foreground/15">C</Kbd>
       </button>
+      <UsageMeter onOpen={onUsage} />
     </div>
   )
 }
@@ -440,7 +444,7 @@ export function Sidebar({
             <TooltipContent side="right">{t.sidebar.askClaude} (C)</TooltipContent>
           </Tooltip>
         ) : (
-          <ClaudePanel chatOpen={chatOpen} onChat={onChat} onAsk={onAsk} live={live} onBusy={() => onView("activity")} />
+          <ClaudePanel chatOpen={chatOpen} onChat={onChat} onAsk={onAsk} live={live} onBusy={() => onView("activity")} onUsage={() => onView("settings")} />
         )}
 
         <div className={cn("flex items-center gap-3 border-t pt-4", compact && "flex-col border-t-0 pt-0")}>
