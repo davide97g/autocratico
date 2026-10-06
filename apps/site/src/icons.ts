@@ -1,85 +1,175 @@
-// Only the icons the page uses, so the bundle stays small.
+// Only the icons the page uses, so the bundle stays small. The same set as the app (lucide).
 import {
+  Archive,
   ArrowDownRight,
   ArrowRight,
+  ArrowUp,
   ArrowUpRight,
+  AudioLines,
+  Bell,
+  BookOpen,
   Calendar,
+  CalendarClock,
+  CalendarPlus,
   Camera,
   Car,
+  ChartLine,
   Check,
+  ChevronDown,
+  ChevronRight,
   CircleCheck,
+  CircleHelp,
+  Command,
   Copy,
+  CornerDownLeft,
+  Ellipsis,
   Eye,
   EyeOff,
+  FilePen,
   FileText,
   FolderOpen,
+  Gauge,
   GitCommitHorizontal,
+  Globe,
+  History,
+  House,
+  IdCard,
   Image,
   Inbox,
+  Landmark,
+  LayoutDashboard,
   Lock,
   Mail,
   MailCheck,
   MessageCircle,
+  MessagesSquare,
   Mic,
+  Moon,
+  MousePointer2,
+  PanelLeftClose,
   Paperclip,
+  Play,
   Receipt,
+  RotateCcw,
   Search,
   Send,
+  Settings,
   ShieldAlert,
   ShieldCheck,
+  SkipForward,
   Smartphone,
   Sparkles,
+  Square,
+  SquarePen,
+  Sun,
   Terminal,
   TriangleAlert,
   Undo2,
   Upload,
+  UserRound,
+  Wallet,
+  X,
+  Zap,
   createIcons,
+  type IconNode,
 } from "lucide"
 
-const icons = {
+const icons: Record<string, IconNode> = {
+  Archive,
   ArrowDownRight,
   ArrowRight,
+  ArrowUp,
   ArrowUpRight,
+  AudioLines,
+  Bell,
+  BookOpen,
   Calendar,
+  CalendarClock,
+  CalendarPlus,
   Camera,
   Car,
+  ChartLine,
   Check,
+  ChevronDown,
+  ChevronRight,
   CircleCheck,
+  CircleHelp,
+  Command,
   Copy,
+  CornerDownLeft,
+  Ellipsis,
   Eye,
   EyeOff,
+  FilePen,
   FileText,
   FolderOpen,
+  Gauge,
   GitCommitHorizontal,
+  Globe,
+  History,
+  House,
+  IdCard,
   Image,
   Inbox,
+  Landmark,
+  LayoutDashboard,
   Lock,
   Mail,
   MailCheck,
   MessageCircle,
+  MessagesSquare,
   Mic,
+  Moon,
+  MousePointer2,
+  PanelLeftClose,
   Paperclip,
+  Play,
   Receipt,
+  RotateCcw,
   Search,
   Send,
+  Settings,
   ShieldAlert,
   ShieldCheck,
+  SkipForward,
   Smartphone,
   Sparkles,
+  Square,
+  SquarePen,
+  Sun,
   Terminal,
   TriangleAlert,
   Undo2,
   Upload,
+  UserRound,
+  Wallet,
+  X,
+  Zap,
 }
 
+/** Icons written in the HTML as <i data-lucide="name">. */
 export function renderIcons(root: Element | Document = document) {
   createIcons({ icons, root, attrs: { "aria-hidden": "true" } })
 }
 
 /** Swaps the icon inside `host` for another one. */
 export function swapIcon(host: Element, name: string) {
-  const i = document.createElement("i")
-  i.setAttribute("data-lucide", name)
-  host.querySelector("svg, i[data-lucide]")?.replaceWith(i)
-  renderIcons(host)
+  const old = host.querySelector("svg, i[data-lucide]")
+  if (old) old.outerHTML = svg(name)
+}
+
+const pascal = (name: string) => name.replace(/(^|-)(\w)/g, (_, __, c: string) => c.toUpperCase())
+const cache = new Map<string, string>()
+
+/** An icon as an SVG string, for markup built in scripts. */
+export function svg(name: string, cls = ""): string {
+  const key = `${name}|${cls}`
+  const hit = cache.get(key)
+  if (hit) return hit
+  const node = icons[pascal(name)]
+  if (!node) throw new Error(`icon not bundled: ${name}`)
+  const body = node.map(([tag, attrs]) => `<${tag} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(" ")}/>`).join("")
+  const out = `<svg class="lucide lucide-${name}${cls ? " " + cls : ""}" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`
+  cache.set(key, out)
+  return out
 }

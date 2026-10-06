@@ -132,8 +132,11 @@ Events sent (never what people type):
 | `cta_click` | an element with `data-track` | `cta`, `location` |
 | `outbound_click` | a link to another site | `link_url`, `link_domain`, `link_text`, `cta`, `location` |
 | `faq_open` | an FAQ entry is opened | `question` |
-| `demo_file`, `demo_ask`, `demo_reminder_done`, `demo_reset` | demo use | `doc`, `via`, `question` (category), `deadline` |
-| `time_machine`, `time_machine_done`, `privacy_toggle`, `pile_stamp`, `copy_install` | other interactive bits | `days`, `item`, `done`, `on`, `via` |
+| `hero_skip`, `hero_replay` | the guided story at the top is skipped or replayed | |
+| `demo_view`, `demo_chat`, `demo_palette`, `demo_ask`, `demo_arrival`, `demo_done`, `demo_undo`, `demo_telegram` | demo use | `view`, `question` (category), `via`, `doc`, `done`, `action` |
+| `try_in_demo` | a "try it in the demo" button in a section | `what` |
+| `time_machine`, `time_machine_done`, `privacy_toggle`, `pile_stamp`, `copy_install`, `theme_toggle` | other interactive bits | `days`, `item`, `done`, `on`, `via`, `theme` |
+| `section_confirm`, `section_undo`, `section_telegram`, `splash_replay` | the small live pieces in the sections | `yes`, `undone`, `action` |
 | `waitlist_start`, `generate_lead`, `waitlist_error` | waitlist form focus, sign-up, rejection | `method`, `reason` |
 | `consent_granted` | the visitor accepts the banner | |
 

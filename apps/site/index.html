@@ -2,11 +2,11 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Autocratico: scadenze, tasse e pratiche italiane in un registro privato</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Autocratico: scadenze, tasse e pratiche italiane in un registro privato, con Claude</title>
     <meta
       name="description"
-      content="Registro personale e open source per la burocrazia italiana: IMU, TARI, bollo auto, F24, PEC e multe in un calendario. Un agente archivia i documenti e ti avvisa su Telegram. Prova la demo."
+      content="Registro personale e open source per la burocrazia italiana: IMU, TARI, bollo auto, F24, PEC e multe in un calendario. Un agente archivia i documenti, Claude risponde alle tue domande e Telegram ti avvisa. Prova la demo."
     />
     <link rel="canonical" href="%SITE_URL%" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
@@ -15,6 +15,7 @@
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <script src="./theme.js"></script>
 
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="it_IT" />
@@ -22,13 +23,13 @@
     <meta property="og:title" content="Autocratico: nessuno ti avvisa. Lui sì." />
     <meta
       property="og:description"
-      content="Scadenze, tasse e pratiche in un registro privato. Un agente legge quello che arriva e ti avvisa in tempo."
+      content="Scadenze, tasse e pratiche in un registro privato. Un agente legge quello che arriva, Claude risponde alle tue domande e ti avvisa in tempo."
     />
     <meta property="og:url" content="%SITE_URL%" />
     <meta property="og:image" content="%SITE_URL%og.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Il calendario delle scadenze di Autocratico, colorato in base ai giorni che mancano" />
+    <meta property="og:image:alt" content="La panoramica di Autocratico e la chat con Claude che segna nel registro le rate di un avviso TARI arrivato via Gmail" />
     <meta name="twitter:card" content="summary_large_image" />
 
     <script type="application/ld+json">
@@ -40,7 +41,7 @@
             "@id": "%SITE_URL%#app",
             "name": "Autocratico",
             "url": "%SITE_URL%",
-            "description": "Registro personale e open source per la burocrazia italiana: scadenze, pagamenti, controlli e pratiche in file di testo, una web app installabile, un agente basato su Claude Code che archivia i documenti in arrivo e un bot Telegram per i promemoria.",
+            "description": "Registro personale e open source per la burocrazia italiana: scadenze, pagamenti, controlli e pratiche in file di testo, una web app installabile, un agente basato su Claude Code che archivia i documenti in arrivo, una chat che risponde dai tuoi file e un bot Telegram per i promemoria.",
             "applicationCategory": "FinanceApplication",
             "applicationSubCategory": "Gestione scadenze e pratiche",
             "operatingSystem": "macOS, Linux, Windows (WSL); web app installabile su iOS e Android",
@@ -56,10 +57,17 @@
             ],
             "featureList": [
               "Calendario delle scadenze per ambito, colorato in base a gravità e giorni rimanenti",
-              "Scadenze ricorrenti: annuali, mensili, ogni N anni",
+              "Chat con Claude che risponde leggendo scadenze, pratiche, profilo e norme salvate",
+              "Link di Gmail incollati nella chat: anteprima dell'email e lettura prima della risposta",
+              "Correzioni al registro proposte in chat e applicate solo dopo una conferma, ognuna annullabile",
+              "Promemoria chiesti a parole, recapitati su Telegram",
               "Inbox per email Gmail, PEC inoltrate, foto, PDF, note vocali Telegram ed export WhatsApp",
               "Agente sempre attivo che archivia ogni documento e apre le pratiche",
               "Segnalazione di possibili email di phishing che imitano enti pubblici",
+              "Aggiornamenti in diretta su ogni dispositivo aperto",
+              "Ricerca e comandi da tastiera con ⌘K",
+              "Totale da pagare nei prossimi 3, 6 o 12 mesi, con le stime",
+              "Spese, entrate e investimenti dall'app Finance e dagli screenshot dei broker",
               "Promemoria su Telegram con dati personali oscurati",
               "Modalità Omissis che nasconde nomi, importi e numeri di documento",
               "Cronologia git di ogni modifica, annullabile",
@@ -84,7 +92,23 @@
                 "name": "Cos'è Autocratico?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Un registro personale e open source per la burocrazia italiana: scadenze, pagamenti, controlli e pratiche, salvati in file di testo. Una web app installabile li mostra, un agente basato su Claude Code archivia i documenti che arrivano e un bot Telegram ti avvisa prima di ogni scadenza."
+                  "text": "Un registro personale e open source per la burocrazia italiana: scadenze, pagamenti, controlli e pratiche, salvati in file di testo. Una web app installabile li mostra, un agente basato su Claude Code archivia i documenti che arrivano, una chat risponde alle tue domande e un bot Telegram ti avvisa prima di ogni scadenza."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Cosa sa fare la chat con Claude?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Risponde leggendo i file del registro: scadenze, pratiche, profilo e norme salvate, e ti mostra quali ha letto. Apre i link di Gmail che incolli, imposta promemoria su Telegram e propone correzioni al registro, che applica solo dopo il tuo sì. Ogni correzione è un commit che puoi annullare."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Claude modifica il registro da solo?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "L'agente in background archivia i documenti in arrivo e scrive solo nella cartella dei dati, mai nei segreti. La chat legge e basta: quando serve una correzione te la propone e aspetta la conferma. Tutto finisce in Attività, dove ogni modifica si annulla con un tocco."
                 }
               },
               {
@@ -92,7 +116,7 @@
                 "name": "Quanto costa?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Il software è gratuito e open source, con licenza MIT. Servono un computer o un piccolo server sempre acceso e, per la chat e l'agente, un abbonamento Claude."
+                  "text": "Il software è gratuito e open source, con licenza MIT. Servono un computer o un piccolo server sempre acceso e, per la chat e l'agente, un abbonamento Claude. Nelle Impostazioni vedi quanto dell'abbonamento sta usando."
                 }
               },
               {
@@ -116,7 +140,7 @@
                 "name": "Quali documenti capisce?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "PDF, foto (anche HEIC dall'iPhone), email da uno o più account Gmail, PEC inoltrate alla casella collegata, messaggi e note vocali su Telegram, export delle chat di WhatsApp e tutto quello che condividi dal menu Condividi di iPhone e Mac."
+                  "text": "PDF, foto (anche HEIC dall'iPhone), email da uno o più account Gmail, PEC inoltrate alla casella collegata, messaggi e note vocali su Telegram, export delle chat di WhatsApp, link di Gmail incollati in chat e tutto quello che condividi dal menu Condividi di iPhone e Mac."
                 }
               },
               {
@@ -132,7 +156,7 @@
                 "name": "Come funzionano i promemoria?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Ogni scadenza ha una gravità. In base ai giorni che mancano diventa in arrivo, urgente o scaduta, e ricevi un messaggio su Telegram con il tasto Fatto. Puoi anche esportare tutto in un file .ics per il calendario del telefono."
+                  "text": "Ogni scadenza ha una gravità. In base ai giorni che mancano diventa in arrivo, urgente o scaduta, e ricevi un messaggio su Telegram con i tasti Fatto, +1 h e Domani 9:00. Puoi chiederne uno a parole in chat, oppure esportare tutto in un file .ics per il calendario del telefono."
                 }
               },
               {
@@ -155,41 +179,111 @@
     <header class="nav" id="nav">
       <div class="wrap nav__row">
         <a class="brand" href="#top" aria-label="Autocratico, inizio pagina">
-          <img src="./icon.svg" alt="" width="30" height="30" />
+          <span class="mark" aria-hidden="true"
+            ><svg viewBox="0 0 100 100"><path class="mark__letter" fill="currentColor" fill-rule="evenodd" d="M44 20h12l21 60H64l-4.5-15h-19L36 80H23zm-6 36h24l-12-34z" /></svg><i class="mark__shine"></i
+          ></span>
           <span>Autocratico</span>
         </a>
         <nav aria-label="Sezioni">
           <ul class="nav__links">
             <li><a href="#demo">Demo</a></li>
+            <li><a href="#claude">Chiedi a Claude</a></li>
             <li><a href="#come-funziona">Come funziona</a></li>
+            <li><a href="#novita">Novità</a></li>
             <li><a href="#privacy">Privacy</a></li>
             <li><a href="#domande">Domande</a></li>
-            <li><a href="#lista">Lista d'attesa</a></li>
           </ul>
         </nav>
         <div class="nav__cta">
-          <a class="btn btn--ghost btn--sm hide-sm" href="%REPO_URL%" rel="noopener" data-track="github">Codice su GitHub</a>
+          <button class="icon-btn" type="button" id="theme" aria-label="Cambia tema"><i data-lucide="moon"></i></button>
+          <a class="btn btn--ghost btn--sm hide-sm" href="%REPO_URL%" rel="noopener" data-track="github">GitHub</a>
           <a class="btn btn--primary btn--sm" href="#demo" data-track="demo">Prova la demo</a>
         </div>
       </div>
     </header>
 
     <main id="main">
-      <!-- Hero: the paperwork riot -->
+      <!-- Hero: the hook, and the app itself right under it -->
       <section class="hero" id="top" aria-labelledby="hero-title">
-        <div class="wrap hero__grid">
-          <div class="hero__copy">
-            <h1 id="hero-title" class="display">
-              <span class="display__line">Nessuno ti avvisa.</span>
-              <span class="display__line display__line--quiet">Autocratico sì.</span>
-            </h1>
-            <p class="lede">
-              Scadenze, tasse e pratiche in un registro privato. Un agente legge quello che arriva e ti avvisa in tempo.
-            </p>
-            <div class="ctas">
-              <a class="btn btn--primary" href="#demo" data-track="demo">Prova la demo <i data-lucide="arrow-down-right"></i></a>
-              <a class="btn btn--ghost" href="%REPO_URL%" rel="noopener" data-track="github">Codice su GitHub</a>
+        <div class="wrap hero__copy">
+          <a class="news" href="#claude" data-track="news">
+            <span class="news__tag">Novità</span>
+            <span class="news__text">Chiedi a Claude, link di Gmail in chat, ⌘K, aggiornamenti in diretta</span>
+            <i data-lucide="arrow-right"></i>
+          </a>
+          <h1 id="hero-title" class="display">
+            <span class="display__line">Nessuno ti avvisa.</span>
+            <span class="display__line display__line--quiet">Autocratico sì.</span>
+          </h1>
+          <p class="lede">
+            Il registro privato della tua burocrazia. Gli mandi PEC, foto e link di Gmail: un agente li legge, segna scadenze e importi e
+            ti avvisa su Telegram. Quando hai un dubbio, chiedi a Claude.
+          </p>
+          <div class="ctas">
+            <a class="btn btn--primary btn--lg" href="#demo" data-track="demo">Prova la demo <i data-lucide="arrow-down-right"></i></a>
+            <a class="btn btn--ghost btn--lg" href="%REPO_URL%" rel="noopener" data-track="github">Codice su GitHub</a>
+          </div>
+          <ul class="proof" aria-label="In breve">
+            <li><i data-lucide="lock"></i>Gira sul tuo server</li>
+            <li><i data-lucide="file-text"></i>Dati in file di testo</li>
+            <li><i data-lucide="check"></i>Open source, MIT</li>
+          </ul>
+        </div>
+
+        <div class="stage" id="demo" aria-label="Demo interattiva con dati di esempio">
+          <div class="director" id="director" data-state="idle">
+            <ol class="director__steps">
+              <li data-chapter="1"><b>1</b><span>Incolli un link di Gmail</span></li>
+              <li data-chapter="2"><b>2</b><span>Claude legge l'avviso</span></li>
+              <li data-chapter="3"><b>3</b><span>Gli dici di sì</span></li>
+              <li data-chapter="4"><b>4</b><span>Il registro si aggiorna</span></li>
+            </ol>
+            <p class="director__done"><i data-lucide="mouse-pointer-2"></i>Ora tocca a te: è l'app vera, con dati inventati.</p>
+            <div class="director__ctl">
+              <button class="chip-btn" type="button" id="director-skip"><i data-lucide="skip-forward"></i>Salta, provo io</button>
+              <button class="chip-btn" type="button" id="director-replay"><i data-lucide="rotate-ccw"></i>Rivedi</button>
             </div>
+            <span class="director__bar" aria-hidden="true"><i></i></span>
+          </div>
+
+          <div class="frame" id="frame">
+            <div class="frame__bar" aria-hidden="true">
+              <span class="frame__dots"><i></i><i></i><i></i></span>
+              <span class="frame__url"><i data-lucide="lock"></i>autocratico.casa-tua.it</span>
+              <span class="frame__live"><i></i>dal vivo</span>
+            </div>
+            <div class="frame__screen" id="demo-host">
+              <noscript><p class="frame__noscript">La demo ha bisogno di JavaScript. Le schermate sono su GitHub.</p></noscript>
+            </div>
+            <button class="veil" type="button" id="veil" hidden aria-label="Salta la presentazione e prova la demo">
+              <span class="veil__pill"><i data-lucide="mouse-pointer-2"></i>Prendi il controllo</span>
+            </button>
+          </div>
+
+          <ul class="hints" aria-label="Scorciatoie della demo">
+            <li><kbd>⌘</kbd><kbd>K</kbd>cerca</li>
+            <li><kbd>C</kbd>chat</li>
+            <li><kbd>P</kbd>Omissis</li>
+            <li><kbd>G</kbd>poi<kbd>D</kbd>Scadenze</li>
+            <li class="hints__note">Registro di Maria Rossi, inventato. Tutto gira nella pagina: niente parte.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- The problem: six portals, zero reminders -->
+      <section class="riot" aria-labelledby="riot-title">
+        <div class="wrap riot__grid">
+          <div class="riot__copy">
+            <h2 id="riot-title" class="shouts">
+              <span class="rv">Sei portali.</span>
+              <span class="rv">Sei password.</span>
+              <span class="rv shouts--red">Zero avvisi.</span>
+            </h2>
+            <p class="body rv">
+              La PEC del Comune, la raccomandata, l'F24, il verbale sul parabrezza. Arrivano da sei parti diverse e nessuno ti ricorda la
+              scadenza. Finché arriva il sollecito.
+            </p>
+            <p class="riot__tip rv"><i data-lucide="mouse-pointer-2"></i>Clicca sulla pila. Succede anche agli sportelli.</p>
           </div>
 
           <div class="pile" id="pile" aria-hidden="true">
@@ -238,41 +332,203 @@
         </div>
       </section>
 
-      <!-- The drop: chaos redacted into one quiet register -->
-      <section class="drop" aria-labelledby="drop-title">
-        <div class="drop__stage">
-          <div class="drop__chaos">
-            <p class="shout">Sei portali.</p>
-            <p class="shout shout--in">Sei password.</p>
-            <p class="shout shout--red">Zero avvisi.</p>
+      <!-- The agent: send it everything -->
+      <section class="how" id="come-funziona" aria-labelledby="how-title">
+        <div class="wrap">
+          <p class="eyebrow rv">L'agente</p>
+          <h2 id="how-title" class="h2 rv">Mandagli tutto. Lui legge e archivia.</h2>
+          <p class="body rv">
+            Ogni documento che arriva diventa scadenze, pratiche e promemoria in circa un minuto. Lo mandi come ti viene più comodo.
+          </p>
+        </div>
+
+        <div class="marquee" aria-label="Canali di ingresso">
+          <ul class="marquee__track">
+            <li><i data-lucide="mail"></i>Gmail, anche più account</li>
+            <li><i data-lucide="shield-check"></i>PEC inoltrate</li>
+            <li><i data-lucide="camera"></i>Foto e scansioni</li>
+            <li><i data-lucide="file-text"></i>PDF</li>
+            <li><i data-lucide="send"></i>Messaggi Telegram</li>
+            <li><i data-lucide="mic"></i>Note vocali</li>
+            <li><i data-lucide="message-circle"></i>Export di WhatsApp</li>
+            <li><i data-lucide="sparkles"></i>Link di Gmail in chat</li>
+            <li><i data-lucide="smartphone"></i>Condividi da iPhone e Mac</li>
+            <li><i data-lucide="upload"></i>Caricamento dalla web app</li>
+          </ul>
+          <ul class="marquee__track" aria-hidden="true">
+            <li><i data-lucide="mail"></i>Gmail, anche più account</li>
+            <li><i data-lucide="shield-check"></i>PEC inoltrate</li>
+            <li><i data-lucide="camera"></i>Foto e scansioni</li>
+            <li><i data-lucide="file-text"></i>PDF</li>
+            <li><i data-lucide="send"></i>Messaggi Telegram</li>
+            <li><i data-lucide="mic"></i>Note vocali</li>
+            <li><i data-lucide="message-circle"></i>Export di WhatsApp</li>
+            <li><i data-lucide="sparkles"></i>Link di Gmail in chat</li>
+            <li><i data-lucide="smartphone"></i>Condividi da iPhone e Mac</li>
+            <li><i data-lucide="upload"></i>Caricamento dalla web app</li>
+          </ul>
+        </div>
+
+        <div class="wrap">
+          <ol class="flow">
+            <li class="flow__step spot rv">
+              <span class="flow__n">1</span>
+              <h3>Arriva</h3>
+              <p>Email da più account Gmail, PEC inoltrate, foto, note vocali, export di WhatsApp. Le foto HEIC diventano JPEG.</p>
+              <div class="flow__viz flow__viz--docs" aria-hidden="true">
+                <span class="mini-doc"><i data-lucide="mail"></i><b>Avviso TARI</b><small>PEC · Comune</small></span>
+                <span class="mini-doc"><i data-lucide="camera"></i><b>Verbale ZTL</b><small>IMG_2041.HEIC</small></span>
+                <span class="mini-doc"><i data-lucide="mic"></i><b>Nota vocale</b><small>0:07</small></span>
+              </div>
+            </li>
+            <li class="flow__step spot rv">
+              <span class="flow__n">2</span>
+              <h3>L'agente archivia</h3>
+              <p>Legge, estrae date e importi, apre la pratica e segnala il phishing. Ogni passaggio è un commit che puoi annullare.</p>
+              <div class="flow__viz" aria-hidden="true">
+                <p class="flow__working"><span class="x-thinking"><i></i><i></i><i></i></span><span class="shiny">Smistamento · IMG_2041.HEIC</span></p>
+                <pre class="mini-diff mono"><span class="file">deadlines.toml</span>
+<span class="add">+ title = "Multa ZTL, pagamento ridotto"</span>
+<span class="add">+ severity = "high"</span>
+<span class="add">+ amount = <span class="s">58.10</span></span></pre>
+              </div>
+            </li>
+            <li class="flow__step spot rv">
+              <span class="flow__n">3</span>
+              <h3>Ti avvisa</h3>
+              <p>Su Telegram, a 7 e a 3 giorni, con i dati oscurati e i tasti per rispondere.</p>
+              <div class="flow__viz" aria-hidden="true">
+                <p class="tg-bubble"><b>Multa ZTL</b>: pagamento ridotto entro venerdì, <span class="redact">00,00 €</span>.<time>08:30</time></p>
+                <span class="tg-keys"><span>Fatto</span><span>+1 h</span><span>Domani 9:00</span></span>
+              </div>
+            </li>
+          </ol>
+          <p class="how__try rv">
+            <button class="btn btn--ghost" type="button" data-try-view="inbox"><i data-lucide="inbox"></i>Simula un arrivo nella demo</button>
+          </p>
+        </div>
+      </section>
+
+      <!-- Claude -->
+      <section class="ai" id="claude" aria-labelledby="ai-title">
+        <div class="wrap">
+          <div class="ai__head">
+            <p class="eyebrow rv">Chiedi a Claude</p>
+            <h2 id="ai-title" class="h2 rv">Fagli una domanda. Risponde dai tuoi file.</h2>
+            <p class="body rv">
+              Claude Code gira sul tuo server e legge scadenze, pratiche, profilo e norme salvate prima di rispondere. Dalla web app, da
+              <kbd>⌘</kbd><kbd>K</kbd> o su Telegram. Anche a voce.
+            </p>
           </div>
-          <div class="drop__bar" aria-hidden="true"></div>
-          <div class="drop__calm">
-            <div class="drop__head">
-              <h2 id="drop-title" class="h2">Un registro solo.</h2>
-              <p class="body">Casa, veicoli, documenti, fisco: tutte le scadenze in un calendario, ordinate da chi scade prima.</p>
-            </div>
-            <figure class="devices">
-              <div class="browser">
-                <div class="browser__bar"><i></i><i></i><i></i><span>autocratico</span></div>
-                <img
-                  src="./shots/desktop-overview.webp"
-                  width="1600"
-                  height="1000"
-                  alt="La panoramica di Autocratico: calendario dei prossimi sei mesi per ambito, prossimo adempimento e scadenze da tenere d'occhio"
-                />
+
+          <div class="ai__grid">
+            <article class="ai-card ai-card--wide spot rv" data-loop>
+              <div class="ai-card__viz" aria-hidden="true">
+                <div class="viz-chat">
+                  <p class="viz-q">Mi è arrivata questa dal Comune, la segni tu?</p>
+                  <div class="viz-gm">
+                    <span class="viz-gm__ic"><i data-lucide="mail"></i></span>
+                    <span class="viz-gm__skel"><span class="shiny">Apro il link di Gmail…</span><i></i><i></i></span>
+                    <span class="viz-gm__card"
+                      ><small>Gmail · 1 messaggio</small><b>Avviso di pagamento TARI</b><small>Comune di Esempio</small
+                      ><small class="viz-gm__att"><i data-lucide="paperclip"></i>1 allegato · avviso-tari.pdf</small></span
+                    >
+                  </div>
+                  <ul class="viz-steps">
+                    <li><i data-lucide="mail"></i>Scarica da Gmail <code>FMfcgzQbdT…</code></li>
+                    <li><i data-lucide="file-text"></i>Legge <code>avviso-tari.pdf</code></li>
+                    <li><i data-lucide="file-text"></i>Legge <code>deadlines.toml</code></li>
+                  </ul>
+                </div>
               </div>
-              <div class="phone">
-                <img
-                  src="./shots/phone-overview.webp"
-                  width="590"
-                  height="1279"
-                  loading="lazy"
-                  alt="La panoramica di Autocratico sull'iPhone, con la barra di navigazione in basso"
-                />
+              <div class="ai-card__text">
+                <h3>Incolla il link di una email</h3>
+                <p>Un link di Gmail nella chat diventa un'anteprima. Claude scarica la conversazione, la salva in archivio e la legge prima di rispondere.</p>
+                <button class="try" type="button" data-try="gmail">Provalo nella demo <i data-lucide="arrow-up-right"></i></button>
               </div>
-              <figcaption class="sr-only">Schermate reali dell'app su un registro di esempio.</figcaption>
-            </figure>
+            </article>
+
+            <article class="ai-card spot rv">
+              <div class="ai-card__viz" aria-hidden="false">
+                <div class="viz-chat" id="confirm-viz">
+                  <p class="viz-a">La prossima <b>Rata condominio</b> è del 15 ottobre, <span class="s">180,00 €</span>. La segno come pagata?</p>
+                  <div class="viz-yn">
+                    <button type="button" class="viz-btn viz-btn--dark" data-viz="yes"><i data-lucide="check"></i>Sì</button>
+                    <button type="button" class="viz-btn" data-viz="no"><i data-lucide="x"></i>No</button>
+                  </div>
+                  <div class="viz-out" hidden></div>
+                </div>
+              </div>
+              <div class="ai-card__text">
+                <h3>Propone. Decidi tu.</h3>
+                <p>Le correzioni al registro passano dal tuo sì. Ognuna è un commit, e si annulla da Attività.</p>
+              </div>
+            </article>
+
+            <article class="ai-card spot rv">
+              <div class="ai-card__viz" aria-hidden="true">
+                <div class="viz-chat">
+                  <ul class="viz-steps viz-steps--on">
+                    <li><i data-lucide="file-text"></i>Legge <code>catalog/imu.md</code></li>
+                    <li><i data-lucide="globe"></i>Cerca sul web <code>IMU saldo 16 dicembre</code></li>
+                    <li><i data-lucide="globe"></i>Apre <code>finanze.gov.it</code></li>
+                  </ul>
+                  <p class="viz-a"><span class="x-ver">Verificato</span> Il saldo si paga entro il 16 dicembre.</p>
+                  <p class="viz-a"><span class="x-ded">Dedotto</span> L'importo, se il Comune non cambia le aliquote.</p>
+                </div>
+              </div>
+              <div class="ai-card__text">
+                <h3>Ti dice da dove lo sa</h3>
+                <p>Mostra i file che legge. Prima di consigliarti un pagamento ricontrolla la norma e separa il verificato dal dedotto.</p>
+                <button class="try" type="button" data-try="imu">Chiedilo nella demo <i data-lucide="arrow-up-right"></i></button>
+              </div>
+            </article>
+
+            <article class="ai-card spot rv" data-loop>
+              <div class="ai-card__viz" aria-hidden="true">
+                <div class="viz-chat">
+                  <p class="viz-q">Ricordami la carta d'identità lunedì</p>
+                  <span class="viz-cc"><span class="viz-cc__ic"><i data-lucide="bell"></i></span><span><small>Promemoria per lunedì, 09:00</small><b>Prenotare la carta d'identità</b></span></span>
+                  <p class="tg-bubble tg-bubble--ping"><i data-lucide="send"></i><b>Prenotare la carta d'identità</b><time>09:00</time></p>
+                </div>
+              </div>
+              <div class="ai-card__text">
+                <h3>Ricordamelo lunedì</h3>
+                <p>Chiedi un promemoria a parole: arriva su Telegram all'ora giusta.</p>
+                <button class="try" type="button" data-try="remind">Provalo nella demo <i data-lucide="arrow-up-right"></i></button>
+              </div>
+            </article>
+
+            <article class="ai-card spot rv" data-loop>
+              <div class="ai-card__viz" aria-hidden="true">
+                <div class="viz-chat viz-chat--tg">
+                  <p class="tg-bubble tg-bubble--me tg-voice"><i data-lucide="play"></i><span class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><small>0:06</small></p>
+                  <p class="viz-transcript">«Quanto pago di bollo quest'anno?»</p>
+                  <p class="tg-bubble">Il bollo della Panda: circa <span class="redact">000,00 €</span>, entro fine mese.<time>21:14</time></p>
+                </div>
+              </div>
+              <div class="ai-card__text">
+                <h3>Anche su Telegram, anche a voce</h3>
+                <p>Le note vocali si trascrivono sul tuo server, poi Claude risponde come in chat. Su Telegram i dati restano oscurati.</p>
+              </div>
+            </article>
+
+            <article class="ai-card ai-card--full spot rv">
+              <div class="ai-card__viz" aria-hidden="true">
+                <div class="viz-palette">
+                  <p class="viz-palette__field"><i data-lucide="search"></i><span id="pal-type"></span><span class="viz-caret"></span><kbd>esc</kbd></p>
+                  <p class="viz-palette__group">Claude</p>
+                  <p class="viz-palette__item is-active"><span class="viz-sq"><i data-lucide="sparkles"></i></span><span id="pal-ask">Fai una domanda a Claude</span></p>
+                  <p class="viz-palette__group">Scadenze</p>
+                  <p class="viz-palette__item"><span class="viz-sq viz-sq--soft"><i data-lucide="calendar-clock"></i></span><span id="pal-hit">Bollo auto</span><span class="x-st is-urgent">tra 25 gg</span></p>
+                </div>
+              </div>
+              <div class="ai-card__text">
+                <h3><kbd>⌘</kbd><kbd>K</kbd>, da ovunque</h3>
+                <p>Cerca una scadenza, salta a una vista o fai una domanda senza togliere le mani dalla tastiera.</p>
+                <button class="try" type="button" data-try="palette">Apri ⌘K nella demo <i data-lucide="arrow-up-right"></i></button>
+              </div>
+            </article>
           </div>
         </div>
       </section>
@@ -280,23 +536,23 @@
       <!-- Colour means time left -->
       <section class="time" id="colori" aria-labelledby="time-title">
         <div class="wrap">
-          <div class="time__head rv">
-            <h2 id="time-title" class="h2">Il colore è il tempo che resta.</h2>
-            <p class="body">
-              Ogni scadenza ha una gravità. I giorni che mancano decidono il colore: grigio, ambra, arancio, rosso. Il verde
-              arriva solo quando l'hai fatta.
+          <div class="time__head">
+            <p class="eyebrow rv">I colori</p>
+            <h2 id="time-title" class="h2 rv">Il colore è il tempo che resta.</h2>
+            <p class="body rv">
+              Ogni scadenza ha una gravità. I giorni che mancano decidono il colore: grigio, ambra, arancio, rosso. Il verde arriva solo
+              quando l'hai fatta.
             </p>
           </div>
 
           <div class="tm rv">
             <div class="tm__clock" id="imu">
+              <span class="tm__orb" aria-hidden="true"></span>
               <span class="tm__label">Saldo IMU, 16 dicembre</span>
               <span class="tm__days mono" id="imu-days">--</span>
               <span class="tm__unit">giorni da oggi</span>
               <span class="pill" id="imu-pill">In arrivo</span>
-              <p class="tm__note">
-                Conto vero, calcolato adesso. La gravità alta diventa urgente a 30 giorni e in arrivo a 90.
-              </p>
+              <p class="tm__note">Conto vero, calcolato adesso. La gravità alta diventa urgente a 30 giorni e in arrivo a 90.</p>
             </div>
 
             <div class="tm__panel">
@@ -318,211 +574,107 @@
         </div>
       </section>
 
-      <!-- The demo -->
-      <section class="demo" id="demo" aria-labelledby="demo-title">
+      <!-- Everything else that is new -->
+      <section class="more" id="novita" aria-labelledby="more-title">
         <div class="wrap">
-          <p class="eyebrow">Demo interattiva, dati di esempio</p>
-          <h2 id="demo-title" class="h2">Provalo qui. Niente da installare.</h2>
-          <p class="body">
-            Questo è il registro di Maria Rossi, inventato. Mandale un documento e guarda l'agente archiviarlo, avvisarla e
-            rispondere alle sue domande.
-          </p>
+          <p class="eyebrow rv">E poi</p>
+          <h2 id="more-title" class="h2 rv">Fatto per chi le pratiche le vuole finite.</h2>
 
-          <ol class="steps" id="steps">
-            <li data-step="1" class="is-on"><b>1</b> Manda un documento</li>
-            <li data-step="2"><b>2</b> L'agente archivia</li>
-            <li data-step="3"><b>3</b> Ti avvisa</li>
-            <li data-step="4"><b>4</b> Chiedi</li>
-          </ol>
-
-          <div class="app" id="app">
-            <div class="app__bar">
-              <span class="app__brand"><img src="./icon.svg" alt="" width="22" height="22" /> Autocratico</span>
-              <span class="app__date" id="app-date"></span>
-              <span class="app__spacer"></span>
-              <button class="tbtn" type="button" id="demo-privacy" aria-pressed="false">
-                <i data-lucide="eye"></i><span>Omissis</span><kbd>P</kbd>
-              </button>
-              <button class="tbtn" type="button" id="demo-reset"><i data-lucide="undo-2"></i><span>Ricomincia</span></button>
-            </div>
-
-            <div class="app__grid">
-              <div class="pane pane--in">
-                <h3 class="pane__title">In arrivo</h3>
-                <p class="pane__sub">Trascina un documento nell'inbox, oppure toccalo.</p>
-                <ul class="docs" id="docs">
-                  <li>
-                    <button class="doc" type="button" draggable="true" data-doc="tari">
-                      <i data-lucide="mail"></i>
-                      <span class="doc__src">PEC, Comune di Esempio</span>
-                      <strong>Avviso di pagamento TARI 2026</strong>
-                      <span class="doc__file mono">avviso-tari-2026.pdf</span>
-                      <span class="doc__tag"></span>
-                    </button>
-                  </li>
-                  <li>
-                    <button class="doc" type="button" draggable="true" data-doc="multa">
-                      <i data-lucide="camera"></i>
-                      <span class="doc__src">Foto dall'iPhone</span>
-                      <strong>Verbale multa ZTL</strong>
-                      <span class="doc__file mono">IMG_2041.HEIC</span>
-                      <span class="doc__tag"></span>
-                    </button>
-                  </li>
-                  <li>
-                    <button class="doc" type="button" draggable="true" data-doc="phishing">
-                      <i data-lucide="mail"></i>
-                      <span class="doc__src">Email, rimborsi@agenzia-entrate-servizi.info</span>
-                      <strong>Rimborso fiscale in attesa: conferma i tuoi dati</strong>
-                      <span class="doc__file mono">2 link, nessun allegato</span>
-                      <span class="doc__tag"></span>
-                    </button>
-                  </li>
-                  <li>
-                    <button class="doc" type="button" draggable="true" data-doc="bollo">
-                      <i data-lucide="mic"></i>
-                      <span class="doc__src">Nota vocale su Telegram, 0:07</span>
-                      <strong>«Il bollo della Panda scade a fine mese»</strong>
-                      <span class="doc__file mono">voce.ogg</span>
-                      <span class="doc__tag"></span>
-                    </button>
-                  </li>
-                </ul>
-                <div class="dropzone" id="dropzone">
-                  <i data-lucide="inbox"></i>
-                  <span>Inbox</span>
-                  <small>Rilascia qui</small>
-                </div>
-              </div>
-
-              <div class="pane pane--agent">
-                <div class="pane__head">
-                  <h3 class="pane__title">Agente</h3>
-                  <span class="agent-state" id="agent-state">In attesa</span>
-                </div>
-                <ol class="log" id="log" aria-live="polite">
-                  <li class="log__empty">Niente in corso. Ogni documento viene archiviato circa un minuto dopo l'arrivo: qui ci mette qualche secondo.</li>
-                </ol>
-              </div>
-
-              <div class="pane pane--out">
-                <h3 class="pane__title">Prossime scadenze</h3>
-                <ul class="chips" id="chips"></ul>
-                <div class="tg" id="tg">
-                  <div class="tg__head"><i data-lucide="send"></i><span>Telegram</span></div>
-                  <p class="tg__empty" id="tg-empty">I promemoria arrivano qui. Su Telegram i dati personali sono sempre oscurati.</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="chat">
-              <div class="chat__head"><i data-lucide="sparkles"></i><span>Chiedi a Claude</span><small>risponde leggendo i file del registro</small></div>
-              <div class="chat__thread" id="thread" aria-live="polite"></div>
-              <div class="chat__suggest" id="suggest">
-                <button type="button" class="sug" data-q="soon">Cosa scade nei prossimi 30 giorni?</button>
-                <button type="button" class="sug" data-q="tari">Quanto pago di TARI quest'anno?</button>
-                <button type="button" class="sug" data-q="phish">L'email del rimborso è vera?</button>
-                <button type="button" class="sug" data-q="pay">Puoi pagare tu la multa?</button>
-              </div>
-              <form class="chat__form" id="chat-form">
-                <label class="sr-only" for="chat-input">Scrivi una domanda</label>
-                <input id="chat-input" type="text" autocomplete="off" placeholder="Chiedi qualcosa sul registro" />
-                <button class="btn btn--primary btn--sm" type="submit">Invia</button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- How it works -->
-      <section class="how" id="come-funziona" aria-labelledby="how-title">
-        <div class="wrap">
-          <h2 id="how-title" class="h2 rv">Mandagli tutto. Lui legge e archivia.</h2>
-          <p class="body rv">
-            Ogni documento che arriva diventa scadenze, pratiche e promemoria in circa un minuto. Tu lo mandi come ti viene più
-            comodo.
-          </p>
-        </div>
-
-        <div class="marquee" aria-label="Canali di ingresso">
-          <ul class="marquee__track">
-            <li><i data-lucide="mail"></i>Gmail, anche più account</li>
-            <li><i data-lucide="shield-check"></i>PEC inoltrate</li>
-            <li><i data-lucide="camera"></i>Foto e scansioni</li>
-            <li><i data-lucide="file-text"></i>PDF</li>
-            <li><i data-lucide="send"></i>Messaggi Telegram</li>
-            <li><i data-lucide="mic"></i>Note vocali</li>
-            <li><i data-lucide="message-circle"></i>Export di WhatsApp</li>
-            <li><i data-lucide="smartphone"></i>Condividi da iPhone e Mac</li>
-            <li><i data-lucide="upload"></i>Caricamento dalla web app</li>
-          </ul>
-          <ul class="marquee__track" aria-hidden="true">
-            <li><i data-lucide="mail"></i>Gmail, anche più account</li>
-            <li><i data-lucide="shield-check"></i>PEC inoltrate</li>
-            <li><i data-lucide="camera"></i>Foto e scansioni</li>
-            <li><i data-lucide="file-text"></i>PDF</li>
-            <li><i data-lucide="send"></i>Messaggi Telegram</li>
-            <li><i data-lucide="mic"></i>Note vocali</li>
-            <li><i data-lucide="message-circle"></i>Export di WhatsApp</li>
-            <li><i data-lucide="smartphone"></i>Condividi da iPhone e Mac</li>
-            <li><i data-lucide="upload"></i>Caricamento dalla web app</li>
-          </ul>
-        </div>
-
-        <div class="wrap">
           <div class="bento">
-            <article class="cell cell--inbox rv">
+            <article class="cell cell--fin spot rv">
               <div class="cell__text">
-                <h3>Un'inbox per tutto</h3>
-                <p>Ogni arrivo resta collegato alla sua pratica, con l'originale sempre a portata di mano.</p>
+                <h3>Spese, entrate, investimenti</h3>
+                <p>Le spese arrivano dalla tua app Finance, il portafoglio dagli screenshot del broker. Paghi una scadenza e la spesa si registra da sola.</p>
               </div>
-              <div class="cell__shot">
-                <img
-                  src="./shots/desktop-inbox.webp"
-                  width="1600"
-                  height="1000"
-                  loading="lazy"
-                  alt="L'inbox di Autocratico: documenti arrivati da email, Telegram e comandi rapidi, ciascuno archiviato"
-                />
+              <div class="fin" aria-hidden="true">
+                <div class="fin__stats">
+                  <span><small>Da pagare, 6 mesi</small><b class="mono">≈ <span class="s">1.571,02 €</span></b></span>
+                  <span><small>Investimenti</small><b class="mono is-in"><span class="s">+376,30 €</span></b></span>
+                </div>
+                <div class="fin__bars">
+                  <i style="--h: 0.32; --e: 0.18"></i><i style="--h: 0.5; --e: 0"></i><i style="--h: 0.28; --e: 0.56"></i><i style="--h: 0.4; --e: 0"></i
+                  ><i style="--h: 0.12; --e: 0"></i><i style="--h: 0.08; --e: 0.1"></i>
+                </div>
               </div>
             </article>
 
-            <article class="cell cell--phone rv">
+            <article class="cell cell--live spot rv">
               <div class="cell__text">
-                <h3>Sul telefono, come un'app</h3>
-                <p>Si installa dal browser su iPhone e Android.</p>
+                <h3><span class="live-dot"></span>In diretta</h3>
+                <p>L'agente finisce mentre guardi? La pagina si aggiorna da sola, su ogni dispositivo aperto.</p>
               </div>
-              <div class="cell__phone">
-                <img
-                  src="./shots/phone-deadlines.webp"
-                  width="590"
-                  height="1279"
-                  loading="lazy"
-                  alt="L'elenco delle scadenze di Autocratico sull'iPhone"
-                />
-              </div>
+              <ul class="live-rows" aria-hidden="true">
+                <li><b>TARI, prima rata</b><span class="x-st is-urgent">tra 10 gg</span></li>
+                <li><b>Bollo auto</b><span class="x-st is-urgent">tra 25 gg</span></li>
+                <li><b>Revisione auto</b><span class="x-st is-planned">tra 176 gg</span></li>
+              </ul>
             </article>
 
-            <article class="cell cell--git rv">
+            <article class="cell cell--git spot rv">
               <div class="cell__text">
                 <h3>Ogni modifica è un commit</h3>
-                <p>Vedi cosa ha cambiato l'agente e annulla con un tocco.</p>
+                <p>Vedi cosa ha cambiato l'agente, riga per riga. Non ti piace? Annulla.</p>
               </div>
-              <pre class="gitlog mono" aria-label="Esempio di cronologia"><span><b>e1c798b</b> Agente: TARI 2026, due rate dall'avviso</span><span><b>4d02a1f</b> Agente: multa ZTL, pagamento ridotto entro 5 giorni</span><span><b>9b77c30</b> Agente: segnalato possibile phishing</span><span><b>de5a772</b> Agente: bollo auto, promemoria a 7 e 3 giorni</span><span class="gitlog__undo"><i data-lucide="undo-2"></i> Annulla</span></pre>
+              <ul class="gitlog mono" id="gitlog">
+                <li><b>4d02a1f</b><span>Chat: TARI, due rate dall'avviso</span><button type="button" class="undo">Annulla</button></li>
+                <li><b>e1c798b</b><span>Agente: multa ZTL, ridotto entro 5 giorni</span><button type="button" class="undo">Annulla</button></li>
+                <li><b>9b77c30</b><span>Agente: possibile phishing segnalato</span><button type="button" class="undo">Annulla</button></li>
+              </ul>
             </article>
 
-            <article class="cell cell--tg rv">
+            <article class="cell cell--tg spot rv">
               <div class="cell__text">
-                <h3>Promemoria su Telegram</h3>
-                <p>Alle 08:30, con il tasto Fatto. Importi e nomi non escono mai in chiaro.</p>
+                <h3>Promemoria che si rispondono</h3>
+                <p>Alle 08:30 su Telegram. Fatto, +1 h o domani alle 9: un tocco e il registro lo sa.</p>
               </div>
-              <div class="bubbles">
-                <p class="bubble">
-                  <b>Bollo auto</b> scade tra 3 giorni. Importo <span class="redact">000,00</span>, targa
-                  <span class="redact">AA000AA</span>.<time>08:30</time>
+              <div class="tg-demo" id="tg-demo">
+                <p class="tg-bubble">
+                  <b>Bollo auto</b> scade tra 3 giorni. Importo <span class="redact">000,00 €</span>, targa <span class="redact">AA000AA</span>.<time>08:30</time>
                 </p>
-                <p class="bubble bubble--me">Fatto<time>08:41</time></p>
-                <p class="bubble bubble--ok"><i data-lucide="circle-check"></i> Segnato come fatto. Prossimo: 6 ottobre 2027.</p>
+                <span class="tg-keys"
+                  ><button type="button" data-tg="done">Fatto</button><button type="button" data-tg="snooze">+1 h</button
+                  ><button type="button" data-tg="tomorrow">Domani 9:00</button></span
+                >
+                <p class="tg-bubble tg-bubble--ok" hidden></p>
+              </div>
+            </article>
+
+            <article class="cell cell--phone spot rv">
+              <div class="cell__text">
+                <h3>Sul telefono, come un'app</h3>
+                <p>Si installa dal browser su iPhone e Android, e si apre con la sua animazione.</p>
+                <button class="try try--light" type="button" id="splash-replay"><i data-lucide="rotate-ccw"></i>Riaprila</button>
+              </div>
+              <div class="handset" aria-hidden="true">
+                <img src="./shots/phone-overview.webp" width="590" height="1279" loading="lazy" alt="" />
+                <div class="splash" id="splash">
+                  <svg class="splash__mark" viewBox="0 0 100 100">
+                    <defs>
+                      <clipPath id="splash-clip"><rect width="100" height="100" rx="22" /></clipPath>
+                      <linearGradient id="splash-sheen" x1="0" x2="1" y1="0" y2="0">
+                        <stop offset="0" stop-color="#fff" stop-opacity="0" />
+                        <stop offset="0.5" stop-color="#fff" stop-opacity="0.45" />
+                        <stop offset="1" stop-color="#fff" stop-opacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <rect class="splash__tile" width="100" height="100" rx="22" />
+                    <path class="splash__letter" fill-rule="evenodd" d="M44 20h12l21 60H64l-4.5-15h-19L36 80H23zm-6 36h24l-12-34z" />
+                    <g clip-path="url(#splash-clip)"><g transform="rotate(18 50 50)"><rect class="splash__shine" x="0" y="-20" width="34" height="140" fill="url(#splash-sheen)" /></g></g>
+                  </svg>
+                  <span class="splash__word">Autocratico</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="cell cell--usage spot rv">
+              <div class="cell__text">
+                <h3><i data-lucide="gauge"></i>Sai quanto consuma</h3>
+                <p>L'agente lavora sul tuo abbonamento Claude. Le Impostazioni mostrano le finestre e il ritmo.</p>
+              </div>
+              <div class="usage" aria-hidden="true">
+                <div class="usage__row"><span>5 ore</span><span class="usage__bar"><i style="--v: 0.34"></i><em style="--p: 0.52"></em></span><b class="mono">34%</b></div>
+                <div class="usage__row"><span>7 giorni</span><span class="usage__bar"><i style="--v: 0.12"></i><em style="--p: 0.3"></em></span><b class="mono">12%</b></div>
+                <p class="usage__pace"><i></i>Ritmo tranquillo</p>
               </div>
             </article>
           </div>
@@ -532,28 +684,20 @@
       <!-- Privacy -->
       <section class="privacy" id="privacy" aria-labelledby="privacy-title">
         <div class="wrap privacy__grid">
-          <figure class="privacy__shot rv" id="privacy-shot">
-            <img
-              src="./shots/desktop-deadlines.webp"
-              width="1600"
-              height="1000"
-              loading="lazy"
-              alt="Elenco delle scadenze di ottobre e novembre con gli importi visibili"
-            />
-            <img
-              class="privacy__on"
-              src="./shots/desktop-deadlines-privacy.webp"
-              width="1600"
-              height="1000"
-              loading="lazy"
-              alt="Lo stesso elenco in modalità Omissis, con nome e importi coperti da barre"
-            />
+          <figure class="privacy__card rv" aria-label="Un elenco di scadenze con importi e nomi, che Omissis copre">
+            <p class="privacy__head"><span>Ottobre</span><small>3 scadenze</small></p>
+            <ul>
+              <li class="is-urgent"><span class="tile"><b>15</b><small>GIO</small></span><span><b>Rata condominio</b><small>Casa · <span class="s">180,00 €</span></small></span><span class="x-st is-urgent">tra 9 gg</span></li>
+              <li class="is-urgent"><span class="tile"><b>16</b><small>VEN</small></span><span><b>TARI, prima rata</b><small><span class="s">Maria Rossi</span> · <span class="s">143,50 €</span></small></span><span class="x-st is-urgent">tra 10 gg</span></li>
+              <li class="is-soon"><span class="tile"><b>31</b><small>SAB</small></span><span><b>Bollo auto</b><small>Targa <span class="s">AB123CD</span> · ≈ <span class="s">186,40 €</span></small></span><span class="x-st is-soon">tra 25 gg</span></li>
+            </ul>
           </figure>
 
           <div class="privacy__copy">
+            <p class="eyebrow rv">Privacy</p>
             <h2 id="privacy-title" class="h2 rv">Omissis. Un tasto e i dati spariscono.</h2>
             <p class="body rv">
-              Premi <kbd>P</kbd>: nomi, importi, numeri di documento e date sensibili diventano barre nere. Comodo per uno
+              Premi <kbd>P</kbd>: nomi, importi, targhe e numeri di documento diventano barre nere, nella pagina e nella demo. Comodo per uno
               screenshot o per mostrarlo a qualcuno.
             </p>
             <button class="switch rv" type="button" role="switch" aria-checked="false" id="privacy-switch">
@@ -581,8 +725,8 @@
             <li class="rv rules__last">Prepara tutto. Decidi tu.</li>
           </ul>
           <p class="body rules__note rv">
-            Prima di consigliarti un pagamento ricontrolla la norma e cita la fonte, separando quello che è verificato da quello
-            che è dedotto.
+            Prima di consigliarti un pagamento ricontrolla la norma e cita la fonte, separando quello che è verificato da quello che è
+            dedotto.
           </p>
         </div>
       </section>
@@ -595,61 +739,77 @@
             <details class="rv" open>
               <summary>Cos'è Autocratico?</summary>
               <p>
-                Un registro personale e open source per la burocrazia italiana: scadenze, pagamenti, controlli e pratiche, salvati
-                in file di testo. Una web app installabile li mostra, un agente basato su Claude Code archivia i documenti che
-                arrivano e un bot Telegram ti avvisa prima di ogni scadenza.
+                Un registro personale e open source per la burocrazia italiana: scadenze, pagamenti, controlli e pratiche, salvati in file di
+                testo. Una web app installabile li mostra, un agente basato su Claude Code archivia i documenti che arrivano, una chat risponde
+                alle tue domande e un bot Telegram ti avvisa prima di ogni scadenza.
+              </p>
+            </details>
+            <details class="rv">
+              <summary>Cosa sa fare la chat con Claude?</summary>
+              <p>
+                Risponde leggendo i file del registro: scadenze, pratiche, profilo e norme salvate, e ti mostra quali ha letto. Apre i link di
+                Gmail che incolli, imposta promemoria su Telegram e propone correzioni al registro, che applica solo dopo il tuo sì. Ogni
+                correzione è un commit che puoi annullare.
+              </p>
+            </details>
+            <details class="rv">
+              <summary>Claude modifica il registro da solo?</summary>
+              <p>
+                L'agente in background archivia i documenti in arrivo e scrive solo nella cartella dei dati, mai nei segreti. La chat legge e
+                basta: quando serve una correzione te la propone e aspetta la conferma. Tutto finisce in Attività, dove ogni modifica si annulla
+                con un tocco.
               </p>
             </details>
             <details class="rv">
               <summary>Quanto costa?</summary>
               <p>
-                Il software è gratuito e open source, con licenza MIT. Servono un computer o un piccolo server sempre acceso e,
-                per la chat e l'agente, un abbonamento Claude.
+                Il software è gratuito e open source, con licenza MIT. Servono un computer o un piccolo server sempre acceso e, per la chat e
+                l'agente, un abbonamento Claude. Nelle Impostazioni vedi quanto dell'abbonamento sta usando.
               </p>
             </details>
             <details class="rv">
               <summary>Dove finiscono i miei dati?</summary>
               <p>
-                In una cartella di file di testo sul tuo computer o sul tuo server, senza database e senza cloud di terzi.
-                L'agente legge il testo dei documenti tramite il tuo account Claude. Telegram riceve solo messaggi con i dati
-                personali oscurati e le note vocali vengono trascritte in locale.
+                In una cartella di file di testo sul tuo computer o sul tuo server, senza database e senza cloud di terzi. L'agente legge il
+                testo dei documenti tramite il tuo account Claude. Telegram riceve solo messaggi con i dati personali oscurati e le note vocali
+                vengono trascritte in locale.
               </p>
             </details>
             <details class="rv">
               <summary>Paga l'F24 o la TARI al posto mio?</summary>
               <p>
-                No. Autocratico non paga, non firma e non scrive agli enti pubblici al posto tuo. Prepara data, importo e
-                riferimenti, poi sei tu a pagare.
+                No. Autocratico non paga, non firma e non scrive agli enti pubblici al posto tuo. Prepara data, importo e riferimenti, poi sei
+                tu a pagare.
               </p>
             </details>
             <details class="rv">
               <summary>Quali documenti capisce?</summary>
               <p>
-                PDF, foto (anche HEIC dall'iPhone), email da uno o più account Gmail, PEC inoltrate alla casella collegata,
-                messaggi e note vocali su Telegram, export delle chat di WhatsApp e tutto quello che condividi dal menu Condividi
-                di iPhone e Mac.
+                PDF, foto (anche HEIC dall'iPhone), email da uno o più account Gmail, PEC inoltrate alla casella collegata, messaggi e note
+                vocali su Telegram, export delle chat di WhatsApp, link di Gmail incollati in chat e tutto quello che condividi dal menu
+                Condividi di iPhone e Mac.
               </p>
             </details>
             <details class="rv">
               <summary>Riconosce le email di phishing?</summary>
               <p>
-                Segnala i mittenti sospetti che imitano Agenzia delle Entrate, INPS, Comuni o altri enti, e non apre mai i link
-                contenuti nei messaggi. È un aiuto, non una garanzia: la decisione resta tua.
+                Segnala i mittenti sospetti che imitano Agenzia delle Entrate, INPS, Comuni o altri enti, e non apre mai i link contenuti nei
+                messaggi. È un aiuto, non una garanzia: la decisione resta tua.
               </p>
             </details>
             <details class="rv">
               <summary>Come funzionano i promemoria?</summary>
               <p>
-                Ogni scadenza ha una gravità. In base ai giorni che mancano diventa in arrivo, urgente o scaduta, e ricevi un
-                messaggio su Telegram con il tasto Fatto. Puoi anche esportare tutto in un file .ics per il calendario del
-                telefono.
+                Ogni scadenza ha una gravità. In base ai giorni che mancano diventa in arrivo, urgente o scaduta, e ricevi un messaggio su
+                Telegram con i tasti Fatto, +1 h e Domani 9:00. Puoi chiederne uno a parole in chat, oppure esportare tutto in un file .ics per
+                il calendario del telefono.
               </p>
             </details>
             <details class="rv">
               <summary>Serve saper programmare?</summary>
               <p>
-                Per installarlo serve aprire un terminale e lanciare un comando, con Node.js 24, pnpm e Python 3.11. Dopo, si usa
-                tutto dalla web app o scrivendo a Claude in italiano.
+                Per installarlo serve aprire un terminale e lanciare un comando, con Node.js 24, pnpm e Python 3.11. Dopo, si usa tutto dalla
+                web app o scrivendo a Claude in italiano.
               </p>
             </details>
           </div>
@@ -717,7 +877,10 @@
               </div>
               <label class="wl__consent">
                 <input id="wl-consent" name="consent" type="checkbox" required />
-                <span>Ho letto l'<a href="./privacy.html#lista">informativa privacy</a> e voglio ricevere email su Autocratico. Mi posso cancellare quando voglio.</span>
+                <span
+                  >Ho letto l'<a href="./privacy.html#lista">informativa privacy</a> e voglio ricevere email su Autocratico. Mi posso cancellare
+                  quando voglio.</span
+                >
               </label>
               <p class="wl__status" id="wl-status" role="status" aria-live="polite"></p>
             </form>
@@ -734,7 +897,7 @@
       <div class="wrap foot__row">
         <span class="brand brand--foot"><img src="./icon.svg" alt="" width="24" height="24" loading="lazy" /> Autocratico</span>
         <p>Open source, licenza MIT. Non affiliato ad Agenzia delle Entrate, INPS, Comuni o altri enti pubblici.</p>
-        <p>Le schermate e la demo usano dati inventati.</p>
+        <p>La demo e le schermate usano dati inventati.</p>
         <p class="foot__links">
           <a href="./privacy.html">Privacy e cookie</a>
           <button class="foot__link" type="button" id="cookie-prefs">Preferenze cookie</button>
