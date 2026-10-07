@@ -340,7 +340,7 @@ export class Telegram implements Notifier {
     })
     bot.command("stato", (ctx) => {
       const jobs = this.#d.jobs()
-      const lines = (["gmail", "triage", "reminders", "digest", "backup"] as const).map((name) => {
+      const lines = (["gmail", "finance", "triage", "reminders", "digest", "backup"] as const).map((name) => {
         const last = jobs?.last(name)
         return `• ${name}: ${last ? `${last.ok ? "ok" : "ERR"} ${last.started.slice(0, 16).replace("T", " ")} — ${last.summary}` : "-"}`
       })
@@ -501,7 +501,7 @@ export class Telegram implements Notifier {
         reminders: this.#d.reminders,
         inbox: this.#d.inbox,
         jobs: this.#d.jobs(),
-        telegram: true,
+        notify: true,
         locale: this.#d.config.locale,
         changes: this.#d.changes,
       })

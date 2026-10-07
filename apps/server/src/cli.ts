@@ -6,7 +6,7 @@
  *   node apps/server/src/cli.ts devices                       list shortcut tokens
  *   node apps/server/src/cli.ts revoke ID                     revoke a shortcut token
  *   node apps/server/src/cli.ts telegram                      one-time code to pair a Telegram chat (/start CODE)
- *   node apps/server/src/cli.ts job NAME                      run a job now (gmail, triage, reminders, digest, backup)
+ *   node apps/server/src/cli.ts job NAME                      run a job now (gmail, finance, triage, reminders, digest, backup)
  *   node apps/server/src/cli.ts gmail-client FILE             install the OAuth client JSON from Google Cloud (as Settings does)
  */
 import { readFileSync } from "node:fs"

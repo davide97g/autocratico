@@ -51,7 +51,7 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
     }
   }
   // Server-owned files stay out of the agent's reach.
-  const owned = ["state.json", "reminders.json", "usage.json", "chats/**", "jobs/**", "inbox/*/item.json", "finance/**", ".git/**"].flatMap((p) => [
+  const owned = ["state.json", "reminders.json", "usage.json", "chats/**", "jobs/**", "inbox/*/item.json", "finance.toml", "finance/mirror.json", "finance/links.json", "finance/summary.md", ".git/**"].flatMap((p) => [
     `Edit(${abs(data)}/${p})`,
     `Write(${abs(data)}/${p})`,
   ])

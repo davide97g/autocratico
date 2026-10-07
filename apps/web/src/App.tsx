@@ -311,7 +311,7 @@ function Main({
   }, [reload])
   const live = useLiveJobs(onAgentDone)
 
-  // The finance app's data: loaded once the Finance view opens, then kept fresh by the server's events.
+  // The finance source's data: loaded once the Finance view opens, then kept fresh by the server's events.
   const [finance, setFinance] = React.useState<FinanceData | null>(null)
   const financeWanted = React.useRef(false)
   const reloadFinance = React.useCallback(() => {
@@ -469,10 +469,10 @@ function Main({
             action: { label: t.live.undo, onClick: () => void onDoneRef.current(o, !done, false) },
             duration: 7000,
           })
-        // A payment: offer to record it in the finance app, or to delete what was recorded for it.
+        // A payment: offer to record it in the finance source, or to delete what was recorded for it.
         if (o.amount_basis !== null) {
           const f = await financeData().catch(() => null)
-          if (f?.mirror && done !== Boolean(f.links[o.key])) setExpense({ o, mode: done ? "record" : "remove", finance: f, doneOn: done_on })
+          if (f?.mirror && f.write && done !== Boolean(f.links[o.key])) setExpense({ o, mode: done ? "record" : "remove", finance: f, doneOn: done_on })
         }
       } catch (e) {
         setError(t.app.saveFailed((e as Error).message))

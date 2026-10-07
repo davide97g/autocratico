@@ -429,12 +429,12 @@ describe("reminders", () => {
     const reminders = new Reminders(data, "Europe/Rome")
     const at = new Date(Date.now() + 90 * 60_000).toISOString()
     const answer = `Ok, te lo ricordo.\n\n\`\`\`reminder\n{"at":"${at}","text":"Inserire i dati della TARI"}\n\`\`\`\n\`\`\`inbox\n{"title":"TARI 2026","text":"Avviso TARI ricevuto, scadenza 16 ottobre"}\n\`\`\``
-    const out = await finishAnswer(answer, "telegram", "Mario", { reminders, inbox: s.inbox, jobs: null, telegram: true, locale: "it", changes: null })
+    const out = await finishAnswer(answer, "telegram", "Mario", { reminders, inbox: s.inbox, jobs: null, notify: true, locale: "it", changes: null })
     expect(out).toMatch(/^Ok, te lo ricordo\.\n\n⏰ Promemoria per .+: Inserire i dati della TARI\n📥 Aggiunto all'inbox: TARI 2026/)
     expect(reminders.pending()).toHaveLength(1)
     expect(s.inbox.list().find((i) => i.source === "chat")?.title).toBe("TARI 2026")
-    const off = await finishAnswer(answer, "web", "Mac", { reminders, inbox: s.inbox, jobs: null, telegram: false, locale: "it", changes: null })
-    expect(off).toMatch(/Telegram non è configurato/)
+    const off = await finishAnswer(answer, "web", "Mac", { reminders, inbox: s.inbox, jobs: null, notify: false, locale: "it", changes: null })
+    expect(off).toMatch(/nessun canale di notifica/)
   })
 })
 
@@ -573,7 +573,7 @@ describe("changes from the chat", () => {
     const { finishAnswer } = await import("../src/chat-actions.ts")
     const e = await env()
     const answer = 'Fatto.\n\n```change\n{"summary": "IMU chiusa", "ops": [{"op": "close", "id": "imu-first", "until": "2026-06-16"}]}\n```'
-    const deps = { reminders: e.s.reminders, inbox: e.s.inbox, jobs: null, telegram: false, locale: "it" as const, changes: e.s.changes }
+    const deps = { reminders: e.s.reminders, inbox: e.s.inbox, jobs: null, notify: false, locale: "it" as const, changes: e.s.changes }
     expect(await finishAnswer(answer, "web", "Maria", deps)).toMatch(/^Fatto\.\n\n✏️ Registro aggiornato: IMU chiusa \(modifica [0-9a-f]+, annullabile da Attività\)$/)
     const failed = await finishAnswer('```change\n{"summary": "x", "ops": [{"op": "close", "id": "nope"}]}\n```', "web", "Maria", deps)
     expect(failed).toBe('⚠️ Modifica non applicata: no deadline with id "nope"')

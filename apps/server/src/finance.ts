@@ -1,14 +1,15 @@
 /**
- * The finance app (expenses and earnings, its own server and database) mirrored into the data folder:
- * its address in finance.toml, an API token in secrets/finance.json, the synced data in
- * finance/mirror.json with a Markdown summary for the agents next to it.
+ * A finance source (expenses and earnings) mirrored into the data folder. The source is a connector
+ * (finance-connector.ts): `http`, a server speaking the finance contract, or `csv`, bank exports dropped in
+ * finance/import/. Which one, and its settings, in finance.toml; an http token in secrets/finance.json. The
+ * synced data in finance/mirror.json, with a Markdown summary for the agents next to it.
  *
- * Kept in sync three ways: the finance app's change feed (SSE, edits show up within seconds), an
- * hourly full sync (the `finance` job) and a sync after every write from here. Paid occurrences can be
- * recorded there as expenses; finance/links.json remembers which transaction each one became.
+ * Kept in sync three ways: the connector's change feed (edits show up within seconds), an hourly full sync
+ * (the `finance` job) and a sync after every write from here. When the connector can write, paid
+ * occurrences can be recorded there as expenses; finance/links.json remembers which transaction each became.
  *
  * Security-sensitive: the token stays in data/secrets (0700/0600) and is never sent to the browser.
- * Responses from the finance app are data: parsed into fixed shapes, nothing else is kept.
+ * Data from the source is parsed into fixed shapes by the connector, nothing else is kept.
  */
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync, rmSync } from "node:fs"
@@ -18,15 +19,12 @@ import {
   addDays,
   addMonths,
   byCategory,
-  type FinanceCategory,
   type FinanceConnectInput,
+  FinanceCsvMapping,
   type FinanceData,
   type FinanceExpenseInput,
   FinanceMirror,
-  type FinanceRecurring,
   type FinanceSetup,
-  type FinanceTag,
-  type FinanceTransaction,
   parseInvestments,
   parseToml,
   today as todayIn,
@@ -35,72 +33,23 @@ import {
 import { loadDeadlines } from "@autocratico/core/node"
 import { stringify } from "smol-toml"
 
+import { type FinanceConnector, FinanceError, type FinanceFeed, type FinanceRead } from "./finance-connector.ts"
+import { CsvConnector } from "./finance-csv.ts"
+import { HttpConnector } from "./finance-http.ts"
 import { locks, readJson, writeAtomic, writeJson, writeSecret } from "./files.ts"
 
+export { FinanceError } from "./finance-connector.ts"
+
 type Fetch = typeof fetch
-type Raw = Record<string, unknown>
 export type SyncResult = { changed: boolean; transactions: number }
 
-const HEADER = `# Connection to the finance app (expenses and earnings). Managed from Settings in the web app.
-# The API token is in secrets/finance.json.
+const HEADER = `# Finance source (expenses and earnings). Managed from Settings in the web app.
+# connector = "http": a finance server (token in secrets/finance.json); "csv": bank exports in finance/import/.
 `
-/** Collections of the finance app's change feed that the mirror holds. */
-const WATCHED = new Set(["transactions", "categories", "tags", "recurring"])
 /** A change re-reads transactions from this many months back; the hourly sync re-reads them all. */
 const RECENT_MONTHS = 3
-const REQUEST_TIMEOUT_MS = 20_000
-/** The finance app pings every 25 s: silence for longer means the stream is dead. */
-const STREAM_SILENCE_MS = 75_000
-const RETRY_MIN_MS = 5_000
-const RETRY_MAX_MS = 5 * 60_000
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
-export class FinanceError extends Error {
-  readonly status: 400 | 404 | 409 | 502
-
-  constructor(status: 400 | 404 | 409 | 502, message: string) {
-    super(message)
-    this.status = status
-  }
-}
-
-const text = (v: unknown) => (typeof v === "string" ? v : "")
-const optional = (v: unknown) => (typeof v === "string" && v ? v : null)
-const amount = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : Number(v) || 0)
-const kind = (v: unknown) => (v === "earning" ? "earning" : "expense")
-
-function toTransaction(r: Raw): FinanceTransaction | null {
-  if (typeof r?.id !== "string" || typeof r.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return null
-  return { id: r.id, date: r.date, amount: amount(r.amount), description: text(r.description), category: text(r.category), type: kind(r.type), tag: optional(r.tag), recurringId: optional(r.recurringId) }
-}
-function toCategory(r: Raw): FinanceCategory | null {
-  if (typeof r?.id !== "string") return null
-  return { id: r.id, name: text(r.name), type: kind(r.type), color: optional(r.color), excludeFromBudget: r.excludeFromBudget === true }
-}
-function toTag(r: Raw): FinanceTag | null {
-  return typeof r?.id === "string" ? { id: r.id, name: text(r.name), color: optional(r.color) } : null
-}
-function toRecurring(r: Raw): FinanceRecurring | null {
-  if (typeof r?.id !== "string") return null
-  return {
-    id: r.id,
-    description: text(r.description),
-    amount: amount(r.amount),
-    category: text(r.category),
-    type: kind(r.type),
-    tag: optional(r.tag),
-    dayOfMonth: Math.trunc(amount(r.dayOfMonth)) || 1,
-    active: r.active !== false,
-    lastPeriod: text(r.lastPeriod),
-  }
-}
-function rows<T>(value: unknown, map: (r: Raw) => T | null): T[] {
-  if (!Array.isArray(value)) throw new FinanceError(502, "finance app: unexpected answer")
-  return value.flatMap((r) => {
-    const x = map(r as Raw)
-    return x ? [x] : []
-  })
-}
+type Settings = { kind: "http"; url: string } | { kind: "csv"; csv: FinanceCsvMapping }
 
 /** Content without the sync time: a change of this means the data changed. */
 function fingerprint(m: Omit<FinanceMirror, "synced_at">): string {
@@ -116,12 +65,9 @@ export class Finance {
   readonly #debounceMs: number
   readonly #listeners = new Set<(rev: number) => void>()
   #rev = 0
-  #live = false
   #error: string | null = null
   #listening = false
-  #stream: AbortController | null = null
-  #retryMs = RETRY_MIN_MS
-  #retryTimer: NodeJS.Timeout | null = null
+  #feed: FinanceFeed | null = null
   #syncTimer: NodeJS.Timeout | null = null
   /** Scope of the sync waiting in #syncTimer: "full" wins over "recent". */
   #pending: "full" | "recent" | null = null
@@ -142,6 +88,9 @@ export class Finance {
   get #dir() {
     return join(this.#data, "finance")
   }
+  get #importDir() {
+    return join(this.#dir, "import")
+  }
   get #mirrorFile() {
     return join(this.#dir, "mirror.json")
   }
@@ -154,11 +103,21 @@ export class Finance {
 
   // ---------- reading ----------
 
-  #url(): string | null {
+  /** finance.toml; a file with only `url` (written before connectors existed) is an http source. */
+  #settings(): Settings | null {
     if (!existsSync(this.#config)) return null
     try {
-      const url = parseToml(readFileSync(this.#config, "utf8"), "finance.toml").url
-      return typeof url === "string" && /^https?:\/\//.test(url) ? url.replace(/\/+$/, "") : null
+      const raw = parseToml(readFileSync(this.#config, "utf8"), "finance.toml")
+      const kind = raw.connector ?? (raw.url ? "http" : null)
+      if (kind === "http") {
+        const url = raw.url
+        return typeof url === "string" && /^https?:\/\//.test(url) ? { kind, url: url.replace(/\/+$/, "") } : null
+      }
+      if (kind === "csv") {
+        const csv = FinanceCsvMapping.safeParse(raw.csv)
+        return csv.success ? { kind, csv: csv.data } : null
+      }
+      return null
     } catch {
       return null
     }
@@ -169,12 +128,18 @@ export class Finance {
     return typeof t === "string" ? t : null
   }
 
+  #connector(settings = this.#settings(), token = this.#token()): FinanceConnector | null {
+    if (settings?.kind === "http") return token ? new HttpConnector(settings.url, token, this.#fetch) : null
+    if (settings?.kind === "csv") return new CsvConnector(this.#importDir, settings.csv)
+    return null
+  }
+
   configured(): boolean {
-    return this.#url() !== null && this.#token() !== null
+    return this.#connector() !== null
   }
 
   get live(): boolean {
-    return this.#live
+    return this.#feed?.live ?? false
   }
 
   get rev(): number {
@@ -193,10 +158,15 @@ export class Finance {
 
   setup(): FinanceSetup {
     const m = this.mirror()
+    const settings = this.#settings()
+    const connector = this.#connector(settings)
     return {
-      url: this.#url(),
-      connected: this.configured(),
-      live: this.#live,
+      connector: settings?.kind ?? null,
+      url: settings?.kind === "http" ? settings.url : null,
+      csv: settings?.kind === "csv" ? settings.csv : null,
+      connected: connector !== null,
+      live: this.live,
+      capabilities: connector?.capabilities ?? null,
       synced_at: m?.synced_at ?? null,
       error: this.#error,
       counts: { transactions: m?.transactions.length ?? 0, categories: m?.categories.length ?? 0, recurring: m?.recurring.length ?? 0 },
@@ -221,7 +191,8 @@ export class Finance {
     } catch {
       deadlines = []
     }
-    return { today: todayIn(this.#timeZone), live: this.#live, mirror: this.mirror(), investments, links: this.links(), deadlines }
+    const write = this.#connector()?.capabilities.write ?? false
+    return { today: todayIn(this.#timeZone), live: this.live, write, mirror: this.mirror(), investments, links: this.links(), deadlines }
   }
 
   /** Called with the new revision whenever the mirror changes. */
@@ -232,53 +203,63 @@ export class Finance {
 
   // ---------- connection ----------
 
-  /** Checks the address and token against the finance app, saves them, syncs everything. */
+  /** Checks the settings against the source, saves them, syncs everything. */
   async connect(input: FinanceConnectInput): Promise<FinanceSetup> {
-    const url = input.url.replace(/\/+$/, "")
-    const token = input.token ?? this.#token()
-    if (!token) throw new FinanceError(400, "paste the API token created in the finance app")
-    await this.#get(url, token, "/api/categories")
-    await locks.run(this.#config, () => writeAtomic(this.#config, `${HEADER}\n${stringify({ url })}\n`))
-    writeSecret(this.#secret, { token })
+    let settings: Settings
+    let token: string | null = null
+    if (input.connector === "http") {
+      settings = { kind: "http", url: input.url.replace(/\/+$/, "") }
+      token = input.token ?? this.#token()
+      if (!token) throw new FinanceError(400, "paste the API token created on the finance server")
+    } else {
+      settings = { kind: "csv", csv: input.csv }
+    }
+    const before = this.#settings()?.kind
+    await this.#connector(settings, token)!.check()
+    const file = settings.kind === "http" ? { connector: "http", url: settings.url } : { connector: "csv", csv: settings.csv }
+    await locks.run(this.#config, () => writeAtomic(this.#config, `${HEADER}\n${stringify(file)}\n`))
+    if (token) writeSecret(this.#secret, { token })
+    else rmSync(this.#secret, { force: true })
+    // Another source: its ids mean nothing here, start over.
+    if (before && before !== settings.kind) this.#forgetMirror()
     this.#error = null
     await this.sync("full")
-    if (this.#listening) this.#reconnect(0)
+    if (this.#listening) this.#openFeed()
     return this.setup()
   }
 
-  /** Forgets the token and the synced data; investments.toml is the register's own and stays. */
+  /** Forgets the settings, the token and the synced data; investments.toml and finance/import/ are the register's own and stay. */
   async disconnect(): Promise<void> {
-    this.#closeStream()
+    this.#closeFeed()
     await locks.run(this.#config, () => {
       rmSync(this.#secret, { force: true })
       rmSync(this.#config, { force: true })
-      rmSync(this.#mirrorFile, { force: true })
-      rmSync(join(this.#dir, "summary.md"), { force: true })
+      this.#forgetMirror()
     })
     this.#error = null
     this.#bump()
   }
 
+  #forgetMirror() {
+    rmSync(this.#mirrorFile, { force: true })
+    rmSync(this.#linksFile, { force: true })
+    rmSync(join(this.#dir, "summary.md"), { force: true })
+  }
+
   // ---------- sync ----------
 
-  /** Re-reads the finance app: every transaction ("full") or the last few months ("recent"). */
+  /** Re-reads the source: every transaction ("full") or, when it can, the last few months ("recent"). */
   sync(scope: "full" | "recent" = "full"): Promise<SyncResult> {
     return locks.run("finance-sync", async () => {
-      const url = this.#url()
-      const token = this.#token()
-      if (!url || !token) throw new FinanceError(400, "finance app not connected")
+      const connector = this.#connector()
+      if (!connector) throw new FinanceError(400, "no finance source connected")
       const before = this.mirror()
-      const from = scope === "recent" && before ? `${addMonths(todayIn(this.#timeZone), -RECENT_MONTHS).slice(0, 7)}-01` : null
+      const from = scope === "recent" && before && connector.incremental ? `${addMonths(todayIn(this.#timeZone), -RECENT_MONTHS).slice(0, 7)}-01` : null
       try {
-        const [fresh, categories, tags, recurring] = await Promise.all([
-          this.#get(url, token, from ? `/api/transactions?from=${from}` : "/api/transactions").then((v) => rows(v, toTransaction)),
-          this.#get(url, token, "/api/categories").then((v) => rows(v, toCategory)),
-          this.#get(url, token, "/api/tags").then((v) => rows(v, toTag)),
-          this.#get(url, token, "/api/recurring").then((v) => rows(v, toRecurring)),
-        ])
-        const transactions = from ? [...before!.transactions.filter((t) => t.date < from), ...fresh] : fresh
+        const read: FinanceRead = await connector.read(from)
+        const transactions = from ? [...before!.transactions.filter((t) => t.date < from), ...read.transactions] : read.transactions
         transactions.sort((a, b) => a.date.localeCompare(b.date) || (a.id < b.id ? -1 : 1))
-        const next = { transactions, categories, tags, recurring }
+        const next = { transactions, categories: read.categories, tags: read.tags, recurring: read.recurring }
         const changed = !before || fingerprint(before) !== fingerprint(next)
         const mirror: FinanceMirror = { synced_at: new Date().toISOString(), ...next }
         writeJson(this.#mirrorFile, mirror)
@@ -318,27 +299,22 @@ export class Finance {
 
   // ---------- writing ----------
 
-  /** Records a paid occurrence as an expense in the finance app. */
+  #writer(): FinanceConnector & Required<Pick<FinanceConnector, "create" | "remove">> {
+    const connector = this.#connector()
+    if (!connector) throw new FinanceError(400, "no finance source connected")
+    if (!connector.capabilities.write || !connector.create || !connector.remove) throw new FinanceError(400, "the finance source is read-only")
+    return connector as FinanceConnector & Required<Pick<FinanceConnector, "create" | "remove">>
+  }
+
+  /** Records a paid occurrence as an expense in the finance source. */
   addExpense(input: FinanceExpenseInput): Promise<{ id: string }> {
     return locks.run(this.#linksFile, async () => {
-      const url = this.#url()
-      const token = this.#token()
-      if (!url || !token) throw new FinanceError(400, "finance app not connected")
-      if (this.links()[input.key]) throw new FinanceError(409, "already recorded in the finance app")
-      const [year, month] = input.date.split("-")
-      const created = (await this.#send(url, token, "POST", "/api/transactions", {
-        date: input.date,
-        month: MONTHS[Number(month) - 1],
-        year,
-        amount: input.amount,
-        description: input.description,
-        category: input.category,
-        type: "expense",
-      })) as Raw
-      if (typeof created?.id !== "string") throw new FinanceError(502, "finance app: unexpected answer")
-      writeJson(this.#linksFile, { ...this.links(), [input.key]: created.id })
+      const connector = this.#writer()
+      if (this.links()[input.key]) throw new FinanceError(409, "already recorded in the finance source")
+      const id = await connector.create(input)
+      writeJson(this.#linksFile, { ...this.links(), [input.key]: id })
       this.#scheduleSync("recent")
-      return { id: created.id }
+      return { id }
     })
   }
 
@@ -348,10 +324,7 @@ export class Finance {
       const links = this.links()
       const id = links[key]
       if (!id) return false
-      const url = this.#url()
-      const token = this.#token()
-      if (!url || !token) throw new FinanceError(400, "finance app not connected")
-      await this.#send(url, token, "DELETE", `/api/transactions/${encodeURIComponent(id)}`, undefined, true)
+      await this.#writer().remove(id)
       delete links[key]
       writeJson(this.#linksFile, links)
       this.#scheduleSync("recent")
@@ -359,131 +332,34 @@ export class Finance {
     })
   }
 
-  // ---------- HTTP ----------
-
-  async #get(url: string, token: string, path: string): Promise<unknown> {
-    return this.#send(url, token, "GET", path)
-  }
-
-  async #send(url: string, token: string, method: string, path: string, body?: unknown, missingOk = false): Promise<unknown> {
-    let r: Response
-    try {
-      r = await this.#fetch(`${url}${path}`, {
-        method,
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json", "X-Client-Id": "autocratico", ...(body ? { "Content-Type": "application/json" } : {}) },
-        body: body ? JSON.stringify(body) : undefined,
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-        redirect: "error",
-      })
-    } catch (e) {
-      throw new FinanceError(502, `finance app unreachable: ${(e as Error).message}`)
-    }
-    if (r.status === 404 && missingOk) return null
-    if (r.status === 401) throw new FinanceError(400, "the finance app refused the token: create a new one")
-    if (r.status === 403) throw new FinanceError(400, "the token may not do this: create one with --scope write")
-    if (!r.ok) throw new FinanceError(502, `finance app: HTTP ${r.status}`)
-    return r.json().catch(() => {
-      throw new FinanceError(502, "finance app: unexpected answer")
-    })
-  }
-
   // ---------- change feed ----------
 
-  /** Keeps the finance app's change feed open while the server runs (no-op until connected). */
+  /** Keeps the source's change feed open while the server runs (no-op until connected). */
   listen() {
     this.#listening = true
-    this.#reconnect(0)
+    this.#openFeed()
   }
 
   stop() {
     this.#listening = false
-    this.#closeStream()
+    this.#closeFeed()
     if (this.#syncTimer) clearTimeout(this.#syncTimer)
     this.#syncTimer = null
   }
 
-  #closeStream() {
-    if (this.#retryTimer) clearTimeout(this.#retryTimer)
-    this.#retryTimer = null
-    this.#stream?.abort()
-    this.#stream = null
-    this.#live = false
+  #openFeed() {
+    this.#closeFeed()
+    const connector = this.#connector()
+    if (!this.#listening || !connector?.watch) return
+    this.#feed = connector.watch({
+      ready: () => this.#scheduleSync("recent"), // catch up on what changed while the feed was closed
+      change: () => this.#scheduleSync("recent"),
+    })
   }
 
-  #reconnect(delay: number) {
-    this.#closeStream()
-    if (!this.#listening) return
-    this.#retryTimer = setTimeout(() => {
-      this.#retryTimer = null
-      void this.#open()
-    }, delay)
-  }
-
-  async #open() {
-    const url = this.#url()
-    const token = this.#token()
-    if (!url || !token) return // connect() opens it
-    const controller = new AbortController()
-    this.#stream = controller
-    let silence: NodeJS.Timeout | null = null
-    const quiet = () => {
-      if (silence) clearTimeout(silence)
-      silence = setTimeout(() => controller.abort(), STREAM_SILENCE_MS)
-    }
-    try {
-      const r = await this.#fetch(`${url}/api/events`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
-        signal: controller.signal,
-        redirect: "error",
-      })
-      if (!r.ok || !r.body) throw new Error(`HTTP ${r.status}`)
-      quiet()
-      const reader = r.body.pipeThrough(new TextDecoderStream()).getReader()
-      let buffer = ""
-      for (;;) {
-        const { value, done } = await reader.read()
-        if (done) break
-        quiet()
-        buffer += value.replace(/\r\n/g, "\n")
-        let end: number
-        while ((end = buffer.indexOf("\n\n")) >= 0) {
-          this.#event(buffer.slice(0, end))
-          buffer = buffer.slice(end + 2)
-        }
-      }
-    } catch (e) {
-      if (this.#stream === controller && !controller.signal.aborted) console.error(`finance: change feed: ${(e as Error).message}`)
-    } finally {
-      if (silence) clearTimeout(silence)
-    }
-    if (this.#stream !== controller) return // closed on purpose, or replaced
-    const wasLive = this.#live
-    this.#live = false
-    if (wasLive) this.#retryMs = RETRY_MIN_MS
-    this.#reconnect(this.#retryMs)
-    this.#retryMs = Math.min(this.#retryMs * 2, RETRY_MAX_MS)
-  }
-
-  #event(block: string) {
-    let name = "message"
-    let data = ""
-    for (const line of block.split("\n")) {
-      if (line.startsWith("event:")) name = line.slice(6).trim()
-      else if (line.startsWith("data:")) data += line.slice(5).trim()
-    }
-    if (name === "ready") {
-      this.#live = true
-      this.#retryMs = RETRY_MIN_MS
-      this.#scheduleSync("recent") // catch up on what changed while the feed was closed
-    } else if (name === "change") {
-      let collection: unknown
-      try {
-        collection = (JSON.parse(data) as Raw).collection
-      } catch {
-        return
-      }
-      if (typeof collection === "string" && WATCHED.has(collection)) this.#scheduleSync("recent")
-    }
+  #closeFeed() {
+    this.#feed?.close()
+    this.#feed = null
   }
 }
 
@@ -497,7 +373,7 @@ export function summary(m: FinanceMirror, today: string): string {
   const end = addDays(addMonths(`${today.slice(0, 7)}-01`, 1), -1)
   const months = trend(m.transactions, "month", from, end).reverse()
   const lines = [
-    "# Finance (synced from the finance app — do not edit)",
+    "# Finance (synced from the finance source — do not edit)",
     "",
     `Last sync: ${m.synced_at}. ${m.transactions.length} transactions. Detail per transaction: finance/mirror.json.`,
     "",

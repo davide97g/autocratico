@@ -192,7 +192,7 @@ export const usage = () => request<Usage>("/api/usage")
 export const cancelReminder = (id: string) => post<{ ok: boolean }>(`/api/reminders/${id}`, undefined, "DELETE")
 
 export const financeSetup = () => request<FinanceSetup>("/api/finance")
-/** Address and API token of the finance app: checked and kept on the server, the token never comes back. */
+/** The finance source (server address and token, or CSV columns): checked and kept on the server, a token never comes back. */
 export const connectFinance = (c: FinanceConnectInput) => post<FinanceSetup>("/api/finance", c, "PUT")
 export const disconnectFinance = () => post<Ok>("/api/finance", undefined, "DELETE")
 export const financeData = () => request<FinanceData>("/api/finance/data")

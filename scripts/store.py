@@ -9,18 +9,25 @@ import os
 import re
 import tomllib
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
 # Personal data lives outside the code: `data/` (ignored by git) or the folder in AUTOCRATICO_DATA.
 DATA_DIR = Path(os.environ.get("AUTOCRATICO_DATA") or ROOT / "data").expanduser().resolve()
+
 DEADLINES_FILE = DATA_DIR / "deadlines.toml"
 PROFILE_FILE = DATA_DIR / "profile.toml"
 STATE_FILE = DATA_DIR / "state.json"
 CASES_DIR = DATA_DIR / "cases"
 CATALOG_DIR = DATA_DIR / "catalog"
 SEVERITIES = ("high", "medium", "low")
+
+
+def today() -> date:
+    """Today in the register's time zone (TZ_DEADLINES, as the server uses), not the machine's."""
+    return datetime.now(ZoneInfo(os.environ.get("TZ_DEADLINES") or "Europe/Rome")).date()
 
 
 @dataclass
@@ -321,5 +328,5 @@ if __name__ == "__main__":
     import sys
 
     # python3 scripts/store.py [YYYY-MM-DD]: print the data as JSON
-    day = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else date.today()
+    day = date.fromisoformat(sys.argv[1]) if len(sys.argv) > 1 else today()
     print(json.dumps(dump(day), ensure_ascii=False, indent=2))

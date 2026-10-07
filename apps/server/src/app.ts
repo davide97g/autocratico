@@ -29,6 +29,7 @@ import { finishAnswer } from "./chat-actions.ts"
 import type { Pulse } from "./pulse.ts"
 import type { Usage } from "./usage.ts"
 import type { Reminders } from "./reminders.ts"
+import type { Ntfy } from "./ntfy.ts"
 import type { Telegram } from "./telegram.ts"
 import type { Transcriber } from "./transcribe.ts"
 
@@ -45,9 +46,11 @@ export type Services = {
   repo: DataRepo
   jobs: Jobs | null
   telegram: Telegram | null
+  /** Push notifications through ntfy (NTFY_URL). */
+  ntfy: Ntfy | null
   transcriber: Transcriber
   reminders: Reminders
-  /** The finance app's mirror (tests pass one with a fake finance app). */
+  /** The finance source's mirror (tests pass one with a fake finance server). */
   finance: Finance
   /** What changed, for the open web apps (`/api/events`). */
   pulse: Pulse
@@ -314,7 +317,7 @@ export function createApp(s: Services) {
               reminders: s.reminders,
               inbox,
               jobs: s.jobs,
-              telegram: s.telegram !== null,
+              notify: s.telegram !== null || s.ntfy !== null,
               locale: lang,
               changes: s.changes,
             })
@@ -448,6 +451,7 @@ export function createApp(s: Services) {
       claude: claude.available,
       speech: s.transcriber.available,
       telegram: { enabled: s.telegram !== null, chats: s.telegram?.chats().length ?? 0 },
+      ntfy: { enabled: s.ntfy !== null, host: s.ntfy?.host ?? null },
       gmail: gmail.setup().accounts.map((a) => ({ name: a.name, connected: a.state === "connected" })),
       finance: { connected: s.finance.configured(), live: s.finance.live, synced_at: s.finance.setup().synced_at },
       inbox: { new: items.filter((i) => i.status === "new").length, failed: items.filter((i) => i.status === "failed").length },
@@ -495,13 +499,15 @@ export function createApp(s: Services) {
 
   // ---------- ingest tokens and Telegram ----------
 
-  // ---------- Finance app (mirror, change feed, paid occurrences recorded there; the token stays here) ----------
+  // ---------- Finance source (mirror, change feed, paid occurrences recorded there; a token stays here) ----------
 
   app.get("/api/finance", (c) => c.json(s.finance.setup()))
   app.put("/api/finance", async (c) => {
     userOf(c)
-    const body = FinanceConnectInput.safeParse(await c.req.json().catch(() => null))
-    if (!body.success) return c.json({ error: "invalid address or token" }, 400)
+    const raw = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+    // Clients from before connectors send only { url, token }.
+    const body = FinanceConnectInput.safeParse(raw && !("connector" in raw) ? { connector: "http", ...raw } : raw)
+    if (!body.success) return c.json({ error: "invalid finance settings (address, token or CSV columns)" }, 400)
     const setup = await s.finance.connect(body.data)
     commit("Finance: connected")
     return c.json(setup)

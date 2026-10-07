@@ -6,12 +6,12 @@ Usage: python3 scripts/upcoming.py [days]
 import sys
 from datetime import date
 
-from store import agenda, incomplete
+from store import agenda, incomplete, today as register_today
 
 
 def main() -> None:
     days = int(sys.argv[1]) if len(sys.argv) > 1 else 60
-    today = date.today()
+    today = register_today()
     items = [i for i in agenda(today, back=120, ahead=days) if not i["done_on"]]
 
     overdue = [i for i in items if i["days"] < 0]

@@ -398,6 +398,22 @@ function ShortcutsCard() {
   )
 }
 
+/** Push notifications through ntfy: set on the server (NTFY_URL), shown here read-only. */
+function NtfyCard({ host }: { host: string | null }) {
+  const { t } = useI18n()
+  return (
+    <Card className="rounded-xl">
+      <CardHeader>
+        <CardTitle className="text-lg font-medium tracking-tight">{t.settings.ntfy}</CardTitle>
+        <CardDescription>{t.settings.ntfyDescription}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">{host ? t.settings.ntfyOn(host) : t.settings.ntfyOff}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
 function TelegramCard({ enabled }: { enabled: boolean }) {
   const { t, locale } = useI18n()
   const [chats, setChats] = React.useState<TelegramChat[]>([])
@@ -608,6 +624,7 @@ export function Settings({
         <GmailCard />
         <FinanceCard />
         <TelegramCard enabled={s.telegram.enabled} />
+        <NtfyCard host={s.ntfy.host} />
         <RemindersCard />
         <ShortcutsCard />
       </div>

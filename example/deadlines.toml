@@ -18,9 +18,9 @@
 #   sensitive     true when the date reveals personal data (e.g. a birthday)
 #   case          optional, folder in cases/
 #   notes, source optional (source: path relative to the data folder, e.g. archive/...)
-#   finance_category  optional, category id in the finance app: preselected when a paid
+#   finance_category  optional, category id in the finance source: preselected when a paid
 #                 occurrence is recorded there as an expense
-#   finance_recurring optional, id of the finance app's recurring template for this same
+#   finance_recurring optional, id of the finance source's recurring template for this same
 #                 payment: Finance shows the deadline and leaves that template out (no double count)
 #
 # Recurring dates are indicative: holidays and weekends can shift the actual deadline.

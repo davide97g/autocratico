@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from "node:fs"
+import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import type { FinanceData, FinanceSetup } from "@autocratico/core"
@@ -16,7 +16,7 @@ const TOKEN = "fin_abcdefghijklmnopqrstuvwxyz0123456789ABCD"
 
 type Row = Record<string, unknown>
 
-/** The finance app's API: REST over in-memory rows and a change feed the test pushes events into. */
+/** A finance server speaking the http contract: REST over in-memory rows and a change feed the test pushes events into. */
 function fakeFinance() {
   const db = {
     transactions: [
@@ -98,7 +98,7 @@ afterEach(() => {
   stop = null
 })
 
-describe("Finance app", () => {
+describe("Finance: http connector", () => {
   it("needs the owner's session", async () => {
     const { app } = withFinance()
     expect((await app.request("/api/finance", { headers: LOCAL })).status).toBe(401)
@@ -110,10 +110,16 @@ describe("Finance app", () => {
     expect((await put(app, h, { url: URL_, token: "fin_wrongwrongwrongwrongwrong" })).status).toBe(400)
     expect((await put(app, h, { url: "ftp://x", token: TOKEN })).status).toBe(400)
 
-    const r = await put(app, h, { url: `${URL_}/`, token: TOKEN })
+    const r = await put(app, h, { connector: "http", url: `${URL_}/`, token: TOKEN })
     expect(r.status).toBe(200)
     const setupInfo = (await r.json()) as FinanceSetup
-    expect(setupInfo).toMatchObject({ url: URL_, connected: true, counts: { transactions: 2, categories: 2, recurring: 1 } })
+    expect(setupInfo).toMatchObject({
+      connector: "http",
+      url: URL_,
+      connected: true,
+      capabilities: { write: true, live: true, recurring: true },
+      counts: { transactions: 2, categories: 2, recurring: 1 },
+    })
     expect(JSON.stringify(setupInfo)).not.toContain(TOKEN)
     expect(JSON.stringify(await json(app.request("/api/status", { headers: h })))).not.toContain(TOKEN)
 
@@ -177,13 +183,23 @@ describe("Finance app", () => {
     expect((await json<FinanceData>(app.request("/api/finance/data", { headers: h }))).links).toEqual({})
   })
 
+  it("reads a finance.toml written before connectors (only `url`)", async () => {
+    const { app, data } = withFinance()
+    const h = await owner(app)
+    writeFileSync(join(data, "finance.toml"), `url = "${URL_}"\n`)
+    mkdirSync(join(data, "secrets"), { recursive: true })
+    writeFileSync(join(data, "secrets", "finance.json"), JSON.stringify({ token: TOKEN }))
+    expect(await json<FinanceSetup>(app.request("/api/finance", { headers: h }))).toMatchObject({ connector: "http", url: URL_, connected: true })
+    expect(await json(app.request("/api/finance/sync", { method: "POST", headers: h }))).toEqual({ changed: true, transactions: 2 })
+  })
+
   it("forgets the token and the mirror when disconnected", async () => {
     const { app, data } = withFinance()
     const h = await owner(app)
     await put(app, h, { url: URL_, token: TOKEN })
     expect((await app.request("/api/finance", { method: "DELETE", headers: h })).status).toBe(200)
     const s = await json<FinanceSetup>(app.request("/api/finance", { headers: h }))
-    expect(s).toMatchObject({ url: null, connected: false, synced_at: null })
+    expect(s).toMatchObject({ connector: null, url: null, connected: false, synced_at: null })
     expect(() => statSync(join(data, "secrets", "finance.json"))).toThrow()
     expect((await app.request("/api/finance/sync", { method: "POST", headers: h })).status).toBe(400)
   })

@@ -40,7 +40,7 @@ if (!(await s.account.owner())) {
 
 if (config.jobs) s.jobs?.start()
 s.telegram?.start()
-// The finance app's change feed (no-op until it is connected from Settings).
+// The finance source's change feed (no-op until it is connected from Settings).
 s.finance.listen()
 // Changes to the data folder, pushed to the open web apps.
 s.pulse.watch(config.data)

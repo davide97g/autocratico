@@ -1,4 +1,5 @@
 import * as React from "react"
+import { CSV_DATE_FORMATS, type FinanceConnectorKind, type FinanceCsvMapping } from "@autocratico/core"
 import { ChartLineIcon, RefreshCwIcon, UnplugIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -21,26 +22,63 @@ import {
   syncFinance,
 } from "@/lib/api"
 
-const TOKEN_COMMAND = "bun run token create autocratico --scope write"
+const CONNECTORS: FinanceConnectorKind[] = ["http", "csv"]
+const DEFAULT_CSV: FinanceCsvMapping = {
+  date: "Date",
+  amount: "Amount",
+  description: "Description",
+  delimiter: ",",
+  decimal: ".",
+  date_format: "YYYY-MM-DD",
+  expense_sign: "negative",
+}
 
 function since(iso: string | null, locale: string) {
   if (!iso) return "—"
   return new Date(iso).toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
 }
 
-/** Settings: address and API token of the finance app, sync state. The token is sent once and never shown again. */
+/** A labelled select over fixed options. */
+function Choice<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
+  return (
+    <label className="flex flex-col gap-2 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <Select value={value} onValueChange={(v) => v && onChange(v as T)} items={options}>
+        <SelectTrigger className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
+  )
+}
+
+/**
+ * Settings: the finance source. A finance server (address and API token: the token is sent once and never
+ * shown again) or bank exports in CSV (which column is which). Sync state on top.
+ */
 export function FinanceCard() {
   const { t, locale } = useI18n()
   const [setup, setSetup] = React.useState<FinanceSetup | null>(null)
+  const [connector, setConnector] = React.useState<FinanceConnectorKind>("http")
   const [url, setUrl] = React.useState("")
   const [token, setToken] = React.useState("")
+  const [csv, setCsv] = React.useState<FinanceCsvMapping>(DEFAULT_CSV)
   const [busy, setBusy] = React.useState(false)
   const [problem, setProblem] = React.useState<string | null>(null)
 
   const refresh = React.useCallback(() => {
     financeSetup().then((s) => {
       setSetup(s)
-      setUrl((u) => u || s.url || "http://finance-api:3000")
+      if (s.connector) setConnector(s.connector)
+      setUrl((u) => u || s.url || "")
+      if (s.csv) setCsv({ ...DEFAULT_CSV, ...s.csv })
     }, (e: Error) => setProblem(e.message))
   }, [])
   React.useEffect(refresh, [refresh])
@@ -61,10 +99,24 @@ export function FinanceCard() {
   async function save(e: React.FormEvent) {
     e.preventDefault()
     await act(async () => {
-      setSetup(await connectFinance({ url: url.trim(), ...(token.trim() ? { token: token.trim() } : {}) }))
-      setToken("")
+      if (connector === "http") {
+        setSetup(await connectFinance({ connector, url: url.trim(), ...(token.trim() ? { token: token.trim() } : {}) }))
+        setToken("")
+      } else {
+        const category = csv.category?.trim()
+        setSetup(await connectFinance({ connector, csv: { ...csv, category: category || undefined } }))
+      }
     })
   }
+
+  const field = (key: "date" | "amount" | "description" | "category", label: string, required = true) => (
+    <label className="flex flex-col gap-2 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <Input value={csv[key] ?? ""} onChange={(e) => setCsv((m) => ({ ...m, [key]: e.target.value }))} required={required} maxLength={100} />
+    </label>
+  )
+  const options = (labels: Record<string, string>) => Object.entries(labels).map(([value, label]) => ({ value, label }))
+  const sameSource = setup?.connected && setup.connector === connector
 
   return (
     <Card className="rounded-xl">
@@ -91,39 +143,61 @@ export function FinanceCard() {
             {setup.connected && (
               <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3 text-sm">
                 <span className="font-medium">
-                  {setup.live ? t.finance.live : t.finance.hourly} · {t.finance.syncedAt(since(setup.synced_at, locale))}
+                  {setup.connector && t.finance.connectors[setup.connector]} · {setup.live ? t.finance.live : t.finance.hourly} ·{" "}
+                  {t.finance.syncedAt(since(setup.synced_at, locale))}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {t.finance.counts(setup.counts.transactions, setup.counts.categories, setup.counts.recurring)}
                 </span>
+                {setup.capabilities && !setup.capabilities.write && <span className="text-xs text-muted-foreground">{t.finance.readOnly}</span>}
                 {setup.error && <span className="text-xs text-status-overdue">{setup.error}</span>}
               </div>
             )}
             <form onSubmit={save} className="flex flex-col gap-4">
-              <label className="flex flex-col gap-2 text-sm">
-                <span className="text-muted-foreground">{t.finance.url}</span>
-                <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://finance-api:3000" required maxLength={300} />
-                <span className="text-xs text-muted-foreground">{t.finance.urlHint}</span>
-              </label>
-              <label className="flex flex-col gap-2 text-sm">
-                <span className="text-muted-foreground">{t.finance.token}</span>
-                <Input
-                  type="password"
-                  autoComplete="off"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder={setup.connected ? t.finance.tokenSaved : "fin_…"}
-                  required={!setup.connected}
-                  maxLength={120}
-                />
-                <span className="text-xs text-muted-foreground">
-                  {t.finance.tokenHelp} <code className="font-mono">{TOKEN_COMMAND}</code>
-                </span>
-              </label>
+              <div className="flex flex-col gap-2">
+                <Choice label={t.finance.connector} value={connector} options={CONNECTORS.map((c) => ({ value: c, label: t.finance.connectors[c] }))} onChange={setConnector} />
+                <span className="text-xs text-muted-foreground">{t.finance.connectorHint[connector]}</span>
+              </div>
+              {connector === "http" ? (
+                <>
+                  <label className="flex flex-col gap-2 text-sm">
+                    <span className="text-muted-foreground">{t.finance.url}</span>
+                    <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" required maxLength={300} />
+                    <span className="text-xs text-muted-foreground">{t.finance.urlHint}</span>
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm">
+                    <span className="text-muted-foreground">{t.finance.token}</span>
+                    <Input
+                      type="password"
+                      autoComplete="off"
+                      value={token}
+                      onChange={(e) => setToken(e.target.value)}
+                      placeholder={sameSource ? t.finance.tokenSaved : undefined}
+                      required={!sameSource}
+                      maxLength={512}
+                    />
+                    <span className="text-xs text-muted-foreground">{t.finance.tokenHelp}</span>
+                  </label>
+                </>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <span className="text-sm text-muted-foreground">{t.finance.csvColumns}</span>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {field("date", t.finance.csvDate)}
+                    {field("amount", t.finance.csvAmount)}
+                    {field("description", t.finance.csvDescription)}
+                    {field("category", t.finance.csvCategory, false)}
+                    <Choice label={t.finance.csvDelimiter} value={csv.delimiter} options={options(t.finance.delimiters) as { value: FinanceCsvMapping["delimiter"]; label: string }[]} onChange={(delimiter) => setCsv((m) => ({ ...m, delimiter }))} />
+                    <Choice label={t.finance.csvDecimal} value={csv.decimal} options={options(t.finance.decimals) as { value: FinanceCsvMapping["decimal"]; label: string }[]} onChange={(decimal) => setCsv((m) => ({ ...m, decimal }))} />
+                    <Choice label={t.finance.csvDateFormat} value={csv.date_format} options={CSV_DATE_FORMATS.map((f) => ({ value: f, label: f }))} onChange={(date_format) => setCsv((m) => ({ ...m, date_format }))} />
+                    <Choice label={t.finance.csvSign} value={csv.expense_sign} options={options(t.finance.signs) as { value: FinanceCsvMapping["expense_sign"]; label: string }[]} onChange={(expense_sign) => setCsv((m) => ({ ...m, expense_sign }))} />
+                  </div>
+                </div>
+              )}
               {problem && <p className="text-sm text-status-overdue">{problem}</p>}
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={busy}>
-                  {setup.connected ? t.finance.save : t.finance.connect}
+                  {sameSource ? t.finance.save : t.finance.connect}
                 </Button>
                 {setup.connected && (
                   <Button
@@ -148,7 +222,8 @@ export function FinanceCard() {
 export type ExpenseAsk = { o: Occurrence; mode: "record" | "remove"; finance: FinanceData; doneOn: string | null }
 
 /**
- * After an occurrence with an amount is marked done: offer to record it as an expense in the finance app.
+ * After an occurrence with an amount is marked done: offer to record it as an expense in the finance source
+ * (only sources that can write).
  * After it is marked not done again: offer to delete the expense recorded for it. Never automatic.
  */
 export function ExpenseDialog({ ask, onClose }: { ask: ExpenseAsk | null; onClose: () => void }) {

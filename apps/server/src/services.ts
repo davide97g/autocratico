@@ -11,6 +11,7 @@ import { DataRepo } from "./git.ts"
 import { Inbox } from "./inbox.ts"
 import { Reminders } from "./reminders.ts"
 import { Jobs } from "./jobs.ts"
+import { fanOut, Ntfy } from "./ntfy.ts"
 import { Pulse } from "./pulse.ts"
 import { Store } from "./store.ts"
 import { Telegram } from "./telegram.ts"
@@ -37,6 +38,7 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     repo,
     jobs: null,
     telegram: null,
+    ntfy: config.ntfy ? new Ntfy(config.ntfy, config.publicOrigin) : null,
     transcriber: new Transcriber(config),
     reminders,
     finance,
@@ -49,7 +51,7 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, reminders, transcriber: s.transcriber, changes: s.changes, gmailLinks: s.gmailLinks, jobs: () => s.jobs })
   }
   if (overrides.jobs === undefined) {
-    s.jobs = new Jobs({ config, store, inbox, claude, repo, reminders, finance, pulse: s.pulse, notifier: () => s.telegram })
+    s.jobs = new Jobs({ config, store, inbox, claude, repo, reminders, finance, pulse: s.pulse, notifier: () => fanOut([s.telegram, s.ntfy]) })
   }
   return s
 }

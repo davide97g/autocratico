@@ -74,7 +74,7 @@ const TEXT = {
     triageFailed: "Elaborazione dei nuovi documenti non riuscita",
     phishing: "Possibile phishing: non aprire link e non pagare",
     gmailFailed: "Sincronizzazione Gmail non riuscita",
-    financeFailed: "Sincronizzazione con l'app Finance non riuscita",
+    financeFailed: "Sincronizzazione delle finanze non riuscita",
     digest: "Riepilogo settimanale",
     markedDone: "Segnate come fatte",
     snooze: "+1 h",
@@ -90,7 +90,7 @@ const TEXT = {
     triageFailed: "Processing new documents failed",
     phishing: "Possible phishing: do not open links or pay",
     gmailFailed: "Gmail sync failed",
-    financeFailed: "Sync with the finance app failed",
+    financeFailed: "Finance sync failed",
     digest: "Weekly digest",
     markedDone: "Marked as done",
     snooze: "+1 h",
@@ -108,7 +108,7 @@ const TRIAGE_INSTRUCTIONS = `You are the background agent of autocratico, runnin
 - Amounts: when a document gives the amount of one occurrence (a bill, a notice, an F24, a receipt), record it in that deadline's \`amounts\` by occurrence date: \`amounts = { "YYYY-MM-DD" = euro, ... }\`, keeping the ones already there; they are how the app estimates future occurrences. Use \`amount\` only for an amount that is the same every time, and \`amount = "TODO"\` for a payment whose amount is not known yet.
 - When an item says a deadline was paid or done (a receipt, "I already paid X"), put its occurrence key in "done": the key is \`<id>@<YYYY-MM-DD>\`, the deadline id and the date of that occurrence (a recurring deadline has one key per year or month). The server marks it done; only list keys you are sure of.
 - Brokers (Trade Republic, Degiro, …): a screenshot, export or statement of a portfolio becomes one \`[[snapshot]]\` in investments.toml (schema at the top of the file): the day it refers to, broker, uninvested cash, one \`[[snapshot.position]]\` per holding with name, ISIN and quantity when shown, market value in euro, cost when shown; \`source\` = the file. Add, never rewrite older snapshots; no account numbers. Not a deadline: no case needed.
-- Do not touch finance/ (synced from the finance app by the server): read finance/summary.md if spending matters.
+- Bank account exports (a CSV of transactions): when finance.toml says \`connector = "csv"\`, write an exact copy of the file to \`finance/import/<bank>-<first date>-<last date>.csv\` (the server reads that folder); otherwise leave it in the inbox and mention it. Nothing else in finance/ is yours (mirror.json, links.json, summary.md are synced by the server; read summary.md if spending matters), and never edit finance.toml.
 - After editing deadlines.toml run \`python3 scripts/upcoming.py 30\` (it must not fail), then \`python3 scripts/ics.py\`. Type them exactly like that: AUTOCRATICO_DATA is already set, and any prefix, \`cd\`, absolute path or pipe is denied. For date arithmetic (e.g. "within 30 days of the notice") use \`python3 scripts/when.py\`.
 - Add a short section to notes/JOURNAL.md: today's date, "background agent", what changed.
 - Wrap personal data in ||...|| in case files and in your summary.`
@@ -336,7 +336,7 @@ export class Jobs {
 
   async #finance(): Promise<string> {
     const { finance } = this.#c
-    if (!finance.configured()) return "skipped: finance app not connected"
+    if (!finance.configured()) return "skipped: no finance source connected"
     try {
       const r = await finance.sync("full")
       this.#financeFailing = false

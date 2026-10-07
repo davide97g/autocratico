@@ -1,5 +1,5 @@
 /**
- * Money over time, from the finance app's transactions (synced into data/finance/mirror.json),
+ * Money over time, from the finance source's transactions (synced into data/finance/mirror.json),
  * the payments in the register and the investments snapshots.
  */
 import { addDays, addMonths, daysBetween } from "./dates.ts"
@@ -37,7 +37,7 @@ export type TrendBucket = {
 
 /**
  * Totals per week, month or year for the periods from `from` to `to` (both included, empty ones too).
- * `exclude`: category ids left out (e.g. the ones the finance app keeps out of the budget).
+ * `exclude`: category ids left out (e.g. the ones kept out of the budget).
  */
 export function trend(transactions: FinanceTransaction[], g: Granularity, from: string, to: string, exclude: ReadonlySet<string> = new Set()): TrendBucket[] {
   const buckets = new Map<string, TrendBucket>()
@@ -94,7 +94,7 @@ function lastDay(year: number, month: number): number {
 }
 
 /**
- * Expenses the finance app will add from its active templates, from today to `months` ahead:
+ * Expenses the finance source will add from its active templates, from today to `months` ahead:
  * one per month after `lastPeriod`, on `dayOfMonth` clamped to the month's length.
  */
 export function projectRecurring(recurring: FinanceRecurring[], today: string, months: number): FutureItem[] {
@@ -108,7 +108,7 @@ export function projectRecurring(recurring: FinanceRecurring[], today: string, m
       if (m > 12) [y, m] = [y + 1, 1]
       const date = `${y}-${String(m).padStart(2, "0")}-${String(Math.min(Math.max(r.dayOfMonth, 1), lastDay(y, m))).padStart(2, "0")}`
       if (date > end) break
-      if (date < today) continue // added by the finance app next time it opens: not "future" any more
+      if (date < today) continue // added by the finance source next time it runs: not "future" any more
       items.push({ key: `${r.id}@${date}`, date, days: daysBetween(today, date), amount: r.amount, basis: "known", source: "finance", label: r.description, category: r.category, deadline: null })
     }
   }
@@ -117,7 +117,7 @@ export function projectRecurring(recurring: FinanceRecurring[], today: string, m
 
 /**
  * What is left to pay over the next `months`: the register's payments (overdue ones included) and the
- * finance app's recurring expenses. A deadline with `finance_recurring` stands for that template,
+ * finance source's recurring expenses. A deadline with `finance_recurring` stands for that template,
  * whose projection is then left out.
  */
 export function futureExpenses(

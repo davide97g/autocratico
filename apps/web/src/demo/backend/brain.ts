@@ -371,7 +371,7 @@ function markPaid(text: string, lang: Lang, about: Occurrence | null): Answer {
     confirm: {
       yes: () => ({
         tools: [["Read", "state.json"]],
-        text: `${L(lang, `Segnata. ${o.repeat !== "none" ? "La prossima resta in calendario." : ""}${o.amount_basis ? " Se usi l'app Finance, la spesa si registra dal pulsante **Fatto** della scadenza." : ""}`, `Marked. ${o.repeat !== "none" ? "The next one stays in the calendar." : ""}`)}\n\n\`\`\`change\n${JSON.stringify({ summary: `${o.title} ${o.date}: ${L(lang, "fatta", "done")}`, ops: [{ op: "done", key: o.key }] })}\n\`\`\``,
+        text: `${L(lang, `Segnata. ${o.repeat !== "none" ? "La prossima resta in calendario." : ""}${o.amount_basis ? " Con una fonte delle finanze collegata, la spesa si registra dal pulsante **Fatto** della scadenza." : ""}`, `Marked. ${o.repeat !== "none" ? "The next one stays in the calendar." : ""}`)}\n\n\`\`\`change\n${JSON.stringify({ summary: `${o.title} ${o.date}: ${L(lang, "fatta", "done")}`, ops: [{ op: "done", key: o.key }] })}\n\`\`\``,
       }),
     },
   }
@@ -703,8 +703,8 @@ function spending(lang: Lang): Answer {
       tools: [["Read", "finance/summary.md"]],
       text: L(
         lang,
-        "L'app Finance non è collegata: la colleghi da **Impostazioni**.",
-        "The finance app is not connected: connect it in **Settings**."
+        "Nessuna fonte delle finanze collegata: la colleghi da **Impostazioni**.",
+        "No finance source is connected: connect one in **Settings**."
       ),
     }
   const month = today().slice(0, 7)

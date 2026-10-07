@@ -485,6 +485,7 @@ on("GET", "/api/status", () => {
     claude: true,
     speech: true,
     telegram: { enabled: true, chats: s.telegram.length },
+    ntfy: { enabled: false, host: null },
     gmail: s.gmail.accounts.map((a) => ({
       name: a.name,
       connected: a.state === "connected",
@@ -592,9 +593,12 @@ on("POST", "/api/gmail/complete", () => demoOnly())
 
 function financeSetup(s: DemoState): FinanceSetup {
   return {
+    connector: s.financeConnected ? "http" : null,
     url: s.financeConnected ? "https://finance.example" : null,
+    csv: null,
     connected: s.financeConnected,
     live: s.financeConnected,
+    capabilities: s.financeConnected ? { write: true, live: true, recurring: true } : null,
     synced_at: s.financeConnected ? s.mirror.synced_at : null,
     error: null,
     counts: {
@@ -623,6 +627,7 @@ on("GET", "/api/finance/data", () => {
   return json({
     today: today(),
     live: s.financeConnected,
+    write: s.financeConnected,
     mirror: s.financeConnected ? s.mirror : null,
     investments: s.investments,
     links: s.links,

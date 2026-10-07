@@ -98,7 +98,7 @@ function Stat({ label, value, hint, tone }: { label: string; value: React.ReactN
   )
 }
 
-/** Expenses, earnings and investments: the finance app's data as synced, the register's payments, the brokers' snapshots. */
+/** Expenses, earnings and investments: the finance source's data as synced, the register's payments, the brokers' snapshots. */
 export function Finance({
   data,
   finance,
@@ -132,7 +132,7 @@ export function Finance({
   )
 }
 
-/** The cards fed by the finance app, driven by one selected period (a week, a month or a year). */
+/** The cards fed by the finance source, driven by one selected period (a week, a month or a year). */
 function Synced({ data, finance, onReload, onOpenDeadline }: { data: Data; finance: FinanceData; onReload: () => void; onOpenDeadline: (key: string) => void }) {
   const today = finance.today
   const mirror = finance.mirror!
@@ -432,7 +432,7 @@ function CategoriesCard({ finance, g, selected, className }: { finance: FinanceD
   )
 }
 
-/** The next twelve months: the finance app's recurring expenses and the register's payments, by source. */
+/** The next twelve months: the finance source's recurring expenses and the register's payments, by source. */
 function FutureCard({ data, finance, onOpenDeadline, className }: { data: Data; finance: FinanceData; onOpenDeadline: (key: string) => void; className?: string }) {
   const { t, fmt } = useI18n()
   const { enabled: privacy } = usePrivacy()

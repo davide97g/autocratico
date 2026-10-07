@@ -79,7 +79,7 @@ export type DemoState = {
   reminders: Reminder[]
   usage: Usage
   mirror: FinanceMirror
-  /** Occurrence key -> transaction id, for paid occurrences recorded in the finance app. */
+  /** Occurrence key -> transaction id, for paid occurrences recorded in the finance source. */
   links: Record<string, string>
   investments: InvestmentSnapshot[]
   financeConnected: boolean

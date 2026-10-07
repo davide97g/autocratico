@@ -1,4 +1,4 @@
-/** Server settings, all from environment variables (see docs/deploy-homelab.md). */
+/** Server settings, all from environment variables (see docs/configuration.md). */
 import { existsSync, readdirSync } from "node:fs"
 import { homedir } from "node:os"
 import { resolve } from "node:path"
@@ -19,6 +19,8 @@ export type Config = {
   timeZone: string
   locale: "it" | "en"
   telegramToken: string | null
+  /** Push notifications: a ntfy topic URL and, for a protected server, its access token. */
+  ntfy: { url: string; token: string | null } | null
   backups: string | null
   /** Scheduled jobs (sync, triage, reminders, backup). */
   jobs: boolean
@@ -64,6 +66,13 @@ function findAsr(): Config["asr"] {
   return { bin, model, threads: Number(env("ASR_THREADS") ?? 4) }
 }
 
+function ntfy(): Config["ntfy"] {
+  const url = env("NTFY_URL")
+  if (!url) return null
+  if (!/^https?:\/\/[^/]+\/[^/?#]+$/.test(url)) throw new Error(`NTFY_URL must be a topic URL, e.g. https://ntfy.sh/my-long-random-topic (got ${url})`)
+  return { url, token: env("NTFY_TOKEN") ?? null }
+}
+
 export function loadConfig(overrides: Partial<Config> = {}): Config {
   const auth = env("AUTOCRATICO_AUTH") === "prod" ? "prod" : "dev"
   const team = env("CF_ACCESS_TEAM")
@@ -80,6 +89,7 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     timeZone: env("TZ_DEADLINES") ?? "Europe/Rome",
     locale: env("AUTOCRATICO_LOCALE") === "en" ? "en" : "it",
     telegramToken: env("TELEGRAM_BOT_TOKEN") ?? null,
+    ntfy: ntfy(),
     backups: env("BACKUP_DIR") ?? null,
     // Scheduled jobs run by default on the always-on server only; locally, opt in with AUTOCRATICO_JOBS=on.
     jobs: auth === "prod" ? env("AUTOCRATICO_JOBS") !== "off" : env("AUTOCRATICO_JOBS") === "on",

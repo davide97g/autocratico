@@ -42,7 +42,7 @@ const TEXT = {
   it: {
     reminder: (when: string, text: string) => `⏰ Promemoria per ${when}: ${text}`,
     badTime: (at: string) => `⚠️ Non ho potuto impostare il promemoria: orario non valido (${at}).`,
-    noTelegram: "⚠️ Promemoria non disponibili: il bot Telegram non è configurato.",
+    noNotify: "⚠️ Promemoria non disponibili: nessun canale di notifica configurato (Telegram o ntfy).",
     inbox: (title: string) => `📥 Aggiunto all'inbox: ${title}. L'agente lo archivia tra poco.`,
     changed: (summary: string, hash: string | null) =>
       `✏️ Registro aggiornato: ${summary}${hash ? ` (modifica ${hash}, annullabile da Attività)` : ""}`,
@@ -52,7 +52,7 @@ const TEXT = {
   en: {
     reminder: (when: string, text: string) => `⏰ Reminder for ${when}: ${text}`,
     badTime: (at: string) => `⚠️ Could not set the reminder: invalid time (${at}).`,
-    noTelegram: "⚠️ Reminders are not available: the Telegram bot is not configured.",
+    noNotify: "⚠️ Reminders are not available: no notification channel is configured (Telegram or ntfy).",
     inbox: (title: string) => `📥 Added to the inbox: ${title}. The agent will file it shortly.`,
     changed: (summary: string, hash: string | null) => `✏️ Register updated: ${summary}${hash ? ` (change ${hash}, undo it from Activity)` : ""}`,
     notChanged: (why: string) => `⚠️ Change not applied: ${why}`,
@@ -64,7 +64,8 @@ type Deps = {
   reminders: Reminders
   inbox: Inbox
   jobs: Jobs | null
-  telegram: boolean
+  /** A channel (Telegram, ntfy) delivers reminders. */
+  notify: boolean
   locale: "it" | "en"
   changes: Changes | null
 }
@@ -73,8 +74,8 @@ export async function applyActions(actions: Actions, source: string, from: strin
   const t = TEXT[d.locale]
   const lines: string[] = []
   for (const r of actions.reminders) {
-    if (!d.telegram) {
-      lines.push(t.noTelegram)
+    if (!d.notify) {
+      lines.push(t.noNotify)
       break
     }
     const saved = await d.reminders.add(r.at, r.text, source)
