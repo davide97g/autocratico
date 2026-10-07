@@ -9,7 +9,8 @@ COPY apps/web/package.json apps/web/
 COPY apps/server/package.json apps/server/
 COPY packages/core/package.json packages/core/
 RUN pnpm install --frozen-lockfile
-COPY apps apps
+COPY apps/web apps/web
+COPY apps/server apps/server
 COPY packages packages
 RUN pnpm --filter @autocratico/web build
 
@@ -26,6 +27,8 @@ RUN pnpm install --prod --frozen-lockfile --filter "@autocratico/server..."
 # trixie: parakeet-cli (speech to text, mounted from the host at /asr) needs glibc 2.38.
 FROM node:24-trixie-slim
 ARG CLAUDE_CODE_VERSION=2.1.288
+# Time zone of the deadlines, the jobs and the Python CLIs: docker build --build-arg TZ=Europe/Berlin (or TZ at runtime).
+ARG TZ=Europe/Rome
 # python3: the CLIs in scripts/ (Gmail sync, upcoming, ics); git: history of the data folder;
 # ffmpeg + libgomp1: voice messages (Opus to WAV, and the runtime parakeet-cli links against);
 # libheif: iPhone HEIC photos to JPEG for the agent; poppler-utils: Claude Code reads PDF page ranges with pdftoppm.
@@ -58,7 +61,7 @@ ENV NODE_ENV=production \
     BACKUP_DIR=/backups \
     HOST=0.0.0.0 \
     PORT=8790 \
-    TZ=Europe/Rome \
+    TZ=${TZ} \
     HOME=/home/node \
     CLAUDE_CONFIG_DIR=/home/node/.claude \
     DISABLE_AUTOUPDATER=1 \

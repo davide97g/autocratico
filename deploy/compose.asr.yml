@@ -1,0 +1,7 @@
+# Voice messages transcribed on the server: a folder with parakeet-cli and a ggml Parakeet model.
+#   docker compose -f deploy/compose.yml -f deploy/compose.asr.yml up -d
+# How to get them: docs/self-hosting.md (Speech to text).
+services:
+  autocratico:
+    volumes:
+      - ${AUTOCRATICO_ASR_DIR:?set AUTOCRATICO_ASR_DIR, a folder with parakeet-cli and a ggml-parakeet-*.bin model}:/asr:ro

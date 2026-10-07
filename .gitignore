@@ -1,5 +1,6 @@
 # Personal data: never in the repository.
 /data/
+/backups/
 CLAUDE.local.md
 .env
 .claude/settings.local.json
@@ -13,3 +14,4 @@ __pycache__/
 # Trailer renders, stems, model weights (apps/video)
 /var/
 dist-demo/
+.claude/scheduled_tasks.lock

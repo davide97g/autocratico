@@ -26,7 +26,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm build
+      - run: pnpm build:all
       - name: Public demo builds, and the real build leaves it out
         run: |
           pnpm --filter @autocratico/web build:demo
@@ -43,4 +43,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker build -f deploy/Dockerfile -t autocratico .
+      - name: The generic compose file needs only PUBLIC_ORIGIN
+        run: PUBLIC_ORIGIN=https://autocratico.example.com docker compose -f deploy/compose.yml config -q
       - run: docker build -f deploy/demo.Dockerfile -t autocratico-demo .

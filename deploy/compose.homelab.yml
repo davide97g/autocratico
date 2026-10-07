@@ -1,4 +1,5 @@
-# Autocratico on the homelab (Dokploy compose app). See docs/deploy-homelab.md.
+# The maintainer's own deployment (Dokploy on a homelab, Cloudflare Access, a private finance server on
+# dokploy-network, speech to text). See docs/maintainer/homelab.md. To self-host, use compose.yml instead.
 # Secrets come from Dokploy's Environment tab (written as .env next to this file).
 services:
   autocratico:
@@ -34,7 +35,7 @@ services:
       resources:
         limits:
           memory: 2g
-    # dokploy-network: reaches the finance app's API as http://finance-api:3000 (docs/finance.md).
+    # dokploy-network: reaches the maintainer's finance server as http://finance-api:3000 (docs/finance.md).
     networks:
       - default
       - dokploy-network

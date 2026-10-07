@@ -9,3 +9,5 @@ CLAUDE.local.md
 **/__pycache__
 .DS_Store
 **/dist-demo
+# The trailer (a project of its own, large media): never part of an image.
+apps/video

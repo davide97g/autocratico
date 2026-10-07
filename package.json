@@ -8,8 +8,10 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
+    "dev": "turbo run dev --filter=@autocratico/web",
+    "build": "turbo run build --filter=@autocratico/web",
+    "dev:all": "turbo run dev",
+    "build:all": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

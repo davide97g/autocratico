@@ -1,0 +1,9 @@
+# Cloudflare Access in front of the masterpass: the server checks the Access token on every request.
+#   docker compose -f deploy/compose.yml -f deploy/compose.cloudflare.yml up -d
+# Setup (Tunnel + Access application): docs/self-hosting.md (Cloudflare).
+services:
+  autocratico:
+    environment:
+      CF_ACCESS: "on"
+      CF_ACCESS_TEAM: ${CF_ACCESS_TEAM:?set CF_ACCESS_TEAM (the <team>.cloudflareaccess.com name)}
+      CF_ACCESS_AUD: ${CF_ACCESS_AUD:?set CF_ACCESS_AUD (the Access application's Audience tag)}

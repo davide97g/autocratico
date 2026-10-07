@@ -1,0 +1,63 @@
+# Autocratico on any Docker host. See docs/self-hosting.md.
+#
+#   cp deploy/.env.example deploy/.env      # then fill it in
+#   docker compose -f deploy/compose.yml up -d --build
+#
+# Optional overrides, added with another -f:
+#   deploy/compose.asr.yml         voice messages transcribed on the server (parakeet-cli)
+#   deploy/compose.cloudflare.yml  Cloudflare Access in front of the masterpass
+#
+# The app listens on 127.0.0.1:8790 only: put a reverse proxy or a tunnel in front of it
+# (Caddy, Tailscale Serve, Cloudflare Tunnel…) that serves PUBLIC_ORIGIN over HTTPS.
+services:
+  autocratico:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        TZ: ${TZ:-Europe/Rome}
+    restart: unless-stopped
+    environment:
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN, the HTTPS address the app is reached at, e.g. https://autocratico.example.com}
+      # Cloudflare Access is optional: off, the masterpass alone guards the app (compose.cloudflare.yml turns it on).
+      CF_ACCESS: ${CF_ACCESS:-off}
+      CF_ACCESS_TEAM: ${CF_ACCESS_TEAM:-}
+      CF_ACCESS_AUD: ${CF_ACCESS_AUD:-}
+      # Claude for the chat and the agent: a subscription token (`claude setup-token`) or an API key.
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      TZ: ${TZ:-Europe/Rome}
+      TZ_DEADLINES: ${TZ:-Europe/Rome}
+      AUTOCRATICO_LOCALE: ${AUTOCRATICO_LOCALE:-it}
+      AUTOCRATICO_JOBS: ${AUTOCRATICO_JOBS:-on}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      NTFY_URL: ${NTFY_URL:-}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
+    ports:
+      - "127.0.0.1:${PORT:-8790}:8790"
+    volumes:
+      - ${AUTOCRATICO_DATA_DIR:-../data}:/data
+      - ${AUTOCRATICO_BACKUP_DIR:-../backups}:/backups
+      # Claude Code sessions (chat history resumes across restarts).
+      - autocratico_claude:/home/node/.claude
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/node/.cache
+      - /home/node/.npm
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8790/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  autocratico_claude:

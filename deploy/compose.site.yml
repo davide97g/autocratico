@@ -1,7 +1,7 @@
 # Autocratico landing page on the homelab (Dokploy compose app). Public: no Cloudflare Access.
 # The Cloudflare tunnel on the host points autocratico.it (and www) at http://localhost:8791.
 # nginx serves the static page and proxies /api/waitlist to the waitlist service, which stores
-# addresses in its own Postgres. Nothing here touches the register's data. See docs/deploy-homelab.md.
+# addresses in its own Postgres. Nothing here touches the register's data. See docs/maintainer/site-and-demo.md.
 services:
   site:
     build:

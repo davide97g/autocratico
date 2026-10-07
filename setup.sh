@@ -72,7 +72,9 @@ echo
 bold "Done."
 echo "  Start:     pnpm start                    → http://127.0.0.1:8790"
 echo "  Dev mode:  pnpm dev                      → http://localhost:5173"
-echo "  Online (homelab, Telegram, other devices): docs/deploy-homelab.md"
+echo "  Agent:     AUTOCRATICO_JOBS=on pnpm start  (Gmail sync, filing what arrives, reminders, backups)"
+echo "  Online (any server with Docker, other devices): docs/self-hosting.md"
+echo "  Make it yours (another country, sources, notifications): CUSTOMIZE.md"
 echo "  First open: the onboarding sets your name and masterpass, then your profile and documents."
 
 if [ -n "$start" ]; then
