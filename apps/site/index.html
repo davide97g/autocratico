@@ -890,11 +890,12 @@
             </div>
             <pre class="mono" id="agent-prompt">Installa Autocratico (%REPO_URL%) su questo computer e aiutami a configurarlo.
 
-1. Fai il fork del repository sul mio account GitHub e clonalo (gh repo fork davide97g/autocratico --clone). Se non uso GitHub, clonalo e basta.
+1. Fai il fork del repository sul mio account GitHub e clonalo (gh repo fork %REPO_SLUG% --clone). Se non uso GitHub, clonalo e basta.
 2. Prima di toccare qualcosa leggi README.md e AGENTS.md.
 3. Controlla i requisiti (Node.js 24, pnpm, Python 3.11, Claude Code) e dimmi cosa manca prima di installare.
-4. Lancia ./setup.sh --start e aprimi http://127.0.0.1:8790: l'onboarding chiede nome e masterpass.
-5. Poi guidami, un passo alla volta: Telegram (docs/telegram.md), Gmail in sola lettura (docs/gmail.md) e, se voglio un server sempre acceso, docs/deploy-homelab.md.
+4. Lancia ./setup.sh, poi avvia il server in background con AUTOCRATICO_JOBS=on pnpm start (così l'agente archivia quello che arriva) e aprimi http://127.0.0.1:8790: l'onboarding chiede nome e masterpass.
+5. Poi guidami, un passo alla volta: le notifiche (docs/telegram.md o docs/ntfy.md), Gmail in sola lettura (docs/gmail.md) e, se voglio un server sempre acceso, docs/self-hosting.md.
+6. Se voglio che funzioni in modo diverso (un altro paese, un'altra fonte di email o di spese, altre notifiche), leggi CUSTOMIZE.md e segui il suo metodo prima di toccare il codice.
 
 I miei dati restano nella cartella data/: non va mai committata né pubblicata.</pre>
           </div>

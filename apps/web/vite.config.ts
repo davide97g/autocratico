@@ -45,11 +45,14 @@ export default defineConfig(({ mode }) => {
   const gaId = demo ? (process.env.GA_MEASUREMENT_ID?.trim() ?? "") : ""
   if (gaId && !/^G-[A-Z0-9]{4,16}$/.test(gaId)) throw new Error(`GA_MEASUREMENT_ID looks wrong: ${gaId}`)
   const siteUrl = process.env.SITE_URL?.trim() || "https://autocratico.it"
+  // The repository the demo's fork button and install prompt point to: set REPO_URL when building from a fork.
+  const repoUrl = (process.env.REPO_URL?.trim() || "https://github.com/davide97g/autocratico").replace(/\/+$/, "")
   return {
   define: {
     __DEMO__: JSON.stringify(demo),
     __DEMO_GA_ID__: JSON.stringify(gaId),
     __DEMO_SITE_URL__: JSON.stringify(demo ? siteUrl : ""),
+    __DEMO_REPO_URL__: JSON.stringify(demo ? repoUrl : ""),
   },
   build: { outDir: demo ? "dist-demo" : "dist" },
   plugins: [

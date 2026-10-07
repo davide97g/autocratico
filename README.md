@@ -1,6 +1,11 @@
 # Autocratico
 
-**A private register for Italian bureaucracy**: deadlines, payments, checks and cases, kept in plain-text files and shown in a web app you can install on phone and desktop. An always-on agent ([Claude Code](https://claude.com/claude-code), headless) files whatever arrives — emails from several Gmail accounts, photos and PDFs from the share sheet, messages sent to a Telegram bot, WhatsApp exports — updates your deadlines, opens cases and pings you on Telegram.
+**A private register for Italian bureaucracy**: deadlines, payments, checks and cases, kept in plain-text files and shown in a web app you can install on phone and desktop. An always-on agent ([Claude Code](https://claude.com/claude-code), headless) files whatever arrives — emails from several Gmail accounts, photos and PDFs from the share sheet, messages sent to a Telegram bot, WhatsApp exports — updates your deadlines, opens cases and pings you on Telegram or ntfy.
+
+Two ways to use it:
+
+- **As it is**: the [quick start](#quick-start) below, then [self-hosting](docs/self-hosting.md) for an always-on server.
+- **As a starting point**: fork it and let an agent adapt it to your country, your sources and your habits. [CUSTOMIZE.md](CUSTOMIZE.md) has the prompt and the map of what to change.
 
 ![Overview of the web app, with made-up example data](docs/screenshot.png)
 
@@ -9,9 +14,10 @@
 - **Overview**: calendar by area, the next task, the year's load and dates still missing.
 - **Deadlines** colored by status (overdue, urgent, coming up, planned, done), computed from severity and days left. Recurring deadlines (yearly, monthly, every N years) are expanded automatically.
 - **Cases** in Markdown with checklists and a timeline, plus a **profile** (people, properties, vehicles, documents) and a **catalog** of researched rules with sources.
-- **Inbox for everything**: upload or photograph documents, share from the iOS/macOS share sheet, forward to Telegram, sync several Gmail accounts, import WhatsApp chat exports. The agent files each item within a minute.
+- **Inbox for everything**: upload or photograph documents, share from the iOS/macOS share sheet, forward to Telegram, sync several Gmail accounts, import WhatsApp chat exports. The agent files each item within a minute (with the scheduled jobs on).
 - **Always-on agent** with an **Activity** log: every change it makes to your files is a git commit you can review and undo.
-- **Telegram bot**: reminders with a "done" button, digests, agent summaries (personal data masked), and chat with the agent.
+- **Telegram bot**: reminders with a "done" button, digests, agent summaries (personal data masked), and chat with the agent. Or plain push notifications through **ntfy**.
+- **Finance**: expenses and earnings from a finance server or your bank's CSV exports, trends, what is still to pay, investments from broker screenshots.
 - **Chat with Claude** in the side panel: read-only Claude Code sessions on your files, shared across your devices. Ask it to correct the register ("the IMU was a one-off fine, stop it"): it proposes the change, and once you confirm the server applies it as one commit you can undo from Activity.
 - **Privacy mode** (`P` key): hides names, amounts, document numbers and sensitive dates, for screenshots and demos.
 - **Italian and English** interface, **.ics** export for any calendar app, optional read-only **Gmail** sync.
@@ -32,6 +38,8 @@ Open http://127.0.0.1:8790. The onboarding asks for your name and a **masterpass
 
 To look around first, start from a made-up dataset with `./setup.sh --example --start`.
 
+The background agent and the other scheduled jobs (Gmail sync, filing what arrives, reminders, backups) run on a server by default, but not on your laptop: start with `AUTOCRATICO_JOBS=on pnpm start` to turn them on locally.
+
 Forgot the masterpass? `pnpm reset-password` on the server sets a new one and logs every browser out.
 
 `setup.sh` is safe to run again: it never touches an existing data folder. To do the same steps by hand:
@@ -49,7 +57,7 @@ export AUTOCRATICO_DATA=~/Documents/paperwork
 ./setup.sh
 ```
 
-To run it always-on (homelab or any server with Docker) and reach it from your phone, see [docs/deploy-homelab.md](docs/deploy-homelab.md).
+To run it always-on (any machine with Docker) and reach it from your phone, see [docs/self-hosting.md](docs/self-hosting.md). Every setting is in [docs/configuration.md](docs/configuration.md).
 
 ## How it works
 
@@ -61,17 +69,17 @@ To run it always-on (homelab or any server with Docker) and reach it from your p
 
 There is no database: the files in `data/` are the source of truth. You or the agent edit them; the server reads them on every request. Details in [docs/architecture.md](docs/architecture.md).
 
-Monorepo (pnpm + Turborepo): `apps/web` (PWA), `apps/server` (Hono, Node 24), `packages/core` (shared schemas and logic), `scripts/` (Python CLIs, standard library only).
+Monorepo (pnpm + Turborepo): `apps/web` (PWA), `apps/server` (Hono, Node 24), `packages/core` (shared schemas and logic), `scripts/` (Python CLIs, standard library only). `apps/site`, `apps/waitlist` and `apps/video` are the maintainer's landing page, waitlist and trailer: not needed to run it, and safe to delete in a fork.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
 | `./setup.sh [--start]` | check requirements, create the data folder, build the UI |
-| `pnpm start` | server and web app on http://127.0.0.1:8790 |
+| `pnpm start` | server and web app on http://127.0.0.1:8790 (`AUTOCRATICO_JOBS=on` for the agent and the jobs) |
 | `pnpm dev` | development on http://localhost:5173 (also starts the server) |
 | `pnpm lint && pnpm typecheck && pnpm test` | checks |
-| `node apps/server/src/cli.ts setup-code \| reset-password \| token \| devices \| telegram \| job NAME` | first setup, masterpass reset, admin |
+| `node apps/server/src/cli.ts setup-code \| reset-password \| token \| devices \| revoke ID \| telegram \| gmail-client \| job NAME` | first setup, masterpass reset, admin |
 | `python3 scripts/upcoming.py [days]` | upcoming deadlines and dates still missing |
 | `python3 scripts/ics.py` | writes `data/out/autocratico.ics` |
 | `python3 scripts/gmail.py accounts \| login --account N \| sync --all \| fetch "LINK"` | read-only Gmail, several accounts, links pasted in the chat, see [docs/gmail.md](docs/gmail.md) |
@@ -85,7 +93,9 @@ data/
   profile.toml       person, properties, vehicles, documents
   cases/<year>-<slug>/README.md
   catalog/*.md       rules with source and verification date
-  notes/             SITUATION.md and JOURNAL.md, the agent's memory
+  notes/             SITUATION.md and JOURNAL.md, the agent's memory; INSTRUCTIONS.md, your preferences
+  finance.toml       finance source (http server or CSV), optional
+  finance/import/    your bank's CSV exports, for the csv connector
   inbox/             everything that arrived, one folder per item
   archive/           PDFs, scans, downloaded emails
   chats/, jobs/      conversations and job log (written by the server)
@@ -114,18 +124,24 @@ Agent instructions are in [AGENTS.md](AGENTS.md), read by Codex and other agents
 
 Personal instructions (your language, your mailboxes) go in `data/notes/INSTRUCTIONS.md`, read by every agent including the server's.
 
+To change how Autocratico itself works, see [CUSTOMIZE.md](CUSTOMIZE.md) (in Claude Code: `/customize`).
+
 ## Privacy and security
 
 - **Code and data are separate.** Everything personal lives in `data/` (ignored by git) or in `AUTOCRATICO_DATA`. The repository contains only code and a made-up example.
 - **One owner, one masterpass.** Each instance has a single user, created in the onboarding ([Better Auth](https://www.better-auth.com), hashed in `secrets/auth.db`). Every request needs its session cookie (HttpOnly, SameSite=Strict, 90 days, revocable per device from Settings); five wrong attempts lock logins for 15 minutes.
 - **Local by default.** Without configuration the server listens on `127.0.0.1` only and refuses requests whose `Host` or `Origin` is not local (DNS rebinding, CSRF).
-- **Online mode** (`AUTOCRATICO_AUTH=prod`): a Cloudflare Access token comes first, then the masterpass session; browser writes must come from the app's own origin; shortcut tokens can only add documents. The first setup needs a one-time code printed by the server, so a fresh instance can't be claimed by whoever finds it. The server refuses to start without these settings.
+- **Online mode** (`AUTOCRATICO_AUTH=prod`): the masterpass session, behind your HTTPS proxy or tunnel, with a Cloudflare Access token checked first when configured; browser writes must come from the app's own origin; shortcut tokens can only add documents. The first setup needs a one-time code printed by the server, so a fresh instance can't be claimed by whoever finds it. The server refuses to start without these settings.
 - **Constrained agent.** Chat runs `claude -p` with read-only tools, `WebFetch` limited to public-body domains (`gov.it`, `inps.it`, `europa.eu`, …). The background agent may edit only the data folder, with no web access and no access to secrets or server-owned files; its changes are commits you can undo. Content of emails and uploads is treated as data, never as instructions. Questions and file contents do go to Anthropic, as with any Claude Code session.
-- **Telegram sees redacted text only**: amounts, IBANs, tax codes and anything marked personal are masked before sending.
+- **Telegram and ntfy see redacted text only**: amounts, IBANs, tax codes and anything marked personal are masked before sending.
 - **Read-only Gmail.** The OAuth scope is `gmail.readonly`; tokens are stored with `0600` permissions and can be revoked with `gmail.py logout`.
 - **No credentials.** Never store passwords, PINs or access codes in the data files.
 
 Found a security issue? See [SECURITY.md](SECURITY.md).
+
+## Docs
+
+[Self-hosting](docs/self-hosting.md) · [Configuration](docs/configuration.md) · [Architecture](docs/architecture.md) · [Gmail](docs/gmail.md) · [Telegram](docs/telegram.md) · [ntfy](docs/ntfy.md) · [iOS shortcut](docs/ios-shortcut.md) · [Finance](docs/finance.md) · [Customize](CUSTOMIZE.md) · [Contributing](CONTRIBUTING.md)
 
 Catalog rules and example dates are indicative: always check official sources.
 

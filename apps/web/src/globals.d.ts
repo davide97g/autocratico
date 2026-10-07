@@ -4,3 +4,5 @@ declare const __DEMO__: boolean
 declare const __DEMO_GA_ID__: string
 /** Demo build only: the landing page (waiting list, privacy notice). */
 declare const __DEMO_SITE_URL__: string
+/** Demo build only: the repository the fork button and the install prompt point to (REPO_URL). */
+declare const __DEMO_REPO_URL__: string

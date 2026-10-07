@@ -1,6 +1,6 @@
 # Autocratico
 
-> Autocratico is a free, open-source (MIT) personal register for Italian bureaucracy: deadlines, payments, checks and cases kept in plain-text files, shown in an installable web app, filed by an always-on agent (headless Claude Code) and announced by a Telegram bot. The interface is in Italian and English.
+> Autocratico is a free, open-source (MIT) personal register for Italian bureaucracy: deadlines, payments, checks and cases kept in plain-text files, shown in an installable web app, filed by an always-on agent (headless Claude Code) and announced by a Telegram bot or ntfy push notifications. The interface is in Italian and English.
 
 Site: %SITE_URL%
 Source code: %REPO_URL%
@@ -15,7 +15,7 @@ Source code: %REPO_URL%
 - Chat with Claude in the web app, from the ⌘K palette or on Telegram (voice notes too): it answers from the register's files and shows which ones it read. Gmail links pasted in the chat open as previews and are read before the answer.
 - Corrections asked in the chat are applied only after the user says yes; each one is a git commit that can be undone from Activity. Reminders can be asked in plain words.
 - Live updates: open web apps refresh as soon as the agent or a job changes the register.
-- Totals still to pay over the next 3, 6 or 12 months, with estimated amounts marked; expenses, earnings and investments from a separate finance app and broker screenshots.
+- Totals still to pay over the next 3, 6 or 12 months, with estimated amounts marked; expenses, earnings and investments from a finance server or bank CSV exports, and from broker screenshots.
 - Telegram reminders with Done, +1 h and Tomorrow 9:00 buttons; personal data is always redacted in Telegram.
 - Privacy mode ("Omissis", key P) hides names, amounts and document numbers for screenshots.
 - .ics export for any calendar app.
@@ -29,4 +29,4 @@ Source code: %REPO_URL%
 
 ## Install
 git clone %REPO_URL%.git && cd autocratico && ./setup.sh --start
-Requirements: Node.js 24, pnpm, Python 3.11; Claude Code for the chat and the agent. Opens on http://127.0.0.1:8790 with a made-up example register.
+Requirements: Node.js 24, pnpm, Python 3.11; Claude Code for the chat and the agent. Opens on http://127.0.0.1:8790 with an empty register and an onboarding; ./setup.sh --example --start starts from a made-up one instead. To adapt it (another country, email or finance source), CUSTOMIZE.md in the repository explains how.

@@ -9,7 +9,7 @@ import { track } from "@/demo/analytics"
 const KEY = "autocratico.demo-bar"
 export const WAITLIST_URL = `${__DEMO_SITE_URL__.replace(/\/+$/, "")}/#lista`
 /** The public repository: forking it is how anyone gets their own Autocratico. */
-export const REPO_URL = "https://github.com/davide97g/autocratico"
+export const REPO_URL = __DEMO_REPO_URL__
 
 /**
  * Always on screen in the demo: made-up data, nothing saved, start over, the prompt that has

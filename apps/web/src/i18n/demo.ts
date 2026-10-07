@@ -1,6 +1,9 @@
 // Texts of the public demo build (src/demo): imported only there, so the real app never ships them.
 import type { Locale } from "@/i18n"
 
+/** owner/name of a GitHub repository URL, for `gh repo fork`. */
+const slug = (repo: string) => repo.replace(/^https?:\/\/github\.com\//, "").replace(/\.git$/, "")
+
 const it = {
   badge: "Demo",
   welcomeTitle: "Prova Autocratico",
@@ -37,7 +40,7 @@ const it = {
       done: "Verbale, polizza, libretto e ricevute archiviati",
     },
     {
-      doing: "Sincronizzo l'app Finance…",
+      doing: "Sincronizzo le finanze…",
       done: "12 mesi di spese ed entrate",
     },
     {
@@ -78,11 +81,12 @@ const it = {
   forkShort: "Fork",
   prompt: (repo: string) => `Installa Autocratico (${repo}) su questo computer e aiutami a configurarlo.
 
-1. Fai il fork del repository sul mio account GitHub e clonalo (gh repo fork davide97g/autocratico --clone). Se non uso GitHub, clonalo e basta.
+1. Fai il fork del repository sul mio account GitHub e clonalo (gh repo fork ${slug(repo)} --clone). Se non uso GitHub, clonalo e basta.
 2. Prima di toccare qualcosa leggi README.md e AGENTS.md.
 3. Controlla i requisiti (Node.js 24, pnpm, Python 3.11, Claude Code) e dimmi cosa manca prima di installare.
-4. Lancia ./setup.sh --start e aprimi http://127.0.0.1:8790: l'onboarding chiede nome e masterpass.
-5. Poi guidami, un passo alla volta: Telegram (docs/telegram.md), Gmail in sola lettura (docs/gmail.md) e, se voglio un server sempre acceso, docs/deploy-homelab.md.
+4. Lancia ./setup.sh, poi avvia il server in background con AUTOCRATICO_JOBS=on pnpm start (così l'agente archivia quello che arriva) e aprimi http://127.0.0.1:8790: l'onboarding chiede nome e masterpass.
+5. Poi guidami, un passo alla volta: le notifiche (docs/telegram.md o docs/ntfy.md), Gmail in sola lettura (docs/gmail.md) e, se voglio un server sempre acceso, docs/self-hosting.md.
+6. Se voglio che funzioni in modo diverso (un altro paese, un'altra fonte di email o di spese, altre notifiche), leggi CUSTOMIZE.md e segui il suo metodo prima di toccare il codice.
 
 I miei dati restano nella cartella data/: non va mai committata né pubblicata.`,
 }
@@ -125,7 +129,7 @@ const en: DemoMessages = {
       done: "Minutes, policy, car papers and receipts filed",
     },
     {
-      doing: "Syncing the finance app…",
+      doing: "Syncing your finances…",
       done: "12 months of spending and earnings",
     },
     {
@@ -165,11 +169,12 @@ const en: DemoMessages = {
   forkShort: "Fork",
   prompt: (repo: string) => `Install Autocratico (${repo}) on this computer and help me set it up.
 
-1. Fork the repository to my GitHub account and clone it (gh repo fork davide97g/autocratico --clone). If I don't use GitHub, just clone it.
+1. Fork the repository to my GitHub account and clone it (gh repo fork ${slug(repo)} --clone). If I don't use GitHub, just clone it.
 2. Before changing anything, read README.md and AGENTS.md.
 3. Check the requirements (Node.js 24, pnpm, Python 3.11, Claude Code) and tell me what is missing before installing.
-4. Run ./setup.sh --start and open http://127.0.0.1:8790 for me: the onboarding asks for a name and a masterpass.
-5. Then walk me through, one step at a time: Telegram (docs/telegram.md), read-only Gmail (docs/gmail.md) and, if I want an always-on server, docs/deploy-homelab.md.
+4. Run ./setup.sh, then start the server in the background with AUTOCRATICO_JOBS=on pnpm start (so the agent files what arrives) and open http://127.0.0.1:8790 for me: the onboarding asks for a name and a masterpass.
+5. Then walk me through, one step at a time: notifications (docs/telegram.md or docs/ntfy.md), read-only Gmail (docs/gmail.md) and, if I want an always-on server, docs/self-hosting.md.
+6. If I want it to work differently (another country, another email or finance source, other notifications), read CUSTOMIZE.md and follow its process before changing code.
 
 My data stays in the data/ folder: it must never be committed or published.`,
 }

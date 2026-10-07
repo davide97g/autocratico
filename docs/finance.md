@@ -1,31 +1,43 @@
-# Finance app
+# Finance
 
-Autocratico can mirror a separate finance app (expenses and earnings, its own Hono + Postgres server, with a REST API and an SSE change feed at `/api/events`) and show it in the **Finance** view: this month against the 12-month average, a week/month/year trend, spending by category, the next 12 months of expenses (the finance app's recurring templates and the register's payments, labelled by source) and the investments from your brokers' snapshots.
+Autocratico can mirror a finance source (expenses and earnings) and show it in the **Finance** view: this month against the 12-month average, a week/month/year trend, spending by category, the next 12 months of expenses (the source's recurring templates and the register's payments, labelled by source) and the investments from your brokers' snapshots.
 
-## Connect
+The source is a **connector**. Two ship:
 
-1. On the finance server, create an API token (only its SHA-256 is stored there, it is printed once):
-   ```bash
-   bun run token create autocratico --scope write   # or --scope read for view only
-   ```
-   `write` lets autocratico add and delete transactions, nothing else; `read` is GET only. `bun run token list` / `bun run token revoke <id>` manage them.
-2. In autocratico: **Settings → Finance app**, address and token, **Connect**. The server checks the token, saves it in `data/secrets/finance.json` (0600, never sent to the browser) and syncs everything.
+| Connector | What | Live | Records paid deadlines | Recurring templates |
+|---|---|---|---|---|
+| `http` | a finance server speaking a small REST + SSE contract | yes (change feed) | yes, with a write token | yes |
+| `csv` | your bank's CSV exports, in `data/finance/import/` | yes (folder watch) | no, read-only | no |
 
-On the homelab both apps run in Dokploy: the finance `api` service joins `dokploy-network` with the alias `finance-api`, and so does autocratico (`deploy/compose.homelab.yml`). The address is then `http://finance-api:3000`, and the data never leaves the host (no Cloudflare in between).
+The contract, the CSV details and how to add another connector (a bank API, a budgeting app's export) are in [customize/finance-connector.md](customize/finance-connector.md).
+
+## Connect a finance server (`http`)
+
+1. On the finance server, create an API token for autocratico. A token that can write lets autocratico add and delete the transactions it recorded, nothing else; a read-only one is enough to look.
+2. In autocratico: **Settings → Finance → Finance server (API)**, address and token, **Connect**. The server checks the token, saves it in `data/secrets/finance.json` (0600, never sent to the browser) and syncs everything.
+
+Keep the finance server reachable from autocratico's server only (same host, a private Docker network, a tailnet): the data then never crosses the internet.
+
+## Connect your bank's exports (`csv`)
+
+1. In **Settings → Finance → Bank exports (CSV)**, write the column names as they appear in the first row of your bank's export (date, amount, description and, if there is one, category), the separator, the decimal mark, the date format and whether expenses are negative or positive amounts. **Connect** checks every file already in the folder against them.
+2. Put exports in `data/finance/import/` (any name ending in `.csv`), or send them to the inbox (upload, share sheet, Telegram): the agent writes a copy there. The server notices new files within a second.
+
+Overlapping exports (January–March, then February–April) are counted once. Rows without a valid date or amount (totals, notes) are skipped; files in Latin-1 are read too.
 
 ## Sync
 
-- **Live**: the server keeps the finance app's change feed open. A change to transactions, categories, tags or recurring templates re-reads the last 3 months of transactions and the small collections about a second later; the open web app is told through `/api/events` and reloads. On reconnect it catches up the same way.
-- **Hourly**: the `finance` job re-reads every transaction (it also fixes edits to older months). One Telegram alert per failure streak, with no amounts.
-- Files: `data/finance.toml` (address, versioned), `data/finance/mirror.json` (the data), `data/finance/summary.md` (monthly totals per category for the chat agent, amounts in `||…||`), `data/finance/links.json` (occurrence → transaction recorded there). The `finance/` folder is server-owned and not in the register's git history.
+- **Live**: an `http` source's change feed, or the `csv` folder watch, triggers a sync about a second after a change; the open web app is told through `/api/events` and reloads. An `http` source re-reads only the last 3 months then.
+- **Hourly**: the `finance` job re-reads everything (it also catches edits to older months). One notification per failure streak, with no amounts.
+- Files: `data/finance.toml` (connector and settings, versioned; never the token), `data/finance/mirror.json` (the data), `data/finance/summary.md` (monthly totals per category for the chat agent, amounts in `||…||`), `data/finance/links.json` (occurrence → transaction recorded there). Those three are server-owned; `finance/import/` is yours and the agent's. Disconnecting removes the settings and the synced copy, never the CSV files.
 
 ## Paid deadlines → expenses
 
-Marking an occurrence with an amount as done asks whether to record it in the finance app (amount, date, category, description; never automatic). Un-marking it offers to delete that expense. In `deadlines.toml`:
+With a source that can write, marking an occurrence with an amount as done asks whether to record it there (amount, date, category, description; never automatic). Un-marking it offers to delete that expense. In `deadlines.toml`:
 
-- `finance_category = "<category id>"` preselects the category;
-- `finance_recurring = "<template id>"` says that the finance app's recurring template is the same payment: the Finance view shows the deadline and leaves the template's projection out, so it is not counted twice.
+- `finance_category = "<category id>"` preselects the category (for `csv`, the category name in lower case);
+- `finance_recurring = "<template id>"` says that the source's recurring template is the same payment: the Finance view shows the deadline and leaves the template's projection out, so it is not counted twice.
 
 ## Investments
 
-There is no API for Trade Republic or Degiro that does not need your password or PIN, which autocratico never stores. Add a screenshot, CSV export or statement of the portfolio to the inbox (upload, share sheet, Telegram): the agent adds a `[[snapshot]]` to `data/investments.toml` (date, broker, cash, positions with value and, when shown, ISIN, quantity and cost). The view carries each broker's latest snapshot forward to chart the total.
+Brokers rarely offer an API that does not need your password or PIN, which autocratico never stores. Add a screenshot, CSV export or statement of the portfolio to the inbox (upload, share sheet, Telegram): the agent adds a `[[snapshot]]` to `data/investments.toml` (date, broker, cash, positions with value and, when shown, ISIN, quantity and cost). The view carries each broker's latest snapshot forward to chart the total. This works with or without a finance source.

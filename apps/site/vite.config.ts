@@ -3,7 +3,9 @@ import { defineConfig, type Plugin } from "vite"
 // Absolute address the page is served from: canonical link, Open Graph, sitemap.
 // Override with SITE_URL to build for another host (e.g. a preview deploy).
 const SITE_URL = (process.env.SITE_URL ?? "https://autocratico.it/").replace(/\/?$/, "/")
-const REPO_URL = "https://github.com/davide97g/autocratico"
+// The repository the install prompt forks: set REPO_URL when building from a fork.
+const REPO_URL = (process.env.REPO_URL?.trim() || "https://github.com/davide97g/autocratico").replace(/\/+$/, "")
+const REPO_SLUG = REPO_URL.replace(/^https?:\/\/github\.com\//, "")
 // The public demo (apps/web built with --mode demo): the whole app, with a made-up register.
 const DEMO_URL = process.env.DEMO_URL?.trim() || "https://demo.autocratico.it/"
 // Google Analytics 4 measurement ID (G-XXXXXXXXXX). Unset: no analytics and no cookie banner.
@@ -19,6 +21,7 @@ function seo(): Plugin {
     s
       .replaceAll("%SITE_URL%", SITE_URL)
       .replaceAll("%REPO_URL%", REPO_URL)
+      .replaceAll("%REPO_SLUG%", REPO_SLUG)
       .replaceAll("%DEMO_URL%", DEMO_URL)
       .replaceAll("%SITE_OWNER%", OWNER)
       .replaceAll("%CONTACT_HREF%", CONTACT ? `mailto:${CONTACT}` : `${REPO_URL}/issues`)
