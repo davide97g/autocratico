@@ -195,6 +195,7 @@
           </ul>
         </nav>
         <div class="nav__cta">
+          <button class="icon-btn" type="button" id="palette" aria-label="Cambia stile"><i data-lucide="palette"></i></button>
           <button class="icon-btn" type="button" id="theme" aria-label="Cambia tema"><i data-lucide="moon"></i></button>
           <a class="btn btn--ghost btn--sm hide-sm" href="%REPO_URL%" rel="noopener" data-track="github">GitHub</a>
           <a class="btn btn--primary btn--sm" href="#demo" data-track="demo">Prova la demo</a>
@@ -584,6 +585,42 @@
                 <li><i class="dot dot--planned"></i>Pianificata</li>
                 <li><i class="dot dot--done"></i>Fatta</li>
               </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- The palettes: the same register in five styles, one a second -->
+      <section class="styles" id="temi" aria-labelledby="styles-title">
+        <div class="wrap">
+          <div class="styles__head">
+            <p class="eyebrow rv">Gli stili</p>
+            <h2 id="styles-title" class="h2 rv">Cinque stili, lo stesso registro.</h2>
+            <p class="body rv">
+              Monocromo di serie. Oppure la carta di Roma antica, l'oro del Barocco, la crema di un espresso, le maioliche di Capri.
+              Chiaro o scuro: lo scegli al primo avvio e lo cambi quando vuoi.
+            </p>
+          </div>
+
+          <div class="styles__stage rv">
+            <div class="frame styles__frame" id="styles-frame" data-palette="mono">
+              <div class="frame__bar" aria-hidden="true">
+                <span class="frame__dots"><i></i><i></i><i></i></span>
+                <span class="frame__url"><i data-lucide="lock"></i>autocratico.casa-tua.it</span>
+              </div>
+              <div class="frame__screen styles__screen" id="styles-host" inert></div>
+              <span class="styles__drop" aria-hidden="true"></span>
+            </div>
+            <p class="styles__caption" id="styles-caption" aria-live="polite"><b id="styles-name">Monocromo</b><span id="styles-line">Grigi e nero, nient'altro.</span></p>
+            <div class="styles__picker">
+              <div class="styles__chips" role="group" aria-label="Scegli uno stile">
+                <button class="styles__chip" type="button" data-pick="mono" aria-pressed="true"><span class="styles__sw" data-palette="mono" aria-hidden="true"><i></i><i></i><i></i></span>Monocromo</button>
+                <button class="styles__chip" type="button" data-pick="roma" aria-pressed="false"><span class="styles__sw" data-palette="roma" aria-hidden="true"><i></i><i></i><i></i></span>Roma antica</button>
+                <button class="styles__chip" type="button" data-pick="barocco" aria-pressed="false"><span class="styles__sw" data-palette="barocco" aria-hidden="true"><i></i><i></i><i></i></span>Barocco</button>
+                <button class="styles__chip" type="button" data-pick="espresso" aria-pressed="false"><span class="styles__sw" data-palette="espresso" aria-hidden="true"><i></i><i></i><i></i></span>Espresso</button>
+                <button class="styles__chip" type="button" data-pick="capri" aria-pressed="false"><span class="styles__sw" data-palette="capri" aria-hidden="true"><i></i><i></i><i></i></span>Maiolica di Capri</button>
+              </div>
+              <button class="tbtn styles__play" type="button" id="styles-play" aria-pressed="true"><i data-lucide="pause"></i><span>Pausa</span></button>
             </div>
           </div>
         </div>

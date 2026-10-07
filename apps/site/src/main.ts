@@ -40,7 +40,21 @@ const html = document.documentElement
   onScroll()
 }
 
-// ---- theme: the new one spreads from the button, as in the app (View Transitions) ----
+// ---- theme and palette: the new one spreads from the button, as in the app (View Transitions) ----
+function reveal(apply: () => void, e: MouseEvent) {
+  const vt = (document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void> } }).startViewTransition
+  if (!vt || reducedMotion()) return apply()
+  const x = e.clientX || innerWidth - 40
+  const y = e.clientY || 30
+  const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
+  vt.call(document, apply).ready.then(() =>
+    html.animate(
+      { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
+      { duration: 520, easing: "cubic-bezier(0.16, 1, 0.3, 1)", pseudoElement: "::view-transition-new(root)" },
+    ),
+  )
+}
+
 {
   const btn = $<HTMLButtonElement>("#theme")
   const dark = () => html.dataset.theme === "dark" || (!html.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches)
@@ -51,27 +65,50 @@ const html = document.documentElement
   paint()
   btn.addEventListener("click", (e) => {
     const next = dark() ? "light" : "dark"
-    const apply = () => {
-      html.dataset.theme = next
-      paint()
-    }
     try {
       localStorage.setItem("autocratico-theme", next)
     } catch {
       // private mode: the choice lasts this visit
     }
     track("theme_toggle", { theme: next })
-    const vt = (document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void> } }).startViewTransition
-    if (!vt || reducedMotion()) return apply()
-    const x = e.clientX || innerWidth - 40
-    const y = e.clientY || 30
-    const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
-    vt.call(document, apply).ready.then(() =>
-      html.animate(
-        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
-        { duration: 520, easing: "cubic-bezier(0.16, 1, 0.3, 1)", pseudoElement: "::view-transition-new(root)" },
-      ),
-    )
+    reveal(() => {
+      html.dataset.theme = next
+      paint()
+    }, e)
+  })
+}
+
+// The app's palettes (apps/web/src/lib/palettes.ts), with its Italian names; colours in styles.css.
+const PALETTES = [
+  { id: "mono", name: "Monocromo", line: "Grigi e nero, nient'altro." },
+  { id: "roma", name: "Roma antica", line: "Carta vecchia, travertino, terracotta." },
+  { id: "barocco", name: "Barocco", line: "Avorio, bordeaux e foglia d'oro." },
+  { id: "espresso", name: "Espresso", line: "Crema, tostato, caramello." },
+  { id: "capri", name: "Maiolica di Capri", line: "Calce bianca, cobalto, un tocco di limone." },
+] as const
+
+{
+  const btn = $<HTMLButtonElement>("#palette")
+  const current = () => Math.max(0, PALETTES.findIndex((p) => p.id === (html.dataset.palette ?? "mono")))
+  const paint = () => {
+    const p = PALETTES[current()]
+    btn.setAttribute("aria-label", `Cambia stile (ora: ${p.name})`)
+    btn.title = p.name
+  }
+  paint()
+  btn.addEventListener("click", (e) => {
+    const next = PALETTES[(current() + 1) % PALETTES.length].id
+    try {
+      localStorage.setItem("autocratico-palette", next)
+    } catch {
+      // private mode: the choice lasts this visit
+    }
+    track("palette_change", { palette: next })
+    reveal(() => {
+      if (next === "mono") delete html.dataset.palette
+      else html.dataset.palette = next
+      paint()
+    }, e)
   })
 }
 
@@ -195,6 +232,92 @@ if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
 {
   const io = new IntersectionObserver((entries) => entries.forEach((e) => e.target.classList.toggle("is-play", e.isIntersecting)), { threshold: 0.3 })
   document.querySelectorAll(".ai-card, .cell, .flow__step").forEach((el) => io.observe(el))
+}
+
+// ---- the palettes: the app's shell changes style once a second, the cursor pressing the switch ----
+{
+  const section = $("#temi")
+  const frame = $("#styles-frame")
+  const host = $("#styles-host")
+  const caption = $("#styles-caption")
+  const name = $("#styles-name")
+  const line = $("#styles-line")
+  const drop = $(".styles__drop")
+  const play = $<HTMLButtonElement>("#styles-play")
+  const chips = [...document.querySelectorAll<HTMLButtonElement>("[data-pick]")]
+  const pause = (ms: number) => new Promise((ok) => setTimeout(ok, ms))
+  let shown: Demo | null = null
+  let switcher: HTMLElement | null = null
+  let at = 0
+  let auto = true
+  let visible = false
+
+  const set = (n: number, from?: Element) => {
+    at = n
+    const p = PALETTES[n]
+    frame.dataset.palette = p.id
+    name.textContent = p.name
+    line.textContent = p.line
+    chips.forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.pick === p.id)))
+    caption.classList.remove("is-new")
+    void caption.offsetWidth
+    caption.classList.add("is-new")
+    if (from && !reducedMotion()) {
+      const f = frame.getBoundingClientRect()
+      const r = from.getBoundingClientRect()
+      drop.style.setProperty("--x", `${r.left - f.left + r.width / 2}px`)
+      drop.style.setProperty("--y", `${r.top - f.top + r.height / 2}px`)
+      drop.classList.remove("is-on")
+      void drop.offsetWidth
+      drop.classList.add("is-on")
+    }
+  }
+  const setAuto = (on: boolean) => {
+    auto = on
+    play.setAttribute("aria-pressed", String(on))
+    play.querySelector("span")!.textContent = on ? "Pausa" : "Riproduci"
+    swapIcon(play, on ? "pause" : "play")
+  }
+
+  // A second copy of the demo, inert, with the palette switch the app has in Settings → Interface.
+  const mount = () => {
+    if (shown) return
+    shown = createDemo(host, { onPrivacy: () => undefined })
+    shown.root.querySelector(".x-top__icons")!.insertAdjacentHTML(
+      "afterbegin",
+      `<button type="button" class="x-ib x-ib--dark" data-styles-switch aria-label="Cambia stile">${svg("palette")}</button>`,
+    )
+    switcher = shown.root.querySelector("[data-styles-switch]")
+  }
+
+  new IntersectionObserver(([e]) => e.isIntersecting && mount(), { rootMargin: "600px 0px" }).observe(section)
+  new IntersectionObserver(([e]) => (visible = e.isIntersecting), { threshold: 0.35 }).observe(frame)
+
+  chips.forEach((c, n) =>
+    c.addEventListener("click", () => {
+      setAuto(false)
+      set(n)
+      track("palette_pick", { palette: PALETTES[n].id })
+    }),
+  )
+  play.addEventListener("click", () => setAuto(!auto))
+  if (reducedMotion()) setAuto(false)
+
+  const loop = async () => {
+    for (;;) {
+      if (!auto || !visible || !shown || !switcher || reducedMotion()) {
+        shown?.cursor.hide()
+        await pause(400)
+        continue
+      }
+      await shown.cursor.to(switcher, 360)
+      await shown.cursor.click()
+      if (!auto) continue
+      set((at + 1) % PALETTES.length, switcher)
+      await pause(420)
+    }
+  }
+  void loop()
 }
 
 // ---- the paperwork pile: drifts with the pointer, every click stamps it again ----

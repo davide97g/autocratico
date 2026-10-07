@@ -14,6 +14,7 @@ const it = {
   nameLabel: "Come si chiama la persona del registro?",
   namePlaceholder: "Maria Rossi",
   nameHint: "Facoltativo. Usa un nome inventato: resta nel tuo browser.",
+  paletteLabel: "Che stile preferisci? Lo cambi quando vuoi nelle Impostazioni.",
   generate: "Genera il registro",
   generatingTitle: "Preparo il registro…",
   generatingBody:
@@ -101,6 +102,7 @@ const en: DemoMessages = {
   nameLabel: "What's the name of the register's owner?",
   namePlaceholder: "Maria Rossi",
   nameHint: "Optional. Use a made-up name: it stays in your browser.",
+  paletteLabel: "Which look do you like? Change it any time in Settings.",
   generate: "Generate the register",
   generatingTitle: "Setting up the register…",
   generatingBody:

@@ -8,11 +8,9 @@ import {
   LaptopIcon,
   LogOutIcon,
   MonitorIcon,
-  MoonIcon,
   PlayIcon,
   SendIcon,
   SmartphoneIcon,
-  SunIcon,
   TabletIcon,
 } from "lucide-react"
 import { cn } from "cn"
@@ -26,16 +24,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Kbd, MOD } from "@/components/kbd"
+import { PalettePicker, ThemeSwitch } from "@/components/palette-picker"
 import { CardSkeleton, RowsSkeleton } from "@/components/skeletons"
-import { useTheme } from "@/components/theme-provider"
 import { Switch } from "@/components/ui/switch"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useI18n } from "@/i18n"
 import { LanguageSwitch } from "@/components/shell"
 import { useConnection, useLiveRefresh } from "@/lib/events"
 import { jobIcon } from "@/lib/format"
-import { type Prefs, usePrefs } from "@/lib/prefs"
-import { switchTheme } from "@/lib/theme-switch"
+import { usePrefs } from "@/lib/prefs"
 import { UsernameHint } from "@/views/login"
 import {
   type AccountSession,
@@ -465,22 +461,14 @@ function PrefRow({ label, hint, children }: { label: string; hint?: string; chil
   )
 }
 
-const THEMES = [
-  { id: "light", icon: SunIcon },
-  { id: "dark", icon: MoonIcon },
-  { id: "system", icon: MonitorIcon },
-] as const
-
 const LIVE_DOT = { live: "bg-status-done", connecting: "bg-status-soon", offline: "bg-muted-foreground" } as const
 
-/** How the app looks and moves on this device: theme, language, animations, notices, sidebar. */
+/** How the app looks and moves on this device: theme, palette, language, animations, notices, sidebar. */
 function InterfaceCard({ onShortcuts }: { onShortcuts: () => void }) {
   const { t } = useI18n()
-  const { theme, setTheme } = useTheme()
   const { prefs, set } = usePrefs()
   const connection = useConnection()
-  const origin = React.useRef<{ x: number; y: number } | undefined>(undefined)
-  const toggle = (key: keyof Prefs, label: string, hint: string) => (
+  const toggle = (key: "reduceMotion" | "splash" | "liveNotices" | "compact", label: string, hint: string) => (
     <PrefRow label={label} hint={hint}>
       <Switch checked={prefs[key]} onCheckedChange={(v) => set(key, v)} aria-label={label} />
     </PrefRow>
@@ -493,21 +481,15 @@ function InterfaceCard({ onShortcuts }: { onShortcuts: () => void }) {
       </CardHeader>
       <CardContent className="flex flex-col">
         <PrefRow label={t.settings.interface.theme}>
-          <ToggleGroup
-            value={[theme]}
-            onValueChange={(v) => v[0] && switchTheme(setTheme, v[0] as typeof theme, origin.current)}
-            onPointerDown={(e) => (origin.current = { x: e.clientX, y: e.clientY })}
-            className="rounded-lg bg-muted p-0.5"
-            aria-label={t.settings.interface.theme}
-          >
-            {THEMES.map(({ id, icon: Icon }) => (
-              <ToggleGroupItem key={id} value={id} size="sm" className="h-8 gap-1.5 rounded-md px-2.5 text-xs aria-pressed:bg-card aria-pressed:shadow-xs">
-                <Icon className="size-3.5" />
-                <span className="hidden sm:inline">{t.settings.interface.themes[id]}</span>
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          <ThemeSwitch />
         </PrefRow>
+        <div className="flex flex-col gap-3 border-b py-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">{t.settings.interface.palette}</span>
+            <span className="text-xs text-muted-foreground">{t.settings.interface.paletteHint}</span>
+          </div>
+          <PalettePicker />
+        </div>
         <PrefRow label={t.settings.interface.language} hint={t.settings.languageDescription}>
           <LanguageSwitch compact={false} touch />
         </PrefRow>

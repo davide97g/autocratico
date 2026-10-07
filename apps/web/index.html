@@ -18,26 +18,40 @@
     <link rel="apple-touch-startup-image" href="/icons/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" />
     <title>Autocratico</title>
     <script>
-      // Before anything paints: the theme (no light flash in dark mode) and whether the launch animation plays.
+      // Before anything paints: the theme (no light flash in dark mode), the palette and whether the launch animation plays.
       try {
         var theme = localStorage.getItem("theme") || "light"
         if (theme === "system") theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
         document.documentElement.classList.add(theme)
         var prefs = JSON.parse(localStorage.getItem("autocratico.prefs") || "{}")
+        // Same as THEME_COLOR in src/lib/palettes.ts.
+        var bar = { mono: "#1a1a1a", roma: "#341e13", barocco: "#3d1017", espresso: "#2d1a10", capri: "#062b5f" }
+        var palette = bar.hasOwnProperty(prefs.palette) ? prefs.palette : "mono"
+        document.documentElement.setAttribute("data-palette", palette)
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", bar[palette])
         if (prefs.splash === false) document.documentElement.setAttribute("data-no-splash", "")
         if (prefs.reduceMotion) document.documentElement.setAttribute("data-reduce-motion", "")
       } catch (e) {}
     </script>
     <style>
       /* Launch screen: the mark stamps in, its letter draws itself, a highlight runs across; the app removes it when ready. */
-      html { background: #e6e6e6; }
-      html.dark { background: #0a0a0a; }
+      /* Colors per palette and theme: background, the mark's tile and its letter (the palette's primary in index.css). */
+      html { --splash-bg: #e6e6e6; --splash-ink: #1a1a1a; --splash-letter: #ececec; }
+      html.dark { --splash-bg: #0a0a0a; --splash-ink: #ececec; --splash-letter: #141414; }
+      [data-palette="roma"] { --splash-bg: #ece2cf; --splash-ink: #a33e25; --splash-letter: #fcf8f0; }
+      .dark[data-palette="roma"] { --splash-bg: #19120e; --splash-ink: #ae4730; --splash-letter: #faf5ea; }
+      [data-palette="barocco"] { --splash-bg: #ede7db; --splash-ink: #7f1e30; --splash-letter: #fbf4e6; }
+      .dark[data-palette="barocco"] { --splash-bg: #190b0c; --splash-ink: #a73447; --splash-letter: #f8f1e3; }
+      [data-palette="espresso"] { --splash-bg: #ede1d4; --splash-ink: #462c1e; --splash-letter: #f9eddd; }
+      .dark[data-palette="espresso"] { --splash-bg: #170e09; --splash-ink: #885e41; --splash-letter: #faf0e3; }
+      [data-palette="capri"] { --splash-bg: #e3edf3; --splash-ink: #0850ab; --splash-letter: #f2fafe; }
+      .dark[data-palette="capri"] { --splash-bg: #061223; --splash-ink: #5fbcf4; --splash-letter: #07162c; }
+      html { background: var(--splash-bg); }
       #splash {
         position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
-        background: #e6e6e6; color: #1a1a1a;
+        background: var(--splash-bg); color: var(--splash-ink);
         transition: opacity 380ms cubic-bezier(0.4, 0, 1, 1), visibility 0s linear 380ms;
       }
-      .dark #splash { background: #0a0a0a; color: #ececec; }
       [data-no-splash] #splash { display: none; }
       #splash.splash-out { opacity: 0; visibility: hidden; pointer-events: none; }
       #splash.splash-out .splash-stack { transform: scale(1.06); filter: blur(6px); }
@@ -48,11 +62,10 @@
       .splash-mark { width: 76px; height: 76px; overflow: visible; animation: splash-stamp 640ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
       .splash-mark .tile { fill: currentColor; }
       .splash-mark .letter {
-        fill: #ececec; fill-opacity: 0; stroke: #ececec; stroke-width: 2.5; stroke-linejoin: round;
+        fill: var(--splash-letter); fill-opacity: 0; stroke: var(--splash-letter); stroke-width: 2.5; stroke-linejoin: round;
         stroke-dasharray: 340; stroke-dashoffset: 340;
         animation: splash-draw 700ms cubic-bezier(0.65, 0, 0.35, 1) 260ms forwards, splash-fill 300ms ease-out 820ms forwards;
       }
-      .dark .splash-mark .letter { fill: #141414; stroke: #141414; }
       .splash-mark .shine { opacity: 0; animation: splash-shine 900ms cubic-bezier(0.16, 1, 0.3, 1) 900ms both; }
       .splash-word {
         font: 600 15px/1 "Geist Variable", ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.02em;

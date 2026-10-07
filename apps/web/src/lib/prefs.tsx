@@ -1,5 +1,7 @@
 import * as React from "react"
 
+import { applyPalette, DEFAULT_PALETTE, isPalette, type Palette } from "@/lib/palettes"
+
 /** Interface preferences, per device (Settings → Interface). */
 export type Prefs = {
   /** Fewer animations, whatever the system says. */
@@ -10,9 +12,11 @@ export type Prefs = {
   liveNotices: boolean
   /** Sidebar reduced to icons. */
   compact: boolean
+  /** Color palette over light and dark (lib/palettes.ts). */
+  palette: Palette
 }
 
-const DEFAULTS: Prefs = { reduceMotion: false, splash: true, liveNotices: true, compact: false }
+const DEFAULTS: Prefs = { reduceMotion: false, splash: true, liveNotices: true, compact: false, palette: DEFAULT_PALETTE }
 const STORAGE_KEY = "autocratico.prefs"
 // Before the preferences had their own key the sidebar remembered itself here.
 const LEGACY_COMPACT = "autocratico.sidebar-compact"
@@ -20,7 +24,7 @@ const LEGACY_COMPACT = "autocratico.sidebar-compact"
 function read(): Prefs {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<Prefs> | null
-    if (saved) return { ...DEFAULTS, ...saved }
+    if (saved) return { ...DEFAULTS, ...saved, palette: isPalette(saved.palette) ? saved.palette : DEFAULT_PALETTE }
     return { ...DEFAULTS, compact: localStorage.getItem(LEGACY_COMPACT) === "1" }
   } catch {
     return DEFAULTS
@@ -51,6 +55,9 @@ export function PrefsProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     document.documentElement.toggleAttribute("data-reduce-motion", prefs.reduceMotion)
   }, [prefs.reduceMotion])
+
+  // index.css reads data-palette; index.html sets it before the first paint, this keeps it in step.
+  React.useEffect(() => applyPalette(prefs.palette), [prefs.palette])
 
   const value = React.useMemo(() => ({ prefs, set }), [prefs, set])
   return <PrefsContext.Provider value={value}>{children}</PrefsContext.Provider>

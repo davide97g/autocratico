@@ -64,7 +64,15 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
+/*
+ * Palettes (lib/palettes.ts): data-palette on <html> picks one, the .dark class its dark side.
+ * Monocromo is the default below. Each palette sets every neutral token for light and dark;
+ * status, money and destructive colors stay the same everywhere so urgency always reads the same.
+ * The selectors also match any element carrying data-palette (the pickers' previews) and the
+ * .dark islands inside a palette (the dark card in the Overview).
+ */
+:root,
+[data-palette="mono"] {
     --background: oklch(0.925 0 0);
     --foreground: oklch(0.145 0 0);
     --card: oklch(0.993 0 0);
@@ -113,9 +121,15 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    /* Hue and chroma that tint the decorations (studio light, chrome orb, silk); 0 = grey. */
+    --deco-h: 0;
+    --deco-c: 0;
+    /* A faint pattern over the background (paper grain, damask, maiolica tiles). */
+    --texture: none;
 }
 
-.dark {
+.dark,
+.dark [data-palette="mono"] {
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.205 0 0);
@@ -160,6 +174,318 @@
     --money-out-muted: oklch(0.5 0.07 25);
     --status-done-foreground: oklch(0.18 0.03 152);
     --glass-border: oklch(1 0 0 / 8%);
+}
+
+/* Roma antica: old paper, travertine, terracotta and Pompeian red. */
+[data-palette="roma"] {
+    --background: oklch(0.915 0.028 82);
+    --foreground: oklch(0.24 0.03 50);
+    --card: oklch(0.975 0.018 85);
+    --card-foreground: oklch(0.24 0.03 50);
+    --popover: oklch(0.985 0.014 85);
+    --popover-foreground: oklch(0.24 0.03 50);
+    --primary: oklch(0.5 0.14 35);
+    --primary-foreground: oklch(0.98 0.012 85);
+    --secondary: oklch(0.945 0.025 82);
+    --secondary-foreground: oklch(0.28 0.035 50);
+    --muted: oklch(0.945 0.025 82);
+    --muted-foreground: oklch(0.49 0.04 60);
+    --accent: oklch(0.935 0.035 80);
+    --accent-foreground: oklch(0.28 0.035 50);
+    --border: oklch(0.87 0.03 78);
+    --input: oklch(0.89 0.03 78);
+    --ring: oklch(0.66 0.11 40);
+    --chart-1: oklch(0.85 0.06 75);
+    --chart-2: oklch(0.66 0.12 60);
+    --chart-3: oklch(0.55 0.14 38);
+    --chart-4: oklch(0.45 0.12 30);
+    --chart-5: oklch(0.32 0.06 45);
+    --sidebar: oklch(0.96 0.022 84);
+    --sidebar-foreground: oklch(0.24 0.03 50);
+    --sidebar-primary: oklch(0.5 0.14 35);
+    --sidebar-primary-foreground: oklch(0.98 0.012 85);
+    --sidebar-accent: oklch(0.935 0.035 80);
+    --sidebar-accent-foreground: oklch(0.28 0.035 50);
+    --sidebar-border: oklch(0.88 0.03 78);
+    --sidebar-ring: oklch(0.66 0.11 40);
+    --glass: oklch(0.99 0.02 85 / 45%);
+    --glass-border: oklch(0.99 0.02 85 / 70%);
+    --status-bar: oklch(0.26 0.04 45);
+    --deco-h: 60;
+    --deco-c: 0.04;
+    --texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.36 0 0 0 0 0.25 0 0 0 0 0.12 0.28 0 0 0 -0.06'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.dark[data-palette="roma"],
+.dark [data-palette="roma"],
+[data-palette="roma"] .dark {
+    --background: oklch(0.19 0.014 60);
+    --foreground: oklch(0.93 0.025 85);
+    --card: oklch(0.235 0.018 58);
+    --card-foreground: oklch(0.93 0.025 85);
+    --popover: oklch(0.235 0.018 58);
+    --popover-foreground: oklch(0.93 0.025 85);
+    --primary: oklch(0.53 0.14 34);
+    --primary-foreground: oklch(0.97 0.015 85);
+    --secondary: oklch(0.29 0.02 58);
+    --secondary-foreground: oklch(0.93 0.025 85);
+    --muted: oklch(0.29 0.02 58);
+    --muted-foreground: oklch(0.72 0.03 75);
+    --accent: oklch(0.3 0.025 55);
+    --accent-foreground: oklch(0.93 0.025 85);
+    --border: oklch(0.93 0.03 85 / 11%);
+    --input: oklch(0.93 0.03 85 / 16%);
+    --ring: oklch(0.6 0.1 42);
+    --chart-1: oklch(0.86 0.06 80);
+    --chart-2: oklch(0.72 0.12 65);
+    --chart-3: oklch(0.64 0.13 42);
+    --chart-4: oklch(0.52 0.12 32);
+    --chart-5: oklch(0.38 0.06 45);
+    --sidebar: oklch(0.235 0.018 58);
+    --sidebar-foreground: oklch(0.93 0.025 85);
+    --sidebar-primary: oklch(0.53 0.14 34);
+    --sidebar-primary-foreground: oklch(0.97 0.015 85);
+    --sidebar-accent: oklch(0.3 0.025 55);
+    --sidebar-accent-foreground: oklch(0.93 0.025 85);
+    --sidebar-border: oklch(0.93 0.03 85 / 11%);
+    --sidebar-ring: oklch(0.6 0.1 42);
+    --glass: oklch(0.23 0.018 58 / 55%);
+    --glass-border: oklch(0.93 0.03 85 / 9%);
+    --status-bar: oklch(0.2 0.03 45);
+    --texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.92 0 0 0 0 0.84 0 0 0 0 0.66 0.16 0 0 0 -0.04'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Barocco: ivory, bordeaux, gold leaf. */
+[data-palette="barocco"] {
+    --background: oklch(0.93 0.018 85);
+    --foreground: oklch(0.22 0.035 18);
+    --card: oklch(0.985 0.01 88);
+    --card-foreground: oklch(0.22 0.035 18);
+    --popover: oklch(0.99 0.008 88);
+    --popover-foreground: oklch(0.22 0.035 18);
+    --primary: oklch(0.4 0.13 15);
+    --primary-foreground: oklch(0.97 0.02 85);
+    --secondary: oklch(0.95 0.02 85);
+    --secondary-foreground: oklch(0.27 0.04 18);
+    --muted: oklch(0.95 0.02 85);
+    --muted-foreground: oklch(0.5 0.04 30);
+    --accent: oklch(0.93 0.045 88);
+    --accent-foreground: oklch(0.27 0.04 18);
+    --border: oklch(0.88 0.03 85);
+    --input: oklch(0.9 0.025 85);
+    --ring: oklch(0.72 0.12 80);
+    --chart-1: oklch(0.88 0.08 88);
+    --chart-2: oklch(0.72 0.13 80);
+    --chart-3: oklch(0.52 0.14 20);
+    --chart-4: oklch(0.4 0.13 15);
+    --chart-5: oklch(0.28 0.06 20);
+    --sidebar: oklch(0.965 0.014 86);
+    --sidebar-foreground: oklch(0.22 0.035 18);
+    --sidebar-primary: oklch(0.4 0.13 15);
+    --sidebar-primary-foreground: oklch(0.97 0.02 85);
+    --sidebar-accent: oklch(0.93 0.045 88);
+    --sidebar-accent-foreground: oklch(0.27 0.04 18);
+    --sidebar-border: oklch(0.89 0.028 85);
+    --sidebar-ring: oklch(0.72 0.12 80);
+    --glass: oklch(0.99 0.012 88 / 45%);
+    --glass-border: oklch(0.99 0.012 88 / 70%);
+    --status-bar: oklch(0.25 0.07 15);
+    --deco-h: 80;
+    --deco-c: 0.06;
+    --texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cg fill='none' stroke='%239a7424' stroke-opacity='0.22' stroke-width='1.1'%3E%3Cpath d='M36 8c8 9 8 17 0 28-8-11-8-19 0-28zM36 64c8-9 8-17 0-28-8 11-8 19 0 28z'/%3E%3Cpath d='M36 36c-6-4-13-4-18 0M36 36c6-4 13-4 18 0M36 36c-6 4-13 4-18 0M36 36c6 4 13 4 18 0'/%3E%3Ccircle cx='36' cy='36' r='2.5'/%3E%3Cpath d='M0 4c4 0 4 4 4 4s0-4 4-4M64 68c4 0 4 4 4 4s0-4 4-4'/%3E%3C/g%3E%3C/svg%3E");
+}
+.dark[data-palette="barocco"],
+.dark [data-palette="barocco"],
+[data-palette="barocco"] .dark {
+    --background: oklch(0.17 0.025 15);
+    --foreground: oklch(0.93 0.02 85);
+    --card: oklch(0.215 0.03 15);
+    --card-foreground: oklch(0.93 0.02 85);
+    --popover: oklch(0.215 0.03 15);
+    --popover-foreground: oklch(0.93 0.02 85);
+    --primary: oklch(0.5 0.15 15);
+    --primary-foreground: oklch(0.96 0.02 85);
+    --secondary: oklch(0.27 0.035 15);
+    --secondary-foreground: oklch(0.93 0.02 85);
+    --muted: oklch(0.27 0.035 15);
+    --muted-foreground: oklch(0.72 0.035 60);
+    --accent: oklch(0.28 0.04 18);
+    --accent-foreground: oklch(0.93 0.02 85);
+    --border: oklch(0.93 0.04 85 / 11%);
+    --input: oklch(0.93 0.04 85 / 16%);
+    --ring: oklch(0.65 0.1 80);
+    --chart-1: oklch(0.88 0.09 88);
+    --chart-2: oklch(0.78 0.12 82);
+    --chart-3: oklch(0.62 0.15 22);
+    --chart-4: oklch(0.5 0.14 15);
+    --chart-5: oklch(0.36 0.08 18);
+    --sidebar: oklch(0.215 0.03 15);
+    --sidebar-foreground: oklch(0.93 0.02 85);
+    --sidebar-primary: oklch(0.5 0.15 15);
+    --sidebar-primary-foreground: oklch(0.96 0.02 85);
+    --sidebar-accent: oklch(0.28 0.04 18);
+    --sidebar-accent-foreground: oklch(0.93 0.02 85);
+    --sidebar-border: oklch(0.93 0.04 85 / 11%);
+    --sidebar-ring: oklch(0.65 0.1 80);
+    --glass: oklch(0.21 0.03 15 / 55%);
+    --glass-border: oklch(0.93 0.04 85 / 9%);
+    --status-bar: oklch(0.2 0.05 15);
+    --texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cg fill='none' stroke='%23d9b25a' stroke-opacity='0.13' stroke-width='1.1'%3E%3Cpath d='M36 8c8 9 8 17 0 28-8-11-8-19 0-28zM36 64c8-9 8-17 0-28-8 11-8 19 0 28z'/%3E%3Cpath d='M36 36c-6-4-13-4-18 0M36 36c6-4 13-4 18 0M36 36c-6 4-13 4-18 0M36 36c6 4 13 4 18 0'/%3E%3Ccircle cx='36' cy='36' r='2.5'/%3E%3Cpath d='M0 4c4 0 4 4 4 4s0-4 4-4M64 68c4 0 4 4 4 4s0-4 4-4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Espresso: crema, roasted browns, caramel. */
+[data-palette="espresso"] {
+    --background: oklch(0.915 0.022 68);
+    --foreground: oklch(0.23 0.03 50);
+    --card: oklch(0.975 0.012 72);
+    --card-foreground: oklch(0.23 0.03 50);
+    --popover: oklch(0.985 0.01 72);
+    --popover-foreground: oklch(0.23 0.03 50);
+    --primary: oklch(0.32 0.045 48);
+    --primary-foreground: oklch(0.95 0.025 75);
+    --secondary: oklch(0.94 0.02 70);
+    --secondary-foreground: oklch(0.28 0.035 50);
+    --muted: oklch(0.94 0.02 70);
+    --muted-foreground: oklch(0.5 0.035 55);
+    --accent: oklch(0.925 0.03 68);
+    --accent-foreground: oklch(0.28 0.035 50);
+    --border: oklch(0.87 0.025 65);
+    --input: oklch(0.89 0.022 66);
+    --ring: oklch(0.66 0.1 60);
+    --chart-1: oklch(0.86 0.05 75);
+    --chart-2: oklch(0.68 0.1 60);
+    --chart-3: oklch(0.52 0.08 52);
+    --chart-4: oklch(0.4 0.06 48);
+    --chart-5: oklch(0.28 0.04 45);
+    --sidebar: oklch(0.955 0.016 70);
+    --sidebar-foreground: oklch(0.23 0.03 50);
+    --sidebar-primary: oklch(0.32 0.045 48);
+    --sidebar-primary-foreground: oklch(0.95 0.025 75);
+    --sidebar-accent: oklch(0.925 0.03 68);
+    --sidebar-accent-foreground: oklch(0.28 0.035 50);
+    --sidebar-border: oklch(0.88 0.024 66);
+    --sidebar-ring: oklch(0.66 0.1 60);
+    --glass: oklch(0.99 0.015 72 / 45%);
+    --glass-border: oklch(0.99 0.015 72 / 70%);
+    --status-bar: oklch(0.24 0.035 48);
+    --deco-h: 55;
+    --deco-c: 0.045;
+    --texture: none;
+}
+.dark[data-palette="espresso"],
+.dark [data-palette="espresso"],
+[data-palette="espresso"] .dark {
+    --background: oklch(0.175 0.018 50);
+    --foreground: oklch(0.93 0.02 75);
+    --card: oklch(0.225 0.022 50);
+    --card-foreground: oklch(0.93 0.02 75);
+    --popover: oklch(0.225 0.022 50);
+    --popover-foreground: oklch(0.93 0.02 75);
+    --primary: oklch(0.52 0.07 55);
+    --primary-foreground: oklch(0.96 0.02 75);
+    --secondary: oklch(0.28 0.025 52);
+    --secondary-foreground: oklch(0.93 0.02 75);
+    --muted: oklch(0.28 0.025 52);
+    --muted-foreground: oklch(0.72 0.03 70);
+    --accent: oklch(0.29 0.028 52);
+    --accent-foreground: oklch(0.93 0.02 75);
+    --border: oklch(0.93 0.03 75 / 11%);
+    --input: oklch(0.93 0.03 75 / 16%);
+    --ring: oklch(0.62 0.09 62);
+    --chart-1: oklch(0.88 0.05 78);
+    --chart-2: oklch(0.74 0.1 65);
+    --chart-3: oklch(0.6 0.09 55);
+    --chart-4: oklch(0.48 0.07 50);
+    --chart-5: oklch(0.36 0.05 48);
+    --sidebar: oklch(0.225 0.022 50);
+    --sidebar-foreground: oklch(0.93 0.02 75);
+    --sidebar-primary: oklch(0.52 0.07 55);
+    --sidebar-primary-foreground: oklch(0.96 0.02 75);
+    --sidebar-accent: oklch(0.29 0.028 52);
+    --sidebar-accent-foreground: oklch(0.93 0.02 75);
+    --sidebar-border: oklch(0.93 0.03 75 / 11%);
+    --sidebar-ring: oklch(0.62 0.09 62);
+    --glass: oklch(0.22 0.022 50 / 55%);
+    --glass-border: oklch(0.93 0.03 75 / 9%);
+    --status-bar: oklch(0.2 0.03 48);
+    --texture: none;
+}
+
+/* Maiolica di Capri: whitewash, cobalt and azure, a lemon accent. */
+[data-palette="capri"] {
+    --background: oklch(0.94 0.014 235);
+    --foreground: oklch(0.25 0.06 258);
+    --card: oklch(0.99 0.006 230);
+    --card-foreground: oklch(0.25 0.06 258);
+    --popover: oklch(0.995 0.004 230);
+    --popover-foreground: oklch(0.25 0.06 258);
+    --primary: oklch(0.45 0.16 258);
+    --primary-foreground: oklch(0.98 0.01 230);
+    --secondary: oklch(0.955 0.015 232);
+    --secondary-foreground: oklch(0.3 0.07 258);
+    --muted: oklch(0.955 0.015 232);
+    --muted-foreground: oklch(0.5 0.05 250);
+    --accent: oklch(0.955 0.045 102);
+    --accent-foreground: oklch(0.3 0.07 258);
+    --border: oklch(0.885 0.025 235);
+    --input: oklch(0.9 0.02 235);
+    --ring: oklch(0.68 0.13 245);
+    --chart-1: oklch(0.9 0.12 100);
+    --chart-2: oklch(0.66 0.13 240);
+    --chart-3: oklch(0.5 0.16 258);
+    --chart-4: oklch(0.58 0.1 170);
+    --chart-5: oklch(0.32 0.09 262);
+    --sidebar: oklch(0.97 0.01 232);
+    --sidebar-foreground: oklch(0.25 0.06 258);
+    --sidebar-primary: oklch(0.45 0.16 258);
+    --sidebar-primary-foreground: oklch(0.98 0.01 230);
+    --sidebar-accent: oklch(0.94 0.03 235);
+    --sidebar-accent-foreground: oklch(0.3 0.07 258);
+    --sidebar-border: oklch(0.9 0.02 235);
+    --sidebar-ring: oklch(0.68 0.13 245);
+    --glass: oklch(1 0.005 230 / 45%);
+    --glass-border: oklch(1 0.005 230 / 70%);
+    --status-bar: oklch(0.3 0.1 258);
+    --deco-h: 245;
+    --deco-c: 0.07;
+    --texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cg fill='none' stroke='%231d4fb0' stroke-opacity='0.17' stroke-width='1.2'%3E%3Crect x='.5' y='.5' width='63' height='63'/%3E%3Cpath d='M32 17c5 6 5 11 0 15-5-4-5-9 0-15zM32 47c5-6 5-11 0-15-5 4-5 9 0 15zM17 32c6-5 11-5 15 0-4 5-9 5-15 0zM47 32c-6-5-11-5-15 0 4 5 9 5 15 0z'/%3E%3Cpath d='M0 11a11 11 0 0 0 11-11M53 0a11 11 0 0 0 11 11M64 53a11 11 0 0 0-11 11M11 64a11 11 0 0 0-11-11'/%3E%3C/g%3E%3Ccircle cx='32' cy='32' r='2.4' fill='%23e2c22a' fill-opacity='0.6'/%3E%3C/svg%3E");
+}
+.dark[data-palette="capri"],
+.dark [data-palette="capri"],
+[data-palette="capri"] .dark {
+    --background: oklch(0.18 0.04 258);
+    --foreground: oklch(0.95 0.012 230);
+    --card: oklch(0.225 0.05 258);
+    --card-foreground: oklch(0.95 0.012 230);
+    --popover: oklch(0.225 0.05 258);
+    --popover-foreground: oklch(0.95 0.012 230);
+    --primary: oklch(0.76 0.12 238);
+    --primary-foreground: oklch(0.2 0.05 258);
+    --secondary: oklch(0.28 0.05 258);
+    --secondary-foreground: oklch(0.95 0.012 230);
+    --muted: oklch(0.28 0.05 258);
+    --muted-foreground: oklch(0.74 0.04 240);
+    --accent: oklch(0.3 0.06 255);
+    --accent-foreground: oklch(0.95 0.012 230);
+    --border: oklch(0.95 0.03 230 / 12%);
+    --input: oklch(0.95 0.03 230 / 17%);
+    --ring: oklch(0.62 0.12 245);
+    --chart-1: oklch(0.9 0.13 100);
+    --chart-2: oklch(0.74 0.12 238);
+    --chart-3: oklch(0.6 0.15 255);
+    --chart-4: oklch(0.68 0.1 170);
+    --chart-5: oklch(0.42 0.1 260);
+    --sidebar: oklch(0.225 0.05 258);
+    --sidebar-foreground: oklch(0.95 0.012 230);
+    --sidebar-primary: oklch(0.76 0.12 238);
+    --sidebar-primary-foreground: oklch(0.2 0.05 258);
+    --sidebar-accent: oklch(0.3 0.06 255);
+    --sidebar-accent-foreground: oklch(0.95 0.012 230);
+    --sidebar-border: oklch(0.95 0.03 230 / 12%);
+    --sidebar-ring: oklch(0.62 0.12 245);
+    --glass: oklch(0.22 0.05 258 / 55%);
+    --glass-border: oklch(0.95 0.03 230 / 9%);
+    --status-bar: oklch(0.22 0.07 258);
+    --texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cg fill='none' stroke='%237fb4f0' stroke-opacity='0.12' stroke-width='1.2'%3E%3Crect x='.5' y='.5' width='63' height='63'/%3E%3Cpath d='M32 17c5 6 5 11 0 15-5-4-5-9 0-15zM32 47c5-6 5-11 0-15-5 4-5 9 0 15zM17 32c6-5 11-5 15 0-4 5-9 5-15 0zM47 32c-6-5-11-5-15 0 4 5 9 5 15 0z'/%3E%3Cpath d='M0 11a11 11 0 0 0 11-11M53 0a11 11 0 0 0 11 11M64 53a11 11 0 0 0-11 11M11 64a11 11 0 0 0-11-11'/%3E%3C/g%3E%3Ccircle cx='32' cy='32' r='2.4' fill='%23e2c22a' fill-opacity='0.4'/%3E%3C/svg%3E");
 }
 
 @layer base {
@@ -215,8 +541,8 @@
   padding-bottom: var(--visual-safe-bottom, env(safe-area-inset-bottom));
 }
 /*
- * Background: grey with blurred white shapes, like a studio photo.
- * A fixed layer instead of background-attachment: fixed, which iOS Safari ignores and repaints on scroll.
+ * Background: grey with blurred white shapes, like a studio photo, tinted by the palette (--deco-*)
+ * under its texture. A fixed layer instead of background-attachment: fixed, which iOS Safari ignores and repaints on scroll.
  */
 @layer base {
   body::before {
@@ -225,15 +551,18 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
+    --glow: calc(1 - var(--deco-c));
     background-image:
-      radial-gradient(28rem 22rem at 18% 8%, oklch(1 0 0 / 85%), transparent 70%),
-      radial-gradient(30rem 26rem at 72% 96%, oklch(1 0 0 / 75%), transparent 70%),
-      radial-gradient(22rem 18rem at 96% 30%, oklch(1 0 0 / 60%), transparent 70%);
+      var(--texture),
+      radial-gradient(28rem 22rem at 18% 8%, oklch(var(--glow) var(--deco-c) var(--deco-h) / 85%), transparent 70%),
+      radial-gradient(30rem 26rem at 72% 96%, oklch(var(--glow) var(--deco-c) var(--deco-h) / 75%), transparent 70%),
+      radial-gradient(22rem 18rem at 96% 30%, oklch(var(--glow) var(--deco-c) var(--deco-h) / 60%), transparent 70%);
   }
   .dark body::before {
     background-image:
-      radial-gradient(28rem 22rem at 18% 8%, oklch(0.3 0 0 / 60%), transparent 70%),
-      radial-gradient(30rem 26rem at 72% 96%, oklch(0.28 0 0 / 50%), transparent 70%);
+      var(--texture),
+      radial-gradient(28rem 22rem at 18% 8%, oklch(0.3 var(--deco-c) var(--deco-h) / 60%), transparent 70%),
+      radial-gradient(30rem 26rem at 72% 96%, oklch(0.28 var(--deco-c) var(--deco-h) / 50%), transparent 70%);
   }
 }
 
@@ -242,8 +571,8 @@
   border-radius: 50%;
   background:
     radial-gradient(circle at 32% 26%, oklch(1 0 0) 0 4%, oklch(1 0 0 / 0%) 14%),
-    radial-gradient(circle at 70% 78%, oklch(0.85 0 0 / 80%) 0 6%, oklch(0.85 0 0 / 0%) 26%),
-    radial-gradient(circle at 40% 35%, oklch(0.96 0 0) 0%, oklch(0.7 0 0) 38%, oklch(0.32 0 0) 70%, oklch(0.12 0 0) 100%);
+    radial-gradient(circle at 70% 78%, oklch(0.85 var(--deco-c) var(--deco-h) / 80%) 0 6%, oklch(0.85 0 0 / 0%) 26%),
+    radial-gradient(circle at 40% 35%, oklch(0.96 var(--deco-c) var(--deco-h)) 0%, oklch(0.7 var(--deco-c) var(--deco-h)) 38%, oklch(0.32 var(--deco-c) var(--deco-h)) 70%, oklch(0.12 var(--deco-c) var(--deco-h)) 100%);
   box-shadow:
     inset -10px -14px 28px oklch(0 0 0 / 55%),
     inset 6px 8px 18px oklch(1 0 0 / 35%),
@@ -254,8 +583,8 @@
 /* Black silk: soft folds for the wide card. */
 .silk {
   background:
-    radial-gradient(60% 120% at 85% 20%, oklch(0.42 0 0 / 70%), transparent 60%),
-    conic-gradient(from 200deg at 70% 60%, oklch(0.12 0 0), oklch(0.32 0 0), oklch(0.1 0 0), oklch(0.38 0 0), oklch(0.12 0 0));
+    radial-gradient(60% 120% at 85% 20%, oklch(0.42 var(--deco-c) var(--deco-h) / 70%), transparent 60%),
+    conic-gradient(from 200deg at 70% 60%, oklch(0.12 var(--deco-c) var(--deco-h)), oklch(0.32 var(--deco-c) var(--deco-h)), oklch(0.1 var(--deco-c) var(--deco-h)), oklch(0.38 var(--deco-c) var(--deco-h)), oklch(0.12 var(--deco-c) var(--deco-h)));
   filter: blur(22px) contrast(1.15);
   opacity: 0.9;
 }

@@ -71,8 +71,8 @@
   background: var(--fill);
 }
 .x-sq--dark {
-  background: var(--pen);
-  color: var(--pen-fg);
+  background: var(--primary);
+  color: var(--primary-fg);
 }
 .x-ib {
   position: relative;
@@ -97,12 +97,12 @@
 }
 .x-ib[aria-pressed="true"],
 .x-ib--dark {
-  background: var(--pen);
-  color: var(--pen-fg);
+  background: var(--primary);
+  color: var(--primary-fg);
 }
 .x-ib--dark:hover,
 .x-ib[aria-pressed="true"]:hover {
-  background: color-mix(in oklch, var(--pen) 85%, var(--sheet));
+  background: color-mix(in oklch, var(--primary) 85%, var(--sheet));
 }
 .x-ib--ghost {
   width: 32px;
@@ -167,11 +167,11 @@
   height: 14px;
 }
 .x-btn--dark {
-  background: var(--pen);
-  color: var(--pen-fg) !important;
+  background: var(--primary);
+  color: var(--primary-fg) !important;
 }
 .x-btn--dark:hover {
-  background: color-mix(in oklch, var(--pen) 82%, var(--sheet));
+  background: color-mix(in oklch, var(--primary) 82%, var(--sheet));
 }
 .x-btn--soft:hover {
   background: color-mix(in oklch, var(--fill) 70%, var(--pen) 6%);
@@ -245,8 +245,8 @@
   color: var(--overdue);
 }
 .x-tag.is-working {
-  background: var(--pen);
-  color: var(--pen-fg);
+  background: var(--primary);
+  color: var(--primary-fg);
 }
 
 /* ---------- sidebar ---------- */
@@ -278,8 +278,8 @@
   height: 34px;
   overflow: hidden;
   border-radius: 9px;
-  background: var(--pen);
-  color: var(--pen-fg);
+  background: var(--primary);
+  color: var(--primary-fg);
   animation: mark-in 0.6s var(--spring) both;
 }
 .x-logo svg {
@@ -343,8 +343,8 @@
   transform: scale(0.98);
 }
 .x-nav__item.is-on {
-  background: var(--pen);
-  color: var(--pen-fg);
+  background: var(--primary);
+  color: var(--primary-fg);
 }
 .x-nav__item svg.lucide {
   width: 17px;
@@ -478,8 +478,8 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: var(--pen);
-  color: var(--pen-fg);
+  background: var(--primary);
+  color: var(--primary-fg);
   font-size: 13px;
   font-weight: 600;
 }
@@ -815,8 +815,8 @@
   color: var(--muted);
 }
 .x-card__icon.is-dark {
-  background: var(--pen);
-  color: var(--pen-fg);
+  background: var(--primary);
+  color: var(--primary-fg);
 }
 .x-seg {
   display: inline-flex;
@@ -913,8 +913,8 @@
   padding: 0 10px 0 4px;
   border: 0;
   border-radius: 8px;
-  background: var(--pen);
-  color: var(--pen-fg) !important;
+  background: var(--primary);
+  color: var(--primary-fg) !important;
   font-size: 12px !important;
   font-weight: 500;
   cursor: pointer;
@@ -1365,8 +1365,8 @@
   opacity: 0.9;
 }
 .x-row.is-planned .x-tile {
-  background: var(--pen);
-  color: var(--pen-fg);
+  background: var(--primary);
+  color: var(--primary-fg);
 }
 .x-row.is-soon .x-tile {
   color: var(--soon-fg);
@@ -1871,8 +1871,8 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: var(--pen);
-  color: var(--pen-fg);
+  background: var(--primary);
+  color: var(--primary-fg);
 }
 .x-chat__name {
   display: grid;
@@ -1984,8 +1984,8 @@
   max-width: 100%;
   padding: 9px 13px;
   border-radius: 10px;
-  background: var(--pen);
-  color: var(--pen-fg);
+  background: var(--primary);
+  color: var(--primary-fg);
   overflow-wrap: anywhere;
 }
 .x-q .x-gm {
@@ -2340,8 +2340,8 @@
   height: 32px;
   border: 0;
   border-radius: 9px;
-  background: var(--pen);
-  color: var(--pen-fg) !important;
+  background: var(--primary);
+  color: var(--primary-fg) !important;
   cursor: pointer;
   transition:
     opacity 0.2s,
@@ -2584,8 +2584,8 @@
   padding: 0 10px;
   border: 0;
   border-radius: 8px;
-  background: var(--pen);
-  color: var(--pen-fg) !important;
+  background: var(--primary);
+  color: var(--primary-fg) !important;
   font-size: 12.5px !important;
   font-weight: 600;
   cursor: pointer;
@@ -2846,7 +2846,7 @@
   bottom: 6px;
   left: 0;
   border-radius: 14px;
-  background: var(--pen);
+  background: var(--primary);
   transition:
     transform 0.4s var(--spring),
     width 0.3s var(--ease);
@@ -2876,7 +2876,7 @@
   transform: scale(0.94);
 }
 .x-tab.is-on {
-  color: var(--pen-fg) !important;
+  color: var(--primary-fg) !important;
 }
 .x-tab svg.lucide {
   width: 19px;

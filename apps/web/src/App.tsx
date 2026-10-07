@@ -34,7 +34,7 @@ import { useLiveRefresh, useServerEvents } from "@/lib/events"
 import { changedKeys, FreshContext } from "@/lib/fresh"
 import { useLiveJobs } from "@/lib/live"
 import { usePrefs } from "@/lib/prefs"
-import { otherTheme, switchTheme } from "@/lib/theme-switch"
+import { otherTheme, switchPalette, switchTheme } from "@/lib/theme-switch"
 import { unlessChanged } from "@/lib/utils"
 import { level } from "@/lib/status"
 import { Activity } from "@/views/activity"
@@ -393,6 +393,7 @@ function Main({
       onPrivacy: () => setPrivacy((v) => !v),
       onSidebar: () => setCompact((v) => !v),
       onTheme: () => switchTheme(setTheme, otherTheme()),
+      onPalette: (p) => switchPalette((next) => setPref("palette", next), p),
       onLanguage: () => setLocale(locale === "it" ? "en" : "it"),
       onRunJob: (job) => {
         toast(t.command.started(t.activity.jobs[job] ?? job), { id: `job-${job}`, action: { label: t.live.view, onClick: () => go("activity") } })
@@ -400,7 +401,7 @@ function Main({
       },
       onShortcuts: () => setShortcuts(true),
     }),
-    [go, openDeadline, ask, setChatOpen, setPrivacy, setCompact, setTheme, setLocale, locale, t]
+    [go, openDeadline, ask, setChatOpen, setPrivacy, setCompact, setTheme, setPref, setLocale, locale, t]
   )
 
   // Keyboard: ⌘K anywhere; single keys and "g then …" only when not typing.

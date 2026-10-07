@@ -4,6 +4,7 @@ import { cn } from "cn"
 
 import { dismissSplash, Logo } from "@/components/logo"
 import { ShinyText, stagger } from "@/components/motion"
+import { PalettePicker } from "@/components/palette-picker"
 import { LanguageSwitch } from "@/components/shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -120,6 +121,10 @@ export function Intro({ onDone }: { onDone: (tour: boolean) => void }) {
                   {d.nameHint}
                 </span>
               </label>
+              <div className="flex flex-col gap-2 text-sm">
+                <span className="text-muted-foreground">{d.paletteLabel}</span>
+                <PalettePicker />
+              </div>
             </CardContent>
             <CardFooter className="justify-end">
               <Button type="submit" autoFocus>

@@ -3,6 +3,7 @@ import { CarIcon, CheckIcon, HouseIcon, PlusIcon, SparklesIcon, XIcon } from "lu
 import { cn } from "cn"
 
 import { AddDocuments } from "@/components/add-documents"
+import { PalettePicker, ThemeSwitch } from "@/components/palette-picker"
 import { LanguageSwitch } from "@/components/shell"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,8 +18,8 @@ import { Hint, UsernameHint } from "@/views/login"
 const MIN_PASSWORD = 8
 
 type Row = Record<string, Value>
-type Step = "welcome" | "name" | "password" | "profile" | "documents" | "done"
-const ALL: Step[] = ["welcome", "name", "password", "profile", "documents", "done"]
+type Step = "welcome" | "look" | "name" | "password" | "profile" | "documents" | "done"
+const ALL: Step[] = ["welcome", "look", "name", "password", "profile", "documents", "done"]
 
 /** 0–3: length and variety, enough to nudge towards a longer masterpass. */
 function strength(p: string): number {
@@ -41,8 +42,9 @@ const section = (v: unknown): Row => (v && typeof v === "object" && !Array.isArr
 const rows = (v: unknown): Row[] => (Array.isArray(v) ? (v as Row[]) : v && typeof v === "object" ? [v as Row] : [])
 
 /**
- * First run: welcome, name, masterpass (creates the owner and logs in), basic profile, first
- * documents. When the owner already exists but never finished, it starts from the profile.
+ * First run: welcome, look (theme and palette, on this device), name, masterpass (creates the owner
+ * and logs in), basic profile, first documents. When the owner already exists but never finished,
+ * it starts from the look and goes on to the profile.
  */
 export function Onboarding({ session, onDone }: { session: Session; onDone: (tour: boolean) => void }) {
   const { t } = useI18n()
@@ -169,6 +171,31 @@ export function Onboarding({ session, onDone }: { session: Session; onDone: (tou
             <CardFooter className="justify-end">
               <Button onClick={() => go(1)} autoFocus>
                 {t.onboarding.start}
+              </Button>
+            </CardFooter>
+          </>
+        )}
+
+        {step === "look" && (
+          <>
+            <CardHeader>
+              <CardTitle className="text-2xl font-medium tracking-tight">{t.onboarding.lookTitle}</CardTitle>
+              <CardDescription>{t.onboarding.lookBody}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm text-muted-foreground">{t.onboarding.lookTheme}</span>
+                <ThemeSwitch />
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-sm text-muted-foreground">{t.onboarding.lookPalette}</span>
+                <PalettePicker size="large" />
+              </div>
+            </CardContent>
+            <CardFooter className="justify-between">
+              {back}
+              <Button className="ml-auto" onClick={() => go(1)} autoFocus>
+                {t.onboarding.next}
               </Button>
             </CardFooter>
           </>

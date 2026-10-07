@@ -11,6 +11,7 @@ import {
   MailIcon,
   MessageSquarePlusIcon,
   MoonIcon,
+  PaletteIcon,
   PanelLeftIcon,
   SearchIcon,
   SlidersHorizontalIcon,
@@ -27,6 +28,7 @@ import { StatusBadge } from "@/components/status"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useI18n } from "@/i18n"
 import type { Data } from "@/lib/api"
+import { PALETTES, type Palette } from "@/lib/palettes"
 import { parseDate } from "@/lib/format"
 import { level } from "@/lib/status"
 
@@ -55,6 +57,7 @@ export type CommandActions = {
   onPrivacy: () => void
   onSidebar: () => void
   onTheme: () => void
+  onPalette: (palette: Palette) => void
   onLanguage: () => void
   onRunJob: (job: "gmail" | "triage") => void
   onShortcuts: () => void
@@ -184,6 +187,7 @@ export function CommandPalette({
     action("triage", WandSparklesIcon, t.command.actions.triage, () => actions.onRunJob("triage"))
     action("privacy", EyeOffIcon, t.command.actions.privacy, actions.onPrivacy, ["P"])
     action("theme", MoonIcon, t.command.actions.theme, actions.onTheme, ["D"])
+    for (const p of PALETTES) action(`palette-${p}`, PaletteIcon, t.command.actions.palette(t.palettes[p].name), () => actions.onPalette(p))
     action("sidebar", PanelLeftIcon, t.command.actions.sidebar, actions.onSidebar, ["B"])
     action("language", LanguagesIcon, t.command.actions.language, actions.onLanguage)
     action("settings", SlidersHorizontalIcon, t.command.actions.settings, () => actions.onView("settings"))
