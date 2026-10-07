@@ -48,6 +48,7 @@ export function deadline(
   const { amountTodo, ...rest } = d
   const base: Deadline = {
     repeat: "none",
+    shift: "none",
     until: null,
     severity: "medium",
     remind_days: [],

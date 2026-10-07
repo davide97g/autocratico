@@ -7,6 +7,7 @@ import {
   type FinanceTransaction,
   futureByMonth,
   futureExpenses,
+  matchPayments,
   parseDeadlines,
   parseInvestments,
   periodStart,
@@ -190,5 +191,84 @@ broker = "nameless"
     ])
     expect(p).toMatchObject({ total: 1650, cash: 50, cost: 900, costedValue: 1100 })
     expect(p.holdings.map((h) => h.name)).toEqual(["MSCI World", "S&P 500"])
+  })
+})
+
+describe("payment matching", () => {
+  const toml = `[[deadline]]
+id = "condo-fee"
+title = "Condominium fee"
+area = "home"
+date = 2026-07-15
+repeat = "every 3 months"
+amounts = { "2026-07-15" = 210.00 }
+
+[[deadline]]
+id = "loan"
+title = "Loan instalment"
+area = "bank"
+date = 2026-09-28
+repeat = "monthly"
+amount = 650.00
+finance_recurring = "loan-template"
+
+[[deadline]]
+id = "tari"
+title = "Waste tax TARI"
+area = "home"
+date = 2026-10-01
+amount = "TODO"
+finance_category = "taxes"
+
+[[deadline]]
+id = "visit"
+title = "Doctor"
+area = "health"
+date = 2026-10-02
+`
+  const deadlines = parseDeadlines(toml)
+  const today = "2026-10-07"
+  const items = agenda(deadlines, { done: {} }, today)
+  const t = (id: string, date: string, amount: number, description: string, over: Partial<FinanceTransaction> = {}): FinanceTransaction => ({
+    id,
+    date,
+    amount,
+    description,
+    category: "other",
+    type: "expense",
+    tag: null,
+    recurringId: null,
+    ...over,
+  })
+  const mirror = (transactions: FinanceTransaction[]) => ({ synced_at: "", transactions, categories: [], tags: [], recurring: [] })
+
+  it("proposes the transactions that look like open payments", () => {
+    const m = matchPayments(
+      deadlines,
+      items,
+      mirror([
+        t("a", "2026-10-13", 240, "Bonifico condominio Example Residence"), // estimate within 15%, words: but in the future
+        t("b", "2026-10-06", 212.5, "SEPA addebito condominium"), // estimate + words
+        t("c", "2026-09-29", 650, "Bank", { recurringId: "loan-template" }), // recurring template
+        t("d", "2026-10-03", 87, "Comune TARI acconto", { category: "taxes" }), // unknown amount: category + words
+        t("e", "2026-10-02", 60, "Doctor"), // not a payment
+        t("f", "2026-09-30", 650, "Something else"), // same amount, but the loan is taken by c
+      ]),
+      {},
+      today
+    )
+    expect(m.map((x) => [x.key, x.transaction.id, x.reasons])).toEqual([
+      ["loan@2026-09-28", "c", ["recurring", "amount"]],
+      ["tari@2026-10-01", "d", ["category", "words"]],
+      ["condo-fee@2026-10-15", "b", ["amount", "words"]],
+    ])
+    expect(m[0].id).toMatch(/^[0-9a-f]{8}$/)
+  })
+
+  it("leaves out linked transactions, linked or done occurrences and unrelated amounts", () => {
+    const transactions = [t("c", "2026-09-29", 650, "Bank", { recurringId: "loan-template" }), t("x", "2026-10-05", 210, "Supermarket")]
+    expect(matchPayments(deadlines, items, mirror(transactions), { "loan@2026-09-28": "c" }, today)).toEqual([])
+    const done = agenda(deadlines, { done: { "loan@2026-09-28": "2026-09-29" } }, today)
+    expect(matchPayments(deadlines, done, mirror(transactions), {}, today)).toEqual([])
   })
 })

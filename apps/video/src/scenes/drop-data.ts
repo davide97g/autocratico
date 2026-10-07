@@ -43,3 +43,22 @@ export const BLOCKS: Block[] = [
   { lines: block('second-irpef-advance', 'Secondo acconto IRPEF', 'tax', 'high', '2026-11-30', 'amount = 320.00'), days: 58, severity: 'high', card: 'load' },
   { lines: block('tari', 'TARI', 'home', 'medium', '"TODO"', 'notes = "Le date dipendono dal Comune"'), days: null, severity: 'medium', card: 'dates' },
 ];
+
+/**
+ * The upright cut: the same cards in the phone's Panoramica (rects in px of the 1179×9876
+ * phone-overview-full capture; its first 2556 px are phone-overview). `sidebar` is the page's header
+ * (date, title, search), the phone's counterpart of the sidebar. The Calendario stops above the tab bar
+ * baked into the capture; Pratiche lands with the second hit, with no block of its own.
+ */
+export type PhoneCardId = CardId | 'prat';
+export const PHONE_CARDS: Record<PhoneCardId, { rect: [number, number, number, number]; hit: 0 | 1; dark?: boolean }> = {
+  sidebar: { rect: [0, 0, 1179, 470], hit: 0 },
+  cal: { rect: [48, 495, 1083, 1800], hit: 0 },
+  next: { rect: [48, 2757, 1083, 1152], hit: 0, dark: true },
+  watch: { rect: [48, 3981, 1083, 1284], hit: 1 },
+  load: { rect: [48, 5337, 1083, 1068], hit: 1 },
+  dates: { rect: [48, 6477, 1083, 711], hit: 1 },
+  prat: { rect: [48, 7260, 1083, 2184], hit: 1 },
+};
+/** Upright: the file's blocks in one column, in this order (indices into BLOCKS). */
+export const COLUMN = [1, 4, 0, 2, 5, 3, 6, 7];

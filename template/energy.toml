@@ -1,0 +1,23 @@
+# Electricity and gas supplies: every week the server compares them with the offers on ARERA's
+# Portale Offerte (open data downloaded whole and ranked on the server: nothing about you is sent)
+# and writes energy/<id>.md. Filled in by you or by the agent from a bill.
+#
+# [[supply]]
+#   id            unique, kebab-case (the report is energy/<id>.md)
+#   title         short
+#   commodity     "electricity" | "gas"
+#   customer      "domestic" (default) | "business"
+#   resident      true (default) when it is the home you live in; domestic only
+#   annual        yearly consumption: kWh for electricity, Smc for gas (bills show it)
+#   bands         optional, electricity: shares of F1, F2, F3, adding up to 1 (default 0.33, 0.31, 0.36)
+#   power_kw      optional, electricity: contracted power (default 3)
+#   istat         optional: the comune's ISTAT code, to include offers limited to an area
+#   supplier      optional, current supplier
+#   price         optional, current energy price before taxes: €/kWh or €/Smc (the supplier's part)
+#   fixed_fee     optional, current fixed fee before taxes, €/year (the supplier's part)
+#   fixed_until   optional, last day of the locked price (also a deadline in deadlines.toml)
+#   deadline      optional, id of that deadline
+#
+# Comparison: what the supplier charges in a year (energy, fixed fee, its own components,
+# unconditional discounts). Network and system charges and taxes are left out: they are the same
+# whoever the supplier is. Variable offers are estimated with the latest monthly PUN/PSV.

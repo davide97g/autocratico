@@ -3,11 +3,12 @@
 // says, while the rig (_bollo-rig.ts) keeps him alive: lip-sync, springs on the music, eyes.
 import * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D, clearRT } from '../engine/gl';
+import { Layer2D, clearRT, VERTICAL } from '../engine/gl';
 import { drawBolloHead } from './_bollo-head';
 import { BolloRig } from './_bollo-rig';
 import { Choreo, screamPose } from './_bollo-choreo';
 import { CROWDS, CUES } from './bollo-choreo';
+import { CROWDS_V, CUES_V } from './bollo-choreo-v';
 import { frameIdx } from '../engine/util';
 
 export default class Bollo extends Scene {
@@ -18,7 +19,10 @@ export default class Bollo extends Scene {
 
   override init() {
     this.rig = new BolloRig(this.ctx.lyrics, this.ctx.audio);
-    this.choreo = new Choreo(CUES, this.ctx.lyrics, this.ctx.audio, CROWDS);
+    // the upright cut (9:16) has its own staging; the wide one is untouched
+    this.choreo = VERTICAL
+      ? new Choreo(CUES_V, this.ctx.lyrics, this.ctx.audio, CROWDS_V)
+      : new Choreo(CUES, this.ctx.lyrics, this.ctx.audio, CROWDS);
   }
 
   render(f: Frame, out: THREE.WebGLRenderTarget): PostOverrides {

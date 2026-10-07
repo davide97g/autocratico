@@ -240,3 +240,98 @@ export function cartella(): Sprite {
     qr(c, R - 170, y + 40, 170, 97);
   });
 }
+
+/**
+ * The same register for the upright cut: one tall right-hand page (a sliver of the facing page and
+ * the gutter at its left), larger hand, so it fills a phone screen top to bottom. 1160×2080.
+ */
+export function ledgerTall(): Sprite {
+  const w = 1160, h = 2080;
+  return makeSprite(w, h, (c) => {
+    const r = mulberry32(1987);
+    c.fillStyle = '#1d1d1d';
+    roundRect(c, 0, 0, w, h, 14); c.fill();
+    c.save(); roundRect(c, 0, 0, w, h, 14); c.clip(); paperGrain(c, w, h, 2.5); c.restore();
+    for (let i = 0; i < 6; i++) {
+      c.fillStyle = i % 2 ? '#d4d3d0' : '#c4c3c0';
+      roundRect(c, 16 + i * 1.5, 18 + i * 1.2, w - 32 - i * 3, h - 36 - i * 2.4, 4); c.fill();
+    }
+    const top = 26, bot = h - 26, gut = 70;
+    for (const [x0, x1] of [[26, gut], [gut, w - 26]] as [number, number][]) {
+      const facing = x0 < gut;
+      c.save();
+      c.beginPath(); c.rect(x0, top, x1 - x0, bot - top); c.clip();
+      c.fillStyle = OLD; c.fillRect(x0, top, x1 - x0, bot - top);
+      paperGrain(c, w, h, 1.6);
+      if (!facing) {
+        for (let i = 0; i < 12; i++) {
+          const fx = x0 + r() * (x1 - x0), fy = top + r() * (bot - top), fr = 30 + r() * 150;
+          const g = c.createRadialGradient(fx, fy, 0, fx, fy, fr);
+          g.addColorStop(0, `rgba(90,85,80,${0.04 + r() * 0.06})`); g.addColorStop(1, 'rgba(90,85,80,0)');
+          c.fillStyle = g; c.fillRect(fx - fr, fy - fr, fr * 2, fr * 2);
+        }
+      }
+      const eg = c.createLinearGradient(x0, 0, x1, 0);
+      if (facing) { eg.addColorStop(0, 'rgba(0,0,0,0.12)'); eg.addColorStop(1, 'rgba(0,0,0,0.42)'); }
+      else { eg.addColorStop(0, 'rgba(0,0,0,0.34)'); eg.addColorStop(0.09, 'rgba(0,0,0,0)'); eg.addColorStop(0.95, 'rgba(0,0,0,0)'); eg.addColorStop(1, 'rgba(0,0,0,0.10)'); }
+      c.fillStyle = eg; c.fillRect(x0, top, x1 - x0, bot - top);
+      c.restore();
+    }
+    const ink = '#2a2a2a', rule = 'rgba(60,60,60,0.55)';
+    const serif = (s: string, x: number, y: number, size: number, align: CanvasTextAlign = 'left', wt = 600) => {
+      c.font = font(F.serif(wt), size); c.fillStyle = ink; c.textAlign = align; c.letterSpacing = `${size * 0.08}px`;
+      c.fillText(s, x, y); c.letterSpacing = '0px'; c.textAlign = 'left';
+    };
+    const L = 100, R = w - 60, mid = (L + R) / 2;
+    serif('REGISTRO DI PROTOCOLLO', mid, 104, 40, 'center');
+    serif('ANNO 1987  ·  foglio n. 214', mid, 146, 24, 'center', 500);
+    serif('Comune di Esempio — Ufficio Tributi', mid, 180, 22, 'center', 400);
+    const hy = 214, rowH = 50, rows = 35;
+    const cols: [string, number][] = [['N.', L], ['Data', 210], ['Provenienza', 380], ['Oggetto', 700]];
+    hline(c, L, R, hy, 1.4, rule); hline(c, L, R, hy + 4, 0.8, rule); hline(c, L, R, hy + 44, 1.2, rule);
+    for (const [name, x] of cols) serif(name, x + 8, hy + 31, 20, 'left', 600);
+    for (const [, x] of cols.slice(1)) vline(c, x, hy, hy + 44 + rows * rowH, 1, rule);
+    for (let i = 1; i <= rows; i++) hline(c, L, R, hy + 44 + i * rowH, 0.7, 'rgba(60,60,60,0.35)');
+    vline(c, L - 4, hy, hy + 44 + rows * rowH, 1.2, 'rgba(180,60,60,0.35)');
+    const prov = ['Rossi Mario', 'Intendenza di Fin.', 'Uff. del Registro', 'Pretura', 'Esattoria', 'Bianchi G.', 'Prefettura', 'Ferri Anna', 'Ufficio Imposte', 'Conti Luigi'];
+    const ogg = ['ricorso tassa rifiuti 1985', 'istanza rimborso IRPEF', 'certificato di residenza', 'sollecito pagamento INVIM', 'reclamo ruolo esattoriale', 'domanda di sgravio', 'notifica avviso', 'richiesta copia atti', 'tassa occupazione suolo', 'opposizione ingiunzione'];
+    let d = 2;
+    for (let i = 0; i < rows; i++) {
+      const y = hy + 44 + (i + 1) * rowH - 13;
+      if (r() < 0.3) d++;
+      const tilt = (r() - 0.5) * 0.02;
+      const col = `rgba(28,30,38,${0.72 + r() * 0.2})`;
+      hand(c, String(4127 + i), L + 6, y, 30, { font: 'hscript', rot: tilt, color: col, lw: 1.7 });
+      hand(c, `${d}/3/87`, 220, y, 30, { font: 'hscript', rot: tilt, color: col, lw: 1.7 });
+      c.save(); c.beginPath(); c.rect(382, y - 36, 314, 48); c.clip();
+      hand(c, prov[Math.floor(r() * prov.length)]!, 390, y, 30, { font: 'hscript', rot: tilt, color: col, lw: 1.7 });
+      c.restore();
+      c.save(); c.beginPath(); c.rect(702, y - 36, R - 706, 48); c.clip();
+      hand(c, ogg[(i * 7 + 3) % ogg.length]!, 710, y, 27, { font: 'hscript', rot: tilt, color: col, lw: 1.6 });
+      c.restore();
+      if (i === 6 || i === 15 || i === 27) { c.strokeStyle = col; c.lineWidth = 1.8; c.beginPath(); c.moveTo(388, y - 9); c.lineTo(R - 20, y - 7); c.stroke(); }
+    }
+    const dateStamp = (x: number, y: number, a: number, rot: number, day: string) => {
+      c.save(); c.translate(x, y); c.rotate(rot); c.scale(1.2, 1.2);
+      c.globalAlpha = a; c.strokeStyle = HEX.overdue; c.fillStyle = HEX.overdue; c.lineWidth = 3;
+      roundRect(c, -130, -52, 260, 104, 8); c.stroke();
+      c.lineWidth = 1.2; roundRect(c, -122, -44, 244, 88, 6); c.stroke();
+      c.font = font(F.sans(700), 15); c.textAlign = 'center'; c.letterSpacing = '2px';
+      c.fillText('COMUNE DI ESEMPIO', 0, -20);
+      c.font = font(F.mono(700), 30); c.letterSpacing = '0px';
+      c.fillText(day, 0, 16);
+      c.font = font(F.sans(500), 13); c.fillText('PROTOCOLLO GENERALE', 0, 36);
+      c.restore();
+    };
+    dateStamp(870, 560, 0.55, -0.12, '13 MAR 1987');
+    dateStamp(400, 1560, 0.42, 0.08, '16 MAR 1987');
+    c.save();
+    c.strokeStyle = 'rgba(80,72,64,0.18)'; c.lineWidth = 5; c.filter = 'blur(1.5px)';
+    c.beginPath(); c.arc(900, 1820, 80, 0.3, TAU - 0.5); c.stroke();
+    c.lineWidth = 2; c.beginPath(); c.arc(902, 1818, 71, 1.2, TAU + 0.2); c.stroke();
+    c.restore();
+    const sg = c.createLinearGradient(gut - 40, 0, gut + 40, 0);
+    sg.addColorStop(0, 'rgba(0,0,0,0)'); sg.addColorStop(0.5, 'rgba(0,0,0,0.35)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = sg; c.fillRect(gut - 40, top, 80, bot - top);
+  });
+}

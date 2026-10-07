@@ -22,8 +22,11 @@ function text(c: C, s: string, x: number, y: number, size: number, o: { w?: numb
 }
 
 // ---------------------------------------------------------------- 1a. share sheet over a PDF
-/** `up` 0..1 sheet position, `tap` s since the tap on "Invia ad Autocratico" (negative = not yet). */
-export function shareSheet(c: C, up: number, tap: number) {
+/**
+ * `up` 0..1 sheet position, `tap` s since the tap on "Invia ad Autocratico" (negative = not yet).
+ * `lift` (pt): the sheet opens that much taller (the upright cut keeps its actions higher on screen).
+ */
+export function shareSheet(c: C, up: number, tap: number, lift = 0) {
   // the PDF in Quick Look
   c.fillStyle = '#f2f2f2'; c.fillRect(0, 0, SW, SH);
   statusBar(c, '08:05');
@@ -54,10 +57,10 @@ export function shareSheet(c: C, up: number, tap: number) {
   if (up <= 0) return;
   const e = ease.outQuart(clamp(up));
   c.fillStyle = `rgba(0,0,0,${0.22 * e})`; c.fillRect(0, 0, SW, SH);
-  const top = SH - 548 * e;
+  const top = SH - (548 + lift) * e;
   c.save();
   c.fillStyle = '#f2f2f2';
-  roundRect(c, 0, top, SW, 620, 14); c.fill();
+  roundRect(c, 0, top, SW, 620 + lift, 14); c.fill();
   c.fillStyle = '#c7c7c7'; roundRect(c, SW / 2 - 18, top + 6, 36, 5, 2.5); c.fill();
   // header: thumbnail + name
   c.fillStyle = '#fff'; c.fillRect(20, top + 26, 38, 48);
@@ -217,9 +220,22 @@ function bubble(c: C, x: number, y: number, w: number, h: number, out: boolean) 
   c.restore();
 }
 
-/** 1c. A forwarded voice note and the bot's answer ("🎙️ …" + "Aggiunto all'inbox."). */
-export function tgVoice(c: C, k: number, reply: number) {
+/** Telegram chat content scrolled up by `lift` pt, clipped under the header (the upright cut). */
+function lifted(c: C, lift: number, body: () => void) {
+  if (!lift) { body(); return; }
+  c.save();
+  c.beginPath(); c.rect(0, 105, SW, SH - 189); c.clip();
+  c.translate(0, -lift);
+  body();
+  c.restore();
+}
+
+/** 1c. A forwarded voice note and the bot's answer ("🎙️ …" + "Aggiunto all'inbox."). `lift`: see lifted(). */
+export function tgVoice(c: C, k: number, reply: number, lift = 0) {
   tgFrame(c, '08:05');
+  lifted(c, lift, () => tgVoiceBody(c, k, reply));
+}
+function tgVoiceBody(c: C, k: number, reply: number) {
   text(c, 'Oggi', SW / 2, 128, 13, { w: 500, align: 'center', col: HEX.graphite });
   // the voice bubble (outgoing)
   if (k >= 0) {
@@ -261,8 +277,11 @@ export function tgVoice(c: C, k: number, reply: number) {
  * 3. The 08:30 reminder (jobs.ts #reminders: "🔔 Promemoria" / "• Bollo auto — tra 3 giorni (2026-10-06)")
  * with the buttons. `k` s since it arrived, `hl` s since "tra tre giorni", `tap` s since "Fatto!".
  */
-export function tgReminder(c: C, k: number, hl: number, tap: number) {
+export function tgReminder(c: C, k: number, hl: number, tap: number, lift = 0) {
   tgFrame(c, '08:30');
+  lifted(c, lift, () => tgReminderBody(c, k, hl, tap));
+}
+function tgReminderBody(c: C, k: number, hl: number, tap: number) {
   text(c, 'Oggi', SW / 2, 128, 13, { w: 500, align: 'center', col: HEX.graphite });
   // yesterday's exchange above, faint context
   bubble(c, SW - 12 - 188, 232, 188, 40, true);
@@ -502,5 +521,32 @@ function warnLines(c: C, x: number, y: number, _w: number, typed: number, hl: nu
 /** The phone-activity capture with an iOS status bar over it. */
 export function activity(c: C, img: ImageBitmap, time: string) {
   c.drawImage(img, 0, 0, SW, SH);
+  statusBar(c, time);
+}
+
+/**
+ * The upright cut: the whole Attività page (phone-activity-full) scrolled by `scroll` pt, under an
+ * iOS status bar. The full capture has the tab bar baked in over the second commit (pt 758–870):
+ * that band is rebuilt plainly (card, rows, the commit's title as in the git log).
+ */
+export function activityScrolled(c: C, full: ImageBitmap, time: string, scroll: number) {
+  const s = full.width / SW;
+  c.fillStyle = HEX.paper; c.fillRect(0, 0, SW, SH);
+  c.drawImage(full, 0, scroll * s, full.width, SH * s, 0, 0, SW, SH);
+  c.save();
+  c.translate(0, -scroll);
+  c.fillStyle = '#d0d0d0'; c.fillRect(15, 758, 363, 112);
+  c.fillStyle = '#fdfdfd'; c.fillRect(16, 758, 361, 112);
+  c.save();
+  c.beginPath(); c.rect(0, 758, SW, 112); c.clip();
+  c.fillStyle = '#f6f6f6';
+  roundRect(c, 40, 700, 313, 68, 12); c.fill();
+  roundRect(c, 40, 778, 313, 200, 12); c.fill();
+  glyph(c, 'commit', 53, 791, 18, HEX.graphite, 1.6);
+  text(c, 'Agent: 3 new item(s)', 80, 806, 16, { w: 500 });
+  text(c, 'e1c798b · 03/10/26, 18:01 ·', 80, 825, 12.5, { mono: true, col: HEX.graphite });
+  c.restore();
+  c.restore();
+  c.fillStyle = 'rgba(230,230,230,0.96)'; c.fillRect(0, 0, SW, 54);
   statusBar(c, time);
 }

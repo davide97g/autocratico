@@ -16,7 +16,8 @@ import type { Config } from "./config.ts"
 import type { GmailLinks } from "./gmail-links.ts"
 import { locks, readJson, writeSecret } from "./files.ts"
 import type { Inbox, Upload } from "./inbox.ts"
-import type { Button, Jobs, Notifier } from "./jobs.ts"
+import type { PaymentMatches } from "./matches.ts"
+import { type Button, JOB_NAMES, type Jobs, type Notifier } from "./jobs.ts"
 import type { Changes } from "./changes.ts"
 import { finishAnswer } from "./chat-actions.ts"
 import type { Reminders } from "./reminders.ts"
@@ -57,6 +58,9 @@ const TEXT = {
     inbox: "Inbox",
     doneOk: (t: string) => `✓ Segnata come fatta: ${t}`,
     doneMissing: "Nessuna scadenza aperta con quell'id.",
+    matchPaid: (t: string) => `✓ Pagata: ${t}`,
+    matchDismissed: "Ok, non lo propongo più.",
+    matchGone: "Proposta non più aperta.",
     newChat: "Nuova conversazione.",
     thinking: "…",
     yes: "✅ Sì",
@@ -106,6 +110,9 @@ const TEXT = {
     inbox: "Inbox",
     doneOk: (t: string) => `✓ Marked as done: ${t}`,
     doneMissing: "No open deadline with that id.",
+    matchPaid: (t: string) => `✓ Paid: ${t}`,
+    matchDismissed: "Ok, I won't propose it again.",
+    matchGone: "This proposal is no longer open.",
     newChat: "New conversation.",
     thinking: "…",
     yes: "✅ Yes",
@@ -168,6 +175,8 @@ type Deps = {
   transcriber: Transcriber
   changes: Changes
   gmailLinks: GmailLinks
+  /** Payments found in the finance source: the buttons under their notification answer here. */
+  matches?: PaymentMatches
   jobs: () => Jobs | null
 }
 
@@ -340,7 +349,7 @@ export class Telegram implements Notifier {
     })
     bot.command("stato", (ctx) => {
       const jobs = this.#d.jobs()
-      const lines = (["gmail", "finance", "triage", "reminders", "digest", "backup"] as const).map((name) => {
+      const lines = JOB_NAMES.map((name) => {
         const last = jobs?.last(name)
         return `• ${name}: ${last ? `${last.ok ? "ok" : "ERR"} ${last.started.slice(0, 16).replace("T", " ")} — ${last.summary}` : "-"}`
       })
@@ -354,6 +363,18 @@ export class Telegram implements Notifier {
       const o = this.#d.store.data().agenda.find((x) => x.key === key)
       if (o) await this.#d.store.setDone(key, true)
       await ctx.answerCallbackQuery({ text: o ? t().doneOk(redact(o.title)).slice(0, 190) : t().doneMissing })
+    })
+
+    // A payment found in the finance source: paid by that transaction, or not this one.
+    bot.callbackQuery(/^(pay|nopay):([0-9a-f]{8})$/, async (ctx) => {
+      const matches = this.#d.matches
+      const [, answer, id] = ctx.match
+      if (answer === "pay") {
+        const m = await matches?.accept(id)
+        return ctx.answerCallbackQuery({ text: m ? t().matchPaid(redact(m.title)).slice(0, 190) : t().matchGone })
+      }
+      const ok = await matches?.dismiss(id)
+      return ctx.answerCallbackQuery({ text: ok ? t().matchDismissed : t().matchGone })
     })
 
     // Yes/no under an answer that asks to confirm a change: the choice goes to the agent as a message.

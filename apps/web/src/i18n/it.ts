@@ -84,6 +84,16 @@ export const it: Messages = {
     if (n === -1) return "ieri"
     return n > 0 ? `tra ${n} gg` : `${-n} gg fa`
   },
+  matches: {
+    title: "Pagamenti trovati",
+    description: "Visti nelle finanze: sono queste scadenze?",
+    due: (date: string) => `Scade il ${date}`,
+    seen: (date: string) => `pagato il ${date}`,
+    markPaid: "Segna pagata",
+    notThis: "Non è questo",
+    paid: "Segnata come pagata",
+    dismissed: "Non la propongo più",
+  },
   overview: {
     calendar: "Calendario",
     calendarDescription: (months) => `Prossimi ${months} mesi, per ambito`,
@@ -134,6 +144,7 @@ export const it: Messages = {
     details: "Mostra dettagli",
     hideDetails: "Nascondi dettagli",
     repeat: "Si ripete",
+    shiftedFrom: (date: string) => `Slittata dal ${date} (weekend o festivo)`,
     repeats: { none: "una volta", "": "una volta", yearly: "ogni anno", monthly: "ogni mese" },
     amount: "Importo",
     noSource: "Nessuna fonte registrata: chiedi a Claude nella chat da dove viene, o aggiungi `source` in deadlines.toml.",
@@ -438,7 +449,7 @@ export const it: Messages = {
     revert: "Annulla",
     reverted: (hash) => `Annullata con il commit ${hash}.`,
     confirmRevert: "Annullare questa modifica? Un nuovo commit riporta i file com'erano prima.",
-    jobs: { gmail: "Sync Gmail", triage: "Smistamento agente", reminders: "Promemoria", digest: "Riepilogo settimanale", backup: "Backup", finance: "Sync Finance" },
+    jobs: { gmail: "Sync Gmail", triage: "Smistamento agente", reminders: "Promemoria", digest: "Riepilogo settimanale", backup: "Backup", finance: "Sync Finance", taxreturn: "Pratica dichiarazione", rules: "Verifica regole", energy: "Offerte luce e gas" },
   },
   finance: {
     notConnected: "Collega una fonte nelle Impostazioni (un server di finanze o gli export CSV della banca) per vedere qui spese, entrate e andamento.",
@@ -708,7 +719,7 @@ export const it: Messages = {
     valueHint: "Quanto costerebbe questo lavoro pagato a token: lo copre l'abbonamento.",
     average: "Tempo medio",
     failed: (n) => `${n} fallite`,
-    sources: { chat: "Chat web", telegram: "Telegram", triage: "Smistamento", digest: "Riepilogo" },
+    sources: { chat: "Chat web", telegram: "Telegram", triage: "Smistamento", digest: "Riepilogo", taxreturn: "Dichiarazione", rules: "Verifica regole" },
     noRuns: "Nessuna richiesta negli ultimi 7 giorni.",
   },
   gmail: {

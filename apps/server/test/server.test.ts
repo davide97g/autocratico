@@ -277,6 +277,16 @@ describe("agent", () => {
     expect(denied).toEqual(expect.arrayContaining(["Edit", "Write", "Read(//data/secrets/**)"]))
   })
 
+  it("lets the research profile see and edit only the catalog", () => {
+    const { allowed, denied } = tools("research", "/data")
+    expect(allowed.filter((t) => t.startsWith("Edit") || t.startsWith("Write"))).toEqual(["Edit(//data/catalog/**)", "Write(//data/catalog/**)", "Edit(//data/notes/JOURNAL.md)"])
+    expect(allowed).toContain("WebFetch(domain:gov.it)")
+    expect(allowed.some((t) => t.startsWith("Bash(python3 scripts/ics") || t.startsWith("Bash(python3 scripts/upcoming"))).toBe(false)
+    expect(denied).toEqual(
+      expect.arrayContaining(["Read(//data/secrets/**)", "Read(//data/inbox/**)", "Grep(//data/archive/**)", "Read(//data/profile.toml)", "Glob(//data/cases/**)", "Read(//data/finance/**)", "Read(//data/notes/SITUATION.md)"])
+    )
+  })
+
   it("reads the triage result block", () => {
     const r = parseTriage('Done.\n```json\n{"items":[{"id":"a","status":"processed","outcome":"TARI aggiunta"}],"summary":"TARI ||120 €||","phishing":[]}\n```')
     expect(r?.items[0].id).toBe("a")
@@ -346,6 +356,43 @@ describe("triage order", () => {
     // Asked by hand: no waiting.
     await jobs.trigger("triage", true)
     expect(seen[2]).toHaveLength(2)
+  })
+})
+
+describe("agent jobs", () => {
+  const fakeClaude = (answer: string, calls: { prompt: string; profile: string }[]) =>
+    ({
+      available: true,
+      complete: async (o: { prompt: string; profile: string }) => {
+        calls.push(o)
+        return { text: answer, session: null, error: null }
+      },
+    }) as unknown as Claude
+
+  it("prepares the tax return case and re-checks the catalog with the research profile", async () => {
+    const { s } = setup()
+    const calls: { prompt: string; profile: string }[] = []
+    const sent: string[] = []
+    const notifier = () => ({ notify: async (text: string) => void sent.push(text) })
+    const make = (answer: string) =>
+      new Jobs({ config: s.config, store: s.store, inbox: s.inbox, claude: fakeClaude(answer, calls), repo: s.repo, reminders: s.reminders, finance: s.finance, notifier })
+
+    const tax = await make('Done.\n```json\n{"case": "x", "items": 12, "missing": 4, "summary": "CU ok"}\n```').trigger("taxreturn")
+    expect(tax.ok).toBe(true)
+    expect(tax.summary).toMatch(/^case \d{4}-730: 12 items, 4 missing/)
+    expect(calls[0].profile).toBe("triage")
+    expect(calls[0].prompt).toMatch(/cases\/\d{4}-730\/README\.md/)
+    expect(sent[0]).toContain("CU ok")
+
+    const answer = '```json\n{"checked": [{"entry": "documents", "changed": true, "what": "CIE"}], "deadlines": ["730: extended"], "summary": "Updated"}\n```'
+    const rules = await make(answer).trigger("rules")
+    expect(rules.ok).toBe(true)
+    expect(rules.summary).toMatch(/^1 entries checked, 1 updated, 1 deadline\(s\) to review/)
+    expect(calls[1].profile).toBe("research")
+    expect(calls[1].prompt).toContain("catalog/documents.md")
+    expect(sent[1]).toContain("⚠️ 730: extended")
+
+    expect((await make("no block").trigger("rules")).ok).toBe(false)
   })
 })
 

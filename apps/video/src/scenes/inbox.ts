@@ -9,18 +9,20 @@
 // No green: "Archiviato" uses the Badge's default (ink) variant here, and captures are degreened.
 import * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D, W } from '../engine/gl';
+import { Layer2D, W, VERTICAL, SAFE } from '../engine/gl';
 import { HEX } from '../engine/palette';
 import { F, font } from '../engine/type';
 import { clamp, ease, lerp, prog, springStep, TAU } from '../engine/util';
 import { app, drawBrowser, drawPhone, drawStudio, roundRect } from './_motifs';
 import { Plane3D, quadShadow, capture, greyCapture, badge, icon, riseWord, textW, truncate, wrap, rgba, type Pose } from './inbox-kit';
 import type { Word } from '../engine/lyrics';
+import { dlScreen, liftedTab, fitW } from './inbox-vertical';
 
 type Src = 'upload' | 'mail' | 'send' | 'phone';
 interface Item { title: string; source: string; icon: Src; from?: string; date: string; outcome: string; arrive: number; flip: number }
 
-const PHONE_H = 960;
+// upright: a big phone under the lyric (the phone is the hero of the 9:16 cut)
+const PHONE_H = VERTICAL ? 1600 : 960;
 const PAD = 8;
 const BROWSER_W = 1500;
 
@@ -41,9 +43,10 @@ export default class Inbox extends Scene {
     const k = PHONE_H / 900;
     this.phone = new Plane3D(Math.ceil(432 * k) + PAD * 2, Math.ceil(PHONE_H) + PAD * 2);
     const bk = BROWSER_W / 1440;
-    this.browser = new Plane3D(BROWSER_W + PAD * 2, Math.ceil(952 * bk) + PAD * 2);
+    if (!VERTICAL) this.browser = new Plane3D(BROWSER_W + PAD * 2, Math.ceil(952 * bk) + PAD * 2);
+    const dl = app(VERTICAL ? 'phone' : 'desktop', 'deadlines');
     [this.inboxCap, this.dlCap, this.dlGrey] = await Promise.all([
-      capture(app('phone', 'inbox')), capture(app('desktop', 'deadlines')), greyCapture(app('desktop', 'deadlines')),
+      capture(app('phone', 'inbox')), capture(dl), greyCapture(dl),
     ]);
     const ly = this.ctx.lyrics;
     const a = ly.get('Mandagli'), b = ly.get('rosso se scade');
@@ -66,7 +69,8 @@ export default class Inbox extends Scene {
       { title: 'Nota vocale: bollo auto', source: 'Telegram', icon: 'send', date: '02/10/26', outcome: 'Bollo auto aggiunto: scadenza 6 ott, promemoria a 7 e 3 giorni.' },
       { title: 'Verbale multa ZTL', source: 'Comando rapido', icon: 'phone', date: '03/10/26', outcome: 'Multa registrata: pagamento ridotto entro il 1 ott, già scaduto.' },
     ];
-    this.items = defs.map((d, i) => ({ ...d, arrive: arr[i]!, flip: flips[i]! }));
+    // upright the newest row (on top) flips first and the cascade runs down the column
+    this.items = defs.map((d, i) => ({ ...d, arrive: arr[i]!, flip: flips[VERTICAL ? 3 - i : i]! }));
   }
 
   override render(f: Frame, out: THREE.WebGLRenderTarget): PostOverrides {
@@ -78,6 +82,11 @@ export default class Inbox extends Scene {
     let shake: [number, number] = [0, 0];
     if (t < this.cutB) {
       this.partA(t, bg, fg, (pose) => {
+        comp.draw(renderer, this.bg.upload(), out, { mode: 'replace' });
+        this.phone.render(renderer, out, pose);
+      });
+    } else if (VERTICAL) {
+      this.partBV(t, bg, fg, (pose) => {
         comp.draw(renderer, this.bg.upload(), out, { mode: 'replace' });
         this.phone.render(renderer, out, pose);
       });
@@ -97,6 +106,15 @@ export default class Inbox extends Scene {
     const db = this.ctx.audio.downbeats.find((d) => d > t0 + 0.3)!; // 47.57: the tilt settles
     const s1 = springStep(t - t0 + 0.05, 1.1, 0.55);
     const s2 = springStep(t - db, 1.6, 0.6);
+    if (VERTICAL) return {
+      x: 492 + (t - t0) * 5,
+      y: 1385 + (1 - s1) * 60 - (t - t0) * 8,
+      s: 1 + (t - t0) * 0.01,
+      ry: -0.34 + 0.16 * s1 + 0.1 * s2 + Math.sin((t - t0) * 0.9) * 0.01,
+      rx: 0.08 - 0.04 * s1 - 0.025 * s2,
+      rz: -0.03 + 0.018 * s1 + 0.012 * s2,
+      z: -60 + 60 * s1,
+    };
     return {
       x: 1335 - (t - t0) * 14,
       y: 548 + (1 - s1) * 40,
@@ -137,7 +155,7 @@ export default class Inbox extends Scene {
   /** The Inbox screen in pt (393 × 852): the capture's top, the rebuilt "Arrivati" list, the tab bar. Returns row y's (pt, screen). */
   private screenA(c: CanvasRenderingContext2D, t: number) {
     const t0 = this.ctx.start;
-    const scroll = lerp(330, 520, prog(t, t0, this.items[1]!.arrive + 0.1, ease.inOutCubic));
+    const scroll = this.scrollA(t);
     c.fillStyle = HEX.paper;
     c.fillRect(0, 0, 393, 852);
     c.drawImage(this.inboxCap, 0, 0, 1179, 1898, 0, -scroll, 393, 1898 / 3);
@@ -190,9 +208,10 @@ export default class Inbox extends Scene {
     });
     c.restore();
     // the status bar area: the page scrolls under a soft fade
-    const gt = c.createLinearGradient(0, 0, 0, 74);
-    gt.addColorStop(0, 'rgba(230,230,230,1)'); gt.addColorStop(0.6, 'rgba(230,230,230,0.92)'); gt.addColorStop(1, 'rgba(230,230,230,0)');
-    c.fillStyle = gt; c.fillRect(0, 0, 393, 74);
+    const fh = VERTICAL ? 86 : 74;
+    const gt = c.createLinearGradient(0, 0, 0, fh);
+    gt.addColorStop(0, 'rgba(230,230,230,1)'); gt.addColorStop(VERTICAL ? 0.7 : 0.6, 'rgba(230,230,230,0.92)'); gt.addColorStop(1, 'rgba(230,230,230,0)');
+    c.fillStyle = gt; c.fillRect(0, 0, 393, fh);
     c.fillStyle = HEX.pen;
     c.font = font(F.sans(600), 16);
     c.fillText('9:41', 52, 34);
@@ -210,6 +229,16 @@ export default class Inbox extends Scene {
     c.drawImage(this.inboxCap, 47, 2336, 1086, 198, 15.7, 778.7, 362, 66);
     c.restore();
     return geo;
+  }
+
+  /** The Inbox page's scroll (pt): wide, it settles on the list; upright it keeps the list in the safe box. */
+  private scrollA(t: number) {
+    const t0 = this.ctx.start;
+    const s = prog(t, t0, this.items[1]!.arrive + 0.1, ease.inOutCubic);
+    if (!VERTICAL) return lerp(330, 520, s);
+    // the cascade runs top to bottom upright: the page rises with it so each flip lands mid-frame
+    const arch = this.w.archivia!;
+    return lerp(470, 590, s) + 140 * prog(t, arch.start - 0.1, Math.max(...this.items.map((i) => i.flip)) + 0.15, ease.inOutCubic);
   }
 
   private status(it: Item, t: number) { return t >= it.flip ? 'done' : 'work'; }
@@ -308,8 +337,8 @@ export default class Inbox extends Scene {
   /** Source pills: each one pops near the phone and dives into its row as the item arrives. */
   private sources(c: CanvasRenderingContext2D, t: number, pose: Pose, scr: { x: number; y: number; w: number; h: number }, u: number, geo: Record<number, number>) {
     const P = this.phone;
-    const scroll = 520;
-    const anchors = [[1700, 300], [1735, 470], [1690, 640], [1725, 810]];
+    const scroll = VERTICAL ? this.scrollA(t) : 520;
+    const anchors = VERTICAL ? [[300, 640], [680, 690], [310, 720], [670, 650]] : [[1700, 300], [1735, 470], [1690, 640], [1725, 810]];
     this.items.forEach((it, i) => {
       const t0 = it.arrive - 0.42, tDive = it.arrive - 0.16;
       if (t < t0 || t > it.arrive + 0.02) return;
@@ -349,6 +378,7 @@ export default class Inbox extends Scene {
 
   private headlineA(c: CanvasRenderingContext2D, t: number) {
     const w = this.w;
+    if (VERTICAL) return this.headlineAV(c, t);
     const X = 150;
     const rp = (wd: Word) => prog(t, wd.start - 0.05, wd.start + 0.2);
     riseWord(c, 'Mandagli', X, 372, 150, rp(w.mandagli!));
@@ -524,6 +554,100 @@ export default class Inbox extends Scene {
       c.fillText(label, 0, top + hh / 2 + 0.5 * u);
       c.restore();
     }
+  }
+
+  // ------------------------------------------------------------------ upright (9:16)
+  /** "Mandagli tutto, / lui legge e archivia." set across the top of the safe box. */
+  private headlineAV(c: CanvasRenderingContext2D, t: number) {
+    const w = this.w;
+    const X = SAFE.left, maxW = SAFE.right - SAFE.left - 8;
+    const k = 0.44; // the small words, relative to the big ones
+    const l2 = (textW(c, 'lui legge e ', 100 * k, 500, -0.02) + textW(c, 'archivia.', 100)) / 100;
+    const S = Math.min(fitW(c, 'Mandagli tutto,', maxW), maxW / l2);
+    const Y1 = SAFE.top + S * 0.86, Y2 = Y1 + S * 1.0;
+    const rp = (wd: Word) => prog(t, wd.start - 0.05, wd.start + 0.2);
+    const x = X + riseWord(c, 'Mandagli', X, Y1, S, rp(w.mandagli!)) + textW(c, ' ', S);
+    riseWord(c, 'tutto,', x, Y1, S, rp(w.tutto!));
+    let x2 = X + S * 0.02;
+    const s = S * k, sp = textW(c, ' ', s, 500, -0.02);
+    for (const key of ['lui', 'legge', 'e'] as const) {
+      x2 += riseWord(c, key, x2, Y2, s, rp(w[key]!), { weight: 500, color: HEX.graphite, tracking: -0.02 }) + sp;
+    }
+    riseWord(c, 'archivia.', x2 + S * 0.02, Y2, S, rp(w.archivia!));
+  }
+
+  /** B upright: the phone's Scadenze, rows lighting top to bottom; the Scadenze tab lifts and counts. */
+  private partBV(t: number, bg: CanvasRenderingContext2D, fg: CanvasRenderingContext2D, draw: (p: Pose) => void) {
+    const w = this.wb;
+    const t0 = this.cutB;
+    const lit = (a: number) => clamp((t - a) / 0.12);
+    const popOf = (a: number) => { const k = t - a; return k < 0 ? 0 : 0.14 * Math.exp(-k * 9) * Math.cos(k * 22); };
+    const at = [w.rosso!.start, w.se!.start, w.scade!.start, lerp(w.scade!.start, w.ti!.start, 0.5), w.ti!.start - 0.02];
+    const av = w.avvisa!;
+    const step = (av.end - av.start - 0.08) / 4;
+    const n = t < av.start ? 0 : Math.min(4, 1 + Math.floor((t - av.start) / step));
+    const kN = t - (av.start + (n - 1) * step);
+
+    // camera: the phone settles turned the other way from A; on "e via" it drops out of the frame
+    const away = prog(t, w.via!.start - 0.15, w.via!.end, ease.inCubic);
+    const settle = springStep(t - t0 + 0.04, 1.1, 0.62);
+    const db = this.ctx.audio.downbeats.find((d) => d > t0)!;
+    const s2 = springStep(t - db, 1.5, 0.6);
+    const pose: Pose = {
+      x: 500 - (1 - settle) * 40,
+      y: 1385 + (1 - settle) * 50 + away * 2200,
+      s: 1.02 + (t - t0) * 0.012,
+      ry: 0.3 - 0.16 * settle - 0.08 * s2,
+      rx: 0.07 - 0.035 * settle - 0.02 * s2 - away * 0.3,
+      rz: 0.025 - 0.018 * settle - 0.01 * s2,
+      z: -away * 300,
+    };
+    const P = this.phone;
+    // (quadShadow draws its shape 4000 px above the quad: drop it before the falling phone gets that far)
+    if (away < 0.5) quadShadow(bg, P.corners(pose), { blur: 70, dy: 40, alpha: 0.32 * (1 - 2 * away), inset: 0.06 });
+    const pc = P.ctx;
+    P.layer.clear();
+    const k = PHONE_H / 900;
+    const scr = drawPhone(pc, null, P.w / 2, P.h / 2, PHONE_H, { shadow: 0, island: false });
+    const u = scr.w / 393;
+    pc.save();
+    roundRect(pc, scr.x, scr.y, scr.w, scr.h, 52 * k); pc.clip();
+    pc.translate(scr.x, scr.y);
+    pc.scale(u, u);
+    const scroll = lerp(255, 370, prog(t, t0 - 0.1, w.ti!.start + 0.2, ease.inOutCubic));
+    dlScreen(pc, this.dlCap, this.dlGrey, scroll, at.map(lit), at.map(popOf), { n, k: kN });
+    pc.restore();
+    pc.fillStyle = '#000';
+    roundRect(pc, P.w / 2 - 62 * k, scr.y + 11 * k, 124 * k, 36 * k, 18 * k); pc.fill();
+    draw(pose);
+
+    // the Scadenze tab lifts out of the bar on "ti avvisa" and counts to 4
+    const ti = w.ti!;
+    const lift = prog(t, ti.start - 0.06, ti.start + 0.24, ease.outCubic);
+    if (lift > 0) {
+      const from = P.project(scr.x + 126 * u, scr.y + 811 * u, pose);
+      const to = { x: 800, y: 975 };
+      fg.save();
+      fg.translate(lerp(from.x, to.x, lift), lerp(from.y, to.y, lift) + away * 2200);
+      liftedTab(fg, this.dlGrey, lerp(u, 3.5, lift), n, kN);
+      fg.restore();
+    }
+
+    // the line, across the top
+    const X = SAFE.left, maxW = SAFE.right - SAFE.left - 8;
+    const S = Math.min(fitW(fg, 'rosso se scade,', maxW), fitW(fg, 'ti avvisa, e via.', maxW));
+    const Y1 = SAFE.top + S * 0.86, Y2 = Y1 + S * 1.0;
+    const rp = (wd: Word) => prog(t, wd.start - 0.04, wd.start + 0.18);
+    const sp = textW(fg, ' ', S);
+    let x = X;
+    x += riseWord(fg, 'rosso', x, Y1, S, rp(w.rosso!), { color: HEX.overdue }) + sp;
+    x += riseWord(fg, 'se', x, Y1, S, rp(w.se!)) + sp;
+    riseWord(fg, 'scade,', x, Y1, S, rp(w.scade!));
+    x = X;
+    x += riseWord(fg, 'ti', x, Y2, S, rp(w.ti!)) + sp;
+    x += riseWord(fg, 'avvisa,', x, Y2, S, rp(w.avvisa!)) + sp;
+    x += riseWord(fg, 'e', x, Y2, S, rp(w.e!)) + sp;
+    riseWord(fg, 'via.', x, Y2, S, rp(w.via!));
   }
 }
 

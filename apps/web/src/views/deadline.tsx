@@ -176,6 +176,11 @@ export const DeadlinePage = React.memo(function DeadlinePage({
                 <dt className="text-muted-foreground">{t.deadlines.date}</dt>
                 <dd>
                   <Sensitive when={o.sensitive}>{capitalize(`${fmt.weekdayLong.format(d)} ${fmt.long.format(d)}`)}</Sensitive>
+                  {o.shifted_from && (
+                    <span className="block text-xs text-muted-foreground">
+                      {t.deadlines.shiftedFrom(fmt.long.format(parseDate(o.shifted_from)))}
+                    </span>
+                  )}
                 </dd>
                 <dt className="text-muted-foreground">{t.deadlines.repeat}</dt>
                 <dd>{repeat}</dd>

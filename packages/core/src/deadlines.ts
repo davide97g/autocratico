@@ -5,6 +5,7 @@
 import { parse, TomlDate } from "smol-toml"
 
 import { addDays, addMonths, daysBetween } from "./dates.ts"
+import { type Shift, shiftDate, SHIFTS } from "./holidays.ts"
 import {
   type AmountBasis,
   type Deadline,
@@ -62,6 +63,10 @@ export function parseDeadlines(text: string): Deadline[] {
     const date = isoDate(r.date)
     const until = isoDate(r.until)
     if (r.until !== undefined && until === null) throw new DataError(`${id}: until must be a date (YYYY-MM-DD)`)
+    const shift = str(r.shift, "none")
+    if (!(SHIFTS as readonly string[]).includes(shift)) {
+      throw new DataError(`${id}: invalid shift: ${JSON.stringify(shift)} (allowed: ${SHIFTS.join(", ")})`)
+    }
     const severity = str(r.severity, "medium")
     if (!(SEVERITIES as readonly string[]).includes(severity)) {
       throw new DataError(`${id}: invalid severity: ${JSON.stringify(severity)} (allowed: ${SEVERITIES.join(", ")})`)
@@ -72,6 +77,7 @@ export function parseDeadlines(text: string): Deadline[] {
       area: str(r.area, "other"),
       date,
       repeat: str(r.repeat, "none"),
+      shift: shift as Shift,
       until,
       severity: severity as Severity,
       remind_days: Array.isArray(r.remind_days) ? r.remind_days.map(Number) : [],
@@ -133,17 +139,21 @@ function isoDate(v: unknown): string | null {
   return v instanceof TomlDate && v.isDate() ? v.toISOString().slice(0, 10) : null
 }
 
-/** Dates of `d` within [start, end], and not after its `until`. */
-export function occurrences(d: Deadline, start: string, end: string): string[] {
+/**
+ * Occurrences of `d` within [start, end], and not after its `until`: the day each one falls on
+ * (moved by `shift`) and its nominal date. The recurrence runs on nominal dates.
+ */
+export function occurrences(d: Deadline, start: string, end: string): { date: string; nominal: string }[] {
   if (d.date === null) return []
   const last = d.until !== null && d.until < end ? d.until : end
   const step = stepMonths(d)
-  if (step === null) return start <= d.date && d.date <= last ? [d.date] : []
-  const found: string[] = []
+  const found: { date: string; nominal: string }[] = []
   for (let i = 0; ; i++) {
-    const o = addMonths(d.date, step * i)
-    if (o > last) break
-    if (o >= start) found.push(o)
+    const nominal = step === null ? d.date : addMonths(d.date, step * i)
+    if (nominal > last) break // a shift only moves forward
+    const on = shiftDate(nominal, d.shift)
+    if (on >= start && on <= last) found.push({ date: on, nominal })
+    if (step === null) break
   }
   return found
 }
@@ -156,7 +166,7 @@ export function occurrenceKey(id: string, on: string): string {
 export function agenda(deadlines: Deadline[], state: State, today: string, back = 120, ahead = 400): Occurrence[] {
   const items: Occurrence[] = []
   for (const d of deadlines) {
-    for (const on of occurrences(d, addDays(today, -back), addDays(today, ahead))) {
+    for (const { date: on, nominal } of occurrences(d, addDays(today, -back), addDays(today, ahead))) {
       const key = occurrenceKey(d.id, on)
       items.push({
         key,
@@ -164,6 +174,7 @@ export function agenda(deadlines: Deadline[], state: State, today: string, back 
         title: d.title,
         area: d.area,
         date: on,
+        shifted_from: nominal === on ? null : nominal,
         days: daysBetween(today, on),
         done_on: state.done[key] ?? null,
         repeat: d.repeat,

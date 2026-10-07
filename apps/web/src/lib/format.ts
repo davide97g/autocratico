@@ -5,6 +5,9 @@ import {
   BellRingIcon,
   BotIcon,
   DatabaseBackupIcon,
+  ReceiptTextIcon,
+  ScaleIcon,
+  ZapIcon,
   MailIcon,
   NewspaperIcon,
   WorkflowIcon,
@@ -42,6 +45,9 @@ const JOB_ICONS: Record<string, LucideIcon> = {
   reminders: BellRingIcon,
   digest: NewspaperIcon,
   backup: DatabaseBackupIcon,
+  taxreturn: ReceiptTextIcon,
+  rules: ScaleIcon,
+  energy: ZapIcon,
 }
 
 /** Icon of a server job (`JOB_NAMES` in apps/server/src/jobs.ts). */

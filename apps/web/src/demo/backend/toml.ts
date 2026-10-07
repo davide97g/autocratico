@@ -16,6 +16,7 @@ export function deadlineToml(d: Deadline): string {
   ]
   lines.push(`date = ${d.date ?? q("TODO")}`)
   if (d.repeat && d.repeat !== "none") lines.push(`repeat = ${q(d.repeat)}`)
+  if (d.shift !== "none") lines.push(`shift = ${q(d.shift)}`)
   if (d.until) lines.push(`until = ${d.until}`)
   if (d.remind_days.length)
     lines.push(`remind_days = [${d.remind_days.join(", ")}]`)

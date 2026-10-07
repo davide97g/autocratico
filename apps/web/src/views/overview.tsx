@@ -13,6 +13,7 @@ import { Area, AreaChart, Bar, BarChart, XAxis } from "recharts"
 import { cn } from "cn"
 
 import { CountUp, stagger } from "@/components/motion"
+import { PaymentMatchesCard } from "@/components/payment-matches"
 import { Sensitive } from "@/components/privacy"
 import { SeverityIcon, StatusBadge, StatusLegend } from "@/components/status"
 import { Badge } from "@/components/ui/badge"
@@ -129,6 +130,9 @@ export const Overview = React.memo(function Overview({
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:gap-6 @2xl:grid-cols-2 @4xl:grid-cols-12">
+      {/* Payments seen in the finance source, waiting for a yes or no */}
+      <PaymentMatchesCard onOpen={onOpenDeadline} className="rise-in @2xl:col-span-2 @4xl:col-span-12" />
+
       {/* Calendar */}
       <Card className="rise-in self-start @2xl:col-span-2 @4xl:col-span-8" style={stagger(0)}>
         <CardHeader>

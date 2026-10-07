@@ -5,7 +5,7 @@
 // Panoramica in the browser, beside the phone; "autocratico!" lands as the frame settles.
 import * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D } from '../engine/gl';
+import { Layer2D, VERTICAL, SAFE } from '../engine/gl';
 import { HEX } from '../engine/palette';
 import { F, font } from '../engine/type';
 import { clamp, ease, lerp, prog, springStep, TAU } from '../engine/util';
@@ -14,13 +14,17 @@ import { app, drawBrowser, drawOrb, drawPhone, drawStudio, roundRect } from './_
 import { capture, blurredCapture, icon, bars, riseWord, textW } from './inbox-kit';
 import type { Word } from '../engine/lyrics';
 
-// the wide shot (screen px)
-const BX = 330, BY = 96, BW = 990;
+// the wide shot (screen px). Upright: the lyric across the top of the safe box, the browser at full
+// width under it, the phone overlapping its bottom-left corner (the lower right stays clear).
+// (upright the window is shifted left past the frame so the card's slot stays inside the safe box)
+const BX = VERTICAL ? -20 : 330, BY = VERTICAL ? 548 : 96, BW = VERTICAL ? 952 : 990;
 const BK = BW / 1440;
 const BAR = 52 * BK;
 // the card in the capture (1440-wide CSS px)
 const CARD = { x: 1051, y: 128, w: 341, h: 497 };
-const PHONE = { x: 1530, y: 540, h: 740 };
+const PHONE = VERTICAL ? { x: 262, y: 1225, h: 780 } : { x: 1530, y: 540, h: 740 };
+// the close-up: card height (px) and where its centre sits; the phone's parallax offset while close
+const CLOSE = VERTICAL ? { h: 880, x: 492, y: 995, ride: 0, par: [-260, 620] } : { h: 860, x: 1255, y: 498, ride: 190, par: [380, 160] };
 
 export default class Hero extends Scene {
   layer = new Layer2D();
@@ -49,11 +53,11 @@ export default class Hero extends Scene {
     const land = springStep(t - (wCrat.start + 0.18), 1.6, 0.5);
     const cardW = { x: BX + CARD.x * BK, y: BY + BAR + CARD.y * BK, w: CARD.w * BK, h: CARD.h * BK };
     const Pc = { x: cardW.x + cardW.w / 2, y: cardW.y + cardW.h / 2 };
-    const Zc = (860 / cardW.h) * (0.93 + 0.13 * prog(t, t0, db + 0.4, inOutSine));
+    const Zc = (CLOSE.h / cardW.h) * (0.93 + 0.13 * prog(t, t0, db + 0.4, inOutSine));
     const Zw = 1 + 0.012 * Math.max(0, t - (wCrat.start + 0.2)) - 0.004 * (land - 1);
     const Z = Math.exp(lerp(Math.log(Zc), Math.log(Zw), u));
     // mid-pull the frame rides up so the window's bottom edge passes above the caption
-    const S = { x: lerp(1255, Pc.x, ease.inOutCubic(u)), y: lerp(498, Pc.y, ease.inOutCubic(u)) - 190 * Math.sin(Math.PI * Math.pow(u, 0.8)) };
+    const S = { x: lerp(CLOSE.x, Pc.x, ease.inOutCubic(u)), y: lerp(CLOSE.y, Pc.y, ease.inOutCubic(u)) - CLOSE.ride * Math.sin(Math.PI * Math.pow(u, 0.8)) };
     const rz = 0.022 * (1 - springStep(t - t0, 0.9, 0.55)) + 0.01 * (1 - springStep(t - db, 1.4, 0.5)) * (1 - u);
     const toScreen = (x: number, y: number) => ({ x: S.x + Z * (x - Pc.x), y: S.y + Z * (y - Pc.y) });
     const setCam = (extraX = 0, extraY = 0) => {
@@ -79,9 +83,17 @@ export default class Hero extends Scene {
     // the phone floats nearer the camera: more parallax
     c.save();
     const par = (1 - ease.outCubic(u)) * 1;
-    setCam(par * 380, par * 160);
+    setCam(par * CLOSE.par[0]!, par * CLOSE.par[1]!);
     drawPhone(c, this.phone, PHONE.x, PHONE.y, PHONE.h, { shadow: 1 });
     c.restore();
+
+    // upright: the line's ground of studio grey, under the card (the window slides in beneath it)
+    if (VERTICAL) {
+      const sg = c.createLinearGradient(0, 0, 0, BY);
+      sg.addColorStop(0, 'rgba(230,230,230,0.97)'); sg.addColorStop(0.84, 'rgba(230,230,230,0.94)'); sg.addColorStop(1, 'rgba(230,230,230,0)');
+      c.fillStyle = sg;
+      c.fillRect(0, 0, 1080, BY);
+    }
 
     // ---- the card, lifted while close, landing in its slot
     const lift = 1 - ease.outCubic(u);
@@ -97,6 +109,11 @@ export default class Hero extends Scene {
     c.restore();
     void toScreen;
 
+    if (VERTICAL) {
+      this.lineV(c, t);
+      comp.draw(renderer, this.layer.upload(), out, { mode: 'replace' });
+      return { paper: 1, grain: 0.03, vignette: 0.15, halation: 0 };
+    }
     // ---- the line, bottom left, on a soft fall of studio grey (the UI recedes behind it)
     c.save();
     c.globalAlpha = 1 - prog(t, wCrat.start + 0.05, wCrat.start + 0.4, ease.inOutQuad);
@@ -135,6 +152,42 @@ export default class Hero extends Scene {
 
     comp.draw(renderer, this.layer.upload(), out, { mode: 'replace' });
     return { paper: 1, grain: 0.03, vignette: 0.15, halation: 0 };
+  }
+
+  /**
+   * Upright: the line across the top of the safe box, on its ground of studio grey. "Il futuro è" small; "automatico," big while sung, then it joins the
+   * small line and "autocratico!" takes its place.
+   */
+  private lineV(c: CanvasRenderingContext2D, t: number) {
+    const [wIl, wFut, wE, wAuto, wCrat] = this.w as [Word, Word, Word, Word, Word];
+    const X = SAFE.left, maxW = SAFE.right - SAFE.left - 8;
+    const sB = Math.min(maxW / textW(c, 'autocratico!', 100) * 100, maxW / textW(c, 'automatico,', 100) * 100);
+    const sS = 58;
+    const Y1 = SAFE.top + 62, Y2 = Y1 + sB * 0.98;
+    const rp = (wd: Word, d = 0.2) => prog(t, wd.start - 0.05, wd.start + d);
+    const small = { weight: 500, color: HEX.graphite, tracking: -0.02 };
+    let x = X + 2;
+    const sp = textW(c, ' ', sS, 500, -0.02);
+    x += riseWord(c, 'Il', x, Y1, sS, rp(wIl), small) + sp;
+    x += riseWord(c, 'futuro', x, Y1, sS, rp(wFut), small) + sp;
+    x += riseWord(c, 'è', x, Y1, sS, rp(wE, 0.1), small) + sp;
+    const mv = prog(t, wCrat.start - 0.1, wCrat.start + 0.12, ease.inOutCubic);
+    if (mv < 1) {
+      c.save();
+      c.globalAlpha = 1 - mv;
+      riseWord(c, 'automatico,', X, lerp(Y2, Y2 - 60, mv), sB, rp(wAuto, 0.24));
+      c.restore();
+    }
+    if (mv > 0) riseWord(c, 'automatico,', x, Y1, sS, mv, small);
+    if (t - wCrat.start > -0.06) {
+      const p = prog(t, wCrat.start - 0.06, wCrat.start + 0.14, ease.outCubic);
+      c.save();
+      const s = 1 + 0.06 * (1 - p);
+      c.translate(X, Y2);
+      c.scale(s, s);
+      riseWord(c, 'autocratico!', 0, 0, sB, p);
+      c.restore();
+    }
   }
 
   /** The "Prossimo adempimento" card (apps/web overview, dark), in CSS px of a 1440-wide window. */

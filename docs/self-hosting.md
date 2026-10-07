@@ -51,7 +51,7 @@ docker compose -f deploy/compose.yml exec autocratico node apps/server/src/cli.t
 
 Open `PUBLIC_ORIGIN`: the onboarding asks for your name, the masterpass and the setup code. Other devices just log in with the masterpass (iPhone: Safari, log in, Share → Add to Home Screen). Forgot the masterpass: `… exec autocratico node apps/server/src/cli.ts reset-password`.
 
-Scheduled jobs (Gmail sync, filing what arrives, reminders, the Monday digest, backups) run by default in the container; `AUTOCRATICO_JOBS=off` pauses them.
+Scheduled jobs (Gmail sync, filing what arrives, reminders, the Monday digest, backups, energy offers, catalog re-checks, the tax return case) run by default in the container; `AUTOCRATICO_JOBS=off` pauses them.
 
 ## 4. Reach it from your phone
 

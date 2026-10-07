@@ -7,9 +7,9 @@ import { clamp, ease, mulberry32, noise2, TAU } from '../engine/util';
 import { roundRect } from './_motifs';
 import { type Sprite, barcode, hline, makeSprite, paperGrain, txt } from './open-paper';
 
-/** The landing outside the flat, from above: graniglia floor, the door's foot, a coir doormat. 2400×1500. */
-export function landingFloor(drawMat = true): HTMLCanvasElement {
-  const w = 2400, h = 1500, res = Math.min(2, SCALE * 1.2);
+/** The landing outside the flat, from above: graniglia floor, the door's foot, a coir doormat. 2400×1500 (or w×h). */
+export function landingFloor(drawMat = true, w = 2400, h = 1500): HTMLCanvasElement {
+  const res = Math.min(2, SCALE * 1.2);
   const cv = document.createElement('canvas');
   cv.width = w * res; cv.height = h * res;
   const c = cv.getContext('2d')!;
@@ -17,7 +17,8 @@ export function landingFloor(drawMat = true): HTMLCanvasElement {
   const r = mulberry32(5);
   // graniglia (terrazzo): grey cement with marble chips
   c.fillStyle = '#cfcfcd'; c.fillRect(0, 0, w, h);
-  for (let i = 0; i < 26000; i++) {
+  const chips = Math.round((26000 * (w * h)) / (2400 * 1500));
+  for (let i = 0; i < chips; i++) {
     const x = r() * w, y = r() * h, s = 1.2 + Math.pow(r(), 3) * 11;
     const tone = r();
     c.fillStyle = tone < 0.3 ? `rgba(120,120,118,${0.35 + r() * 0.3})` : tone < 0.7 ? `rgba(240,240,238,${0.45 + r() * 0.35})` : `rgba(170,170,168,${0.5 + r() * 0.3})`;

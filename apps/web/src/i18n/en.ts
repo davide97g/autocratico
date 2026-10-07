@@ -82,6 +82,16 @@ export const en = {
     if (n === -1) return "yesterday"
     return n > 0 ? `in ${n} d` : `${-n} d ago`
   },
+  matches: {
+    title: "Payments found",
+    description: "Seen in your finances: are they these deadlines?",
+    due: (date: string) => `Due ${date}`,
+    seen: (date: string) => `paid ${date}`,
+    markPaid: "Mark paid",
+    notThis: "Not this one",
+    paid: "Marked as paid",
+    dismissed: "Won't be proposed again",
+  },
   overview: {
     calendar: "Calendar",
     calendarDescription: (months: number) => `Next ${months} months, by area`,
@@ -132,6 +142,7 @@ export const en = {
     details: "Show details",
     hideDetails: "Hide details",
     repeat: "Repeats",
+    shiftedFrom: (date: string) => `Moved from ${date} (weekend or holiday)`,
     repeats: { none: "once", "": "once", yearly: "every year", monthly: "every month" } as Record<string, string>,
     amount: "Amount",
     noSource: "No source recorded: ask Claude in the chat where it comes from, or add `source` in deadlines.toml.",
@@ -436,7 +447,7 @@ export const en = {
     revert: "Undo",
     reverted: (hash: string) => `Undone with commit ${hash}.`,
     confirmRevert: "Undo this change? A new commit restores the files as they were before.",
-    jobs: { gmail: "Gmail sync", triage: "Agent triage", reminders: "Reminders", digest: "Weekly digest", backup: "Backup", finance: "Finance sync" } as Record<string, string>,
+    jobs: { gmail: "Gmail sync", triage: "Agent triage", reminders: "Reminders", digest: "Weekly digest", backup: "Backup", finance: "Finance sync", taxreturn: "Tax return case", rules: "Rules check", energy: "Energy offers" } as Record<string, string>,
   },
   finance: {
     notConnected: "Connect a finance source in Settings (a finance server or your bank's CSV exports) to see expenses, earnings and trends here.",
@@ -706,7 +717,7 @@ export const en = {
     valueHint: "What this work would cost paid per token: the subscription covers it.",
     average: "Average time",
     failed: (n: number) => `${n} failed`,
-    sources: { chat: "Web chat", telegram: "Telegram", triage: "Triage", digest: "Digest" } as Record<string, string>,
+    sources: { chat: "Web chat", telegram: "Telegram", triage: "Triage", digest: "Digest", taxreturn: "Tax return", rules: "Rules check" } as Record<string, string>,
     noRuns: "No requests in the last 7 days.",
   },
   gmail: {

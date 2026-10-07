@@ -6,6 +6,10 @@
 #   area          tax | home | vehicles | documents | health | social-security | bank | family | business
 #   date          first occurrence (YYYY-MM-DD) or "TODO" when unknown
 #   repeat        "none" | "yearly" | "monthly" | "every N years" | "every N months"
+#   shift         optional: "workday" moves each occurrence that falls on a Saturday, Sunday or
+#                 public holiday to the next working day; "tax" does the same and also moves
+#                 payments due 1-20 August to the 20th (Italian tax rules). `date` stays the
+#                 nominal date (e.g. 31 October), the app shows the day it actually falls on
 #   until         optional, last day that counts: no occurrences after it (an ended deadline,
 #                 kept for history instead of being deleted)
 #   severity      high (payment or deadline with penalties) | medium (default) | low (reminder)
@@ -23,7 +27,7 @@
 #   finance_recurring optional, id of the finance source's recurring template for this same
 #                 payment: Finance shows the deadline and leaves that template out (no double count)
 #
-# Recurring dates are indicative: holidays and weekends can shift the actual deadline.
+# Without `shift`, recurring dates are nominal: holidays and weekends can move the actual deadline.
 # "Done" state of single occurrences lives in state.json (written by the web app).
 
 # Add deadlines below, one [[deadline]] block each (or let the agent file them from documents).

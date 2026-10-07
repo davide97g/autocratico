@@ -12,7 +12,7 @@
  */
 import { readFileSync } from "node:fs"
 
-import { type ChangeAction, jsonable, parseDeadlines, parseToml, SEVERITIES } from "@autocratico/core"
+import { type ChangeAction, jsonable, parseDeadlines, parseToml, SEVERITIES, SHIFTS } from "@autocratico/core"
 import { dataPaths } from "@autocratico/core/node"
 import { stringify, TomlDate } from "smol-toml"
 import { z } from "zod"
@@ -36,6 +36,7 @@ const FIELDS = {
   area: z.string().trim().min(1).max(40),
   date: z.union([Day, z.literal("TODO")]),
   repeat: z.string().trim().max(40),
+  shift: z.enum(SHIFTS),
   until: Day,
   severity: z.enum(SEVERITIES),
   remind_days: z.array(z.number().int().min(0).max(400)).max(10),
@@ -47,7 +48,7 @@ const FIELDS = {
   source: z.string().max(300),
 }
 /** The order of keys in a new deadline, as in the file's schema. */
-const ORDER = ["id", "title", "area", "severity", "date", "repeat", "until", "remind_days", "amount", "amounts", "sensitive", "case", "notes", "source"]
+const ORDER = ["id", "title", "area", "severity", "date", "repeat", "shift", "until", "remind_days", "amount", "amounts", "sensitive", "case", "notes", "source"]
 
 const NewDeadline = z.object({ id: Id, ...FIELDS }).partial().required({ id: true, title: true, area: true, date: true }).strict()
 // null removes a field (back to its default); title, area and date always stay.
@@ -55,6 +56,7 @@ const Patch = z
   .object({
     ...FIELDS,
     repeat: FIELDS.repeat.nullable(),
+    shift: FIELDS.shift.nullable(),
     until: FIELDS.until.nullable(),
     severity: FIELDS.severity.nullable(),
     remind_days: FIELDS.remind_days.nullable(),

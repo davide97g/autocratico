@@ -21,6 +21,17 @@ Run the checks after each step.
 - The fallback default in `today()` (`packages/core/src/dates.ts`) and in the `Finance` constructor (`apps/server/src/finance.ts`) only applies when a caller passes no time zone.
 - `scripts/store.py` `today()` (used by `upcoming.py`) and `scripts/when.py` read `TZ_DEADLINES` too, with the same default. In Docker, `deploy/compose.yml` sets `TZ` and `TZ_DEADLINES` from the single `TZ` variable, and the Dockerfile takes `--build-arg TZ=…`.
 
+## Public holidays
+
+- **`packages/core/src/holidays.ts`**: `holidays()` lists Italy's national holidays (Easter Monday included) and `shiftDate()` applies the Italian rules behind a deadline's `shift`: `workday` moves it off Saturdays, Sundays and holidays, `tax` also moves payments due 1–20 August to the 20th. Replace the list with your country's, and drop `tax` or change its rule.
+- **`scripts/store.py`**: `holidays()` and `shift_date()` mirror them; the parity test checks both agree.
+- **`AGENTS.md`**: the rule on recurring dates names the two values.
+
+## Italy-only jobs
+
+- **`energy`** (`scripts/offers.py`) reads the Italian regulator's open data of electricity and gas offers. Elsewhere, delete it from `JOB_NAMES` and `SCHEDULES` in `apps/server/src/jobs.ts` (and its labels), or write the same thing over your country's price comparison data.
+- **`taxreturn`** prepares the Italian 730 / Redditi PF: rewrite `TAXRETURN_INSTRUCTIONS` for your return, its season in `SCHEDULES` and the case slug in `#taxreturn`.
+
 ## Agent framing
 
 - **`apps/server/src/claude.ts`**:

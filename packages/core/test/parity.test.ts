@@ -89,6 +89,37 @@ title = "Dropped"
 area = "home"
 date = "TODO"
 until = 2026-01-01
+
+[[deadline]]
+id = "redditi"
+title = "Income tax return"
+area = "tax"
+date = 2025-10-31
+repeat = "yearly"
+shift = "tax"
+
+[[deadline]]
+id = "f24"
+title = "Monthly F24"
+area = "tax"
+date = 2026-06-16
+repeat = "monthly"
+shift = "tax"
+
+[[deadline]]
+id = "christmas"
+title = "On Christmas"
+area = "home"
+date = 2026-12-25
+shift = "workday"
+
+[[deadline]]
+id = "easter"
+title = "Easter Monday"
+area = "home"
+date = 2027-03-29
+repeat = "yearly"
+shift = "workday"
 `
     )
     expect(JSON.parse(JSON.stringify(loadData(dir, "2026-10-03")))).toEqual(python(dir, "2026-10-03"))

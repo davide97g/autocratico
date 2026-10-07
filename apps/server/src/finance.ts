@@ -37,6 +37,7 @@ import { type FinanceConnector, FinanceError, type FinanceFeed, type FinanceRead
 import { CsvConnector } from "./finance-csv.ts"
 import { HttpConnector } from "./finance-http.ts"
 import { locks, readJson, writeAtomic, writeJson, writeSecret } from "./files.ts"
+import { acceptedMatches, matchesFile } from "./matches.ts"
 
 export { FinanceError } from "./finance-connector.ts"
 
@@ -192,7 +193,16 @@ export class Finance {
       deadlines = []
     }
     const write = this.#connector()?.capabilities.write ?? false
-    return { today: todayIn(this.#timeZone), live: this.live, write, mirror: this.mirror(), investments, links: this.links(), deadlines }
+    return {
+      today: todayIn(this.#timeZone),
+      live: this.live,
+      write,
+      mirror: this.mirror(),
+      investments,
+      links: this.links(),
+      matched: acceptedMatches(this.#data),
+      deadlines,
+    }
   }
 
   /** Called with the new revision whenever the mirror changes. */
@@ -243,6 +253,7 @@ export class Finance {
   #forgetMirror() {
     rmSync(this.#mirrorFile, { force: true })
     rmSync(this.#linksFile, { force: true })
+    rmSync(matchesFile(this.#data), { force: true })
     rmSync(join(this.#dir, "summary.md"), { force: true })
   }
 

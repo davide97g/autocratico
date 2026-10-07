@@ -12,12 +12,14 @@
  │   ├─ web app (apps/web/dist, PWA)                                                      │
  │   ├─ scheduler: gmail (10 min) · triage (on new items) · finance (hourly)             │
  │   │             reminders (08:30) · digest (Mon 08:00) · backup (03:00)                │
+ │   │             energy (Mon 06:30) · rules (1st, 07:00) · taxreturn (1 Mar)            │
  │   ├─ Telegram bot: notifications, commands, chat, files → inbox                        │
  │   ├─ ntfy: the same notifications as push, redacted (optional)                         │
  │   ├─ finance connector: http server (REST + SSE) or bank CSV exports (optional)        │
  │   └─ claude -p  (headless Claude Code, user's subscription)                            │
- │         read profile: chat, digest · triage profile: edits data/ only, no web          │
- │  scripts/*.py: gmail.py sync --all · upcoming.py · ics.py                              │
+ │         read: chat, digest · triage: edits data/ only, no web (triage, taxreturn)      │
+ │         research: rules, reads and edits catalog/ only, official sites                 │
+ │  scripts/*.py: gmail.py sync --all · upcoming.py · ics.py · offers.py (ARERA data)     │
  └─────────────────────────────────────┬──────────────────────────────────────────────────┘
                                        ▼
                      /data (bind mount): TOML + Markdown + inbox + archive, local git

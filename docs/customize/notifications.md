@@ -14,6 +14,8 @@ What you can change here: where reminders, triage summaries, digests and failure
   - The 30-second loop that delivers chat reminders, with Done, +1 h and Tomorrow 9:00 buttons.
   - `#triage`: what the agent filed.
   - `#digest`: Monday morning.
+  - `#energy`: an offer that beats the current electricity or gas contract, once per offer. `#rules`: catalog entries updated, deadlines that moved. `#taxreturn`: the case is ready.
+  - Payments found in the finance source (`apps/server/src/matches.ts`), with Mark paid / Not this one buttons (`pay:<id>`, `nopay:<id>`).
   - Failures of the `gmail`, `finance` and `triage` jobs, once per failure streak.
 - **`fanOut()`** (`apps/server/src/ntfy.ts`) turns the configured channels into one notifier. `services.ts` wires it: `notifier: () => fanOut([s.telegram, s.ntfy])`. With no channel it returns `null` and the jobs skip notifying.
 - **Chat reminders** ("remind me tomorrow at 9") are accepted only when a channel exists. `applyActions` in `apps/server/src/chat-actions.ts` checks `notify`. `app.ts` sets it from `s.telegram !== null || s.ntfy !== null`, and `telegram.ts` always passes `true`.

@@ -4,13 +4,14 @@
 // Attività capture with a git log behind it. Each line is set big on the left, word by word.
 import * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D } from '../engine/gl';
+import { Layer2D, VERTICAL } from '../engine/gl';
 import { HEX } from '../engine/palette';
 import { F, font } from '../engine/type';
 import { clamp, ease, lerp, TAU } from '../engine/util';
 import type { Line } from '../engine/lyrics';
 import { app, drawPhone, drawStudio, loadImage, roundRect } from './_motifs';
 import { drawRow, drawTouch, PhoneScreen, pill, rowsOf, widget, type Row } from './phone-kit';
+import { uprightLayout, uprightShot, type Upright } from './phone-upright';
 import { activity, appHeader, banner, camera, inboxCard, shareSheet, tgReminder, tgVoice, WARN, type InboxRow } from './phone-screens';
 
 const CAP_X = 150;
@@ -22,6 +23,10 @@ export default class Phone extends Scene {
   dead!: ImageBitmap;
   L!: Line[];
   R!: Row[][];
+  /** The upright cut: its row splits and sizes, and the whole Attività page. */
+  up?: Upright;
+  actFull?: ImageBitmap;
+  get audio() { return this.ctx.audio; }
 
   override async init() {
     [this.act, this.dead] = await Promise.all([loadImage(app('phone', 'activity')), loadImage(app('phone', 'deadlines'))]);
@@ -33,14 +38,18 @@ export default class Phone extends Scene {
       rowsOf(this.L[2]!, [1, 4, 3, 1]),
       rowsOf(this.L[3]!, [2, 3, 3, 3]),
     ];
+    if (VERTICAL) {
+      this.up = uprightLayout(this.L);
+      this.actFull = await loadImage(app('phone', 'activity-full'));
+    }
   }
 
   /** The caption stack: rows on the left; a row dims once the next one starts. */
-  caption(c: CanvasRenderingContext2D, rows: Row[], t: number, size: number, gap: number, y0: number, colors?: Record<number, string>) {
+  caption(c: CanvasRenderingContext2D, rows: Row[], t: number, size: number, gap: number, y0: number, colors?: Record<number, string>, x = CAP_X) {
     rows.forEach((row, i) => {
       const next = rows[i + 1];
       const dim = next ? 0.8 * clamp((t - next.words[0]!.start) / 0.18) : 0;
-      drawRow(c, row, CAP_X, y0 + i * gap, size, t, { dim, color: colors?.[i] });
+      drawRow(c, row, x, y0 + i * gap, size, t, { dim, color: colors?.[i] });
     });
   }
 
@@ -50,7 +59,8 @@ export default class Phone extends Scene {
     this.layer.clear();
     drawStudio(c, { drift: t * 0.12 });
     const [L1, L2, L3, L4] = this.L as [Line, Line, Line, Line];
-    if (t < L2.start) this.shot1(c, t, L1);
+    if (VERTICAL) uprightShot(this, c, t);
+    else if (t < L2.start) this.shot1(c, t, L1);
     else if (t < L3.start) this.shot2(c, t, L2);
     else if (t < L4.start) this.shot3(c, t, L3);
     else this.shot4(c, t, L4);

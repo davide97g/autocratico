@@ -21,6 +21,7 @@ export function topicOf(path: string): Topic | null {
     return parts[1] === "logs" && parts[2] === "HEAD" ? "activity" : null
   }
   if (["deadlines.toml", "state.json", "profile.toml", "investments.toml", "cases", "catalog"].includes(top)) return "data"
+  if (top === "finance" && parts[1] === "matches.json") return "data" // payments found, proposed in the Overview
   if (top === "inbox") return "inbox"
   if (top === "archive") return "archive"
   if (top === "chats") return "chats"

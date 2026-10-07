@@ -12,7 +12,7 @@ Everything about an install is either in the data folder (the register, `finance
 | `CF_ACCESS` | on when `CF_ACCESS_TEAM` and `CF_ACCESS_AUD` are set | `off`: no Cloudflare Access, the masterpass alone guards a `prod` server. |
 | `CF_ACCESS_TEAM`, `CF_ACCESS_AUD` | — | Cloudflare Access team name and application AUD tag ([self-hosting.md](self-hosting.md)). |
 | `HOST`, `PORT` | `127.0.0.1`, `8790` | where the server listens (`0.0.0.0` in the Docker image). |
-| `AUTOCRATICO_JOBS` | `on` in `prod`, `off` in `dev` | scheduled jobs: Gmail sync, filing what arrives (triage), finance sync, reminders, Monday digest, nightly backup. Locally, `AUTOCRATICO_JOBS=on pnpm start` turns the agent on. |
+| `AUTOCRATICO_JOBS` | `on` in `prod`, `off` in `dev` | scheduled jobs: Gmail sync, filing what arrives (triage), finance sync (and payments found there), reminders, Monday digest, nightly backup, the weekly energy offers comparison, the monthly re-check of the catalog rules (`rules`), the tax return case on 1 March (`taxreturn`). Locally, `AUTOCRATICO_JOBS=on pnpm start` turns the agent on. |
 | `TZ_DEADLINES` | `Europe/Rome` | time zone of "today", the reminders and the job schedules, for the server and the Python scripts. In Docker it follows `TZ`. |
 | `AUTOCRATICO_LOCALE` | `it` | `it` or `en`: language of Telegram, ntfy, job messages and the background agent's summaries. The web app has its own switch. |
 | `TELEGRAM_BOT_TOKEN` | — | turns the Telegram bot on ([telegram.md](telegram.md)). |

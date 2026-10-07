@@ -23,6 +23,7 @@ STATE_FILE = DATA_DIR / "state.json"
 CASES_DIR = DATA_DIR / "cases"
 CATALOG_DIR = DATA_DIR / "catalog"
 SEVERITIES = ("high", "medium", "low")
+SHIFTS = ("none", "workday", "tax")
 
 
 def today() -> date:
@@ -37,6 +38,7 @@ class Deadline:
     area: str
     date: date | None
     repeat: str = "none"
+    shift: str = "none"
     until: date | None = None
     severity: str = "medium"
     remind_days: tuple[int, ...] = ()
@@ -115,6 +117,43 @@ def _add_months(d: date, months: int) -> date:
     return date(year, month, day)
 
 
+def easter(year: int) -> date:
+    """Easter Sunday (Gregorian calendar, anonymous algorithm; mirrors core/holidays.ts)."""
+    a, b, c = year % 19, year // 100, year % 100
+    d, e = b // 4, b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = c // 4, c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    return date(year, (h + l - 7 * m + 114) // 31, (h + l - 7 * m + 114) % 31 + 1)
+
+
+def holidays(year: int) -> set[date]:
+    """Italian national public holidays of a year."""
+    fixed = [(1, 1), (1, 6), (4, 25), (5, 1), (6, 2), (8, 15), (11, 1), (12, 8), (12, 25), (12, 26)]
+    if year >= 2026:
+        fixed.append((10, 4))  # St Francis, a holiday again from 2026 (L. 151/2025)
+    return {date(year, m, d) for m, d in fixed} | {easter(year) + timedelta(days=1)}
+
+
+def is_workday(d: date) -> bool:
+    return d.weekday() < 5 and d not in holidays(d.year)
+
+
+def shift_date(d: date, shift: str) -> date:
+    """The day a deadline due on d falls on: `workday` moves it off weekends and holidays,
+    `tax` also moves payments due 1-20 August to the 20th (mirrors core/holidays.ts)."""
+    if shift == "none":
+        return d
+    if shift == "tax" and d.month == 8 and d.day < 20:
+        d = d.replace(day=20)
+    while not is_workday(d):
+        d += timedelta(days=1)
+    return d
+
+
 def load_deadlines() -> list[Deadline]:
     if not DEADLINES_FILE.exists():
         raise FileNotFoundError(f"{DEADLINES_FILE} is missing: run `python3 scripts/init.py` to create the data folder")
@@ -138,6 +177,7 @@ def load_deadlines() -> list[Deadline]:
                 area=r.get("area", "other"),
                 date=d if isinstance(d, date) else None,
                 repeat=r.get("repeat", "none"),
+                shift=r.get("shift", "none"),
                 until=until,
                 severity=r.get("severity", "medium"),
                 remind_days=tuple(r.get("remind_days", [])),
@@ -150,30 +190,34 @@ def load_deadlines() -> list[Deadline]:
         )
     for d in result:
         d.step()  # validate the repeat field right away
+        if d.shift not in SHIFTS:
+            raise ValueError(f"{d.id}: invalid shift: {d.shift!r} (allowed: {', '.join(SHIFTS)})")
         if d.severity not in SEVERITIES:
             raise ValueError(f"{d.id}: invalid severity: {d.severity!r} (allowed: {', '.join(SEVERITIES)})")
     return result
 
 
-def occurrences(d: Deadline, start: date, end: date) -> list[date]:
-    """Dates of d within [start, end], and not after its until."""
+def occurrences(d: Deadline, start: date, end: date) -> list[tuple[date, date]]:
+    """(day it falls on, nominal date) of each occurrence of d within [start, end], not after its until.
+
+    The recurrence runs on nominal dates; `shift` moves each one off weekends and holidays."""
     if d.date is None:
         return []
     if d.until is not None and d.until < end:
         end = d.until
     step = d.step()
-    if step is None:
-        return [d.date] if start <= d.date <= end else []
-    unit, n = step
-    months = n * 12 if unit == "years" else n
+    months = None if step is None else step[1] * 12 if step[0] == "years" else step[1]
     found = []
     i = 0
     while True:
-        o = _add_months(d.date, months * i)
-        if o > end:
+        nominal = d.date if months is None else _add_months(d.date, months * i)
+        if nominal > end:  # a shift only moves forward
             break
-        if o >= start:
-            found.append(o)
+        on = shift_date(nominal, d.shift)
+        if start <= on <= end:
+            found.append((on, nominal))
+        if months is None:
+            break
         i += 1
     return found
 
@@ -199,7 +243,7 @@ def agenda(today: date, back: int = 120, ahead: int = 400) -> list[dict]:
     done = load_state()["done"]
     items = []
     for d in load_deadlines():
-        for on in occurrences(d, today - timedelta(days=back), today + timedelta(days=ahead)):
+        for on, nominal in occurrences(d, today - timedelta(days=back), today + timedelta(days=ahead)):
             k = key(d, on)
             amount, basis = occurrence_amount(d, on)
             items.append(
@@ -209,6 +253,7 @@ def agenda(today: date, back: int = 120, ahead: int = 400) -> list[dict]:
                     "title": d.title,
                     "area": d.area,
                     "date": on.isoformat(),
+                    "shifted_from": None if nominal == on else nominal.isoformat(),
                     "days": (on - today).days,
                     "done_on": done.get(k),
                     "repeat": d.repeat,

@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest"
 import {
   addMonths,
   agenda,
+  catalogVerified,
   daysBetween,
+  easter,
+  holidays,
+  isWorkday,
+  shiftDate,
   documentRefs,
   isDocumentPath,
   fileName,
@@ -60,6 +65,47 @@ remind_days = [7, 3]
   it("assigns levels", () => {
     const [o] = agenda(parseDeadlines(toml), { done: {} }, "2026-10-03")
     expect(level(o)).toBe("urgent")
+  })
+})
+
+describe("catalog", () => {
+  it("reads the verification date", () => {
+    expect(catalogVerified("# Fisco\n\nUltima verifica: 2026-10-02. Le norme cambiano.")).toBe("2026-10-02")
+    expect(catalogVerified("# Docs\n\n**Last verified:** 2025-01-31\n")).toBe("2025-01-31")
+    expect(catalogVerified("# Docs\n\nNo date")).toBeNull()
+  })
+})
+
+describe("holidays", () => {
+  it("knows Easter and the national holidays", () => {
+    expect(["2024", "2025", "2026", "2027"].map((y) => easter(Number(y)))).toEqual(["2024-03-31", "2025-04-20", "2026-04-05", "2027-03-28"])
+    expect(holidays(2026).has("2026-04-06")).toBe(true)
+    expect(holidays(2026).has("2026-10-04")).toBe(true)
+    expect(holidays(2025).has("2025-10-04")).toBe(false)
+    expect(isWorkday("2026-10-30")).toBe(true)
+    expect(isWorkday("2026-10-31")).toBe(false)
+  })
+
+  it("moves deadlines off weekends and holidays", () => {
+    expect(shiftDate("2026-10-31", "none")).toBe("2026-10-31")
+    expect(shiftDate("2026-10-31", "workday")).toBe("2026-11-02")
+    expect(shiftDate("2026-12-25", "workday")).toBe("2026-12-28")
+    expect(shiftDate("2026-08-16", "workday")).toBe("2026-08-17")
+    expect(shiftDate("2026-08-16", "tax")).toBe("2026-08-20")
+    expect(shiftDate("2027-08-16", "tax")).toBe("2027-08-20")
+    expect(shiftDate("2022-08-16", "tax")).toBe("2022-08-22") // the 20th was a Saturday
+  })
+
+  it("keeps the recurrence on nominal dates", () => {
+    const [d] = parseDeadlines('[[deadline]]\nid = "r"\ntitle = "R"\narea = "tax"\ndate = 2025-10-31\nrepeat = "yearly"\nshift = "tax"\n')
+    const items = agenda([d], { done: {} }, "2026-10-01", 400, 800)
+    expect(items.map((o) => [o.key, o.shifted_from])).toEqual([
+      ["r@2025-10-31", null],
+      ["r@2026-11-02", "2026-10-31"],
+      ["r@2027-11-02", "2027-10-31"],
+      ["r@2028-10-31", null],
+    ])
+    expect(() => parseDeadlines('[[deadline]]\nid = "x"\ntitle = "X"\narea = "tax"\ndate = 2026-01-01\nshift = "sunday"\n')).toThrow(/invalid shift/)
   })
 })
 

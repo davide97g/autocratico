@@ -3,15 +3,28 @@
 // Geist Black, the second time bigger and cropped by the frame.
 import * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D, W, H } from '../engine/gl';
+import { Layer2D, W, H, VERTICAL } from '../engine/gl';
 import { HEX } from '../engine/palette';
 import { clamp, ease, frameIdx, hash } from '../engine/util';
 import { app, loadImage, roundRect } from './_motifs';
 import { chantWords, drawChantWord, type ChantWord } from './chant-type';
 
-/** A crop of a capture: image key, centre and width in capture px (16:9). */
+/** A crop of a capture: image key, centre and width in capture px (16:9; upright 4:5). */
 type Crop = [view: string, cx: number, cy: number, w: number];
-const CROPS: Crop[] = [
+/** Upright: portrait crops, mostly of the phone (natively upright), tight enough to read. */
+const CROPS_V: Crop[] = [
+  ['phone-overview', 590, 1250, 900], // calendar chips
+  ['desktop-overview', 2440, 1030, 640], // "6 ott · Bollo auto"
+  ['desktop-inbox', 2150, 900, 760], // the phishing row
+  ['phone-deadlines', 600, 1600, 1000], // October rows
+  ['phone-cases', 590, 1350, 1000], // the checklist
+  ['phone-activity', 590, 1700, 1000], // commits + Annulla
+  ['desktop-overview', 1350, 640, 760], // desktop calendar
+  ['phone-deadlines', 600, 1250, 900], // Multa ZTL
+  ['desktop-deadlines', 2290, 760, 760], // November
+  ['phone-overview', 590, 1900, 900], // further down the phone
+];
+const CROPS_W: Crop[] = [
   ['desktop-overview', 1350, 640, 1150], // calendar chips
   ['desktop-overview', 2440, 1030, 680], // "6 ott · Bollo auto"
   ['desktop-inbox', 2150, 830, 1150], // the phishing row
@@ -23,6 +36,9 @@ const CROPS: Crop[] = [
   ['phone-deadlines', 600, 1700, 1100], // phone rows
   ['desktop-overview', 970, 1600, 680], // "Da tenere d'occhio"
 ];
+const CROPS = VERTICAL ? CROPS_V : CROPS_W;
+/** Crop aspect (h / w). */
+const ASPECT = VERTICAL ? 1.25 : 9 / 16;
 
 export default class Chant extends Scene {
   layer = new Layer2D();
@@ -74,10 +90,12 @@ export default class Chant extends Scene {
   card(c: CanvasRenderingContext2D, i: number, k: number, shadow: boolean): number {
     const [view, cx, cy, cw] = CROPS[i]!;
     const img = this.imgs.get(view)!;
-    const ch = (cw * 9) / 16;
+    const ch = cw * ASPECT;
     const sc = 1.0 + 0.2 * hash(i, 1);
-    const w = 980 * sc, h = (w * 9) / 16;
-    const x = W / 2 + (hash(i, 2) - 0.5) * 820, y = H / 2 + 10 + (hash(i, 3) - 0.5) * 120;
+    // upright: portrait cards in the safe box, between FUTURO and AUTOCRATICO
+    const w = (VERTICAL ? 780 : 980) * sc, h = w * ASPECT;
+    const x = VERTICAL ? 492 + (hash(i, 2) - 0.5) * 200 : W / 2 + (hash(i, 2) - 0.5) * 820;
+    const y = VERTICAL ? 830 + (hash(i, 3) - 0.5) * 140 : H / 2 + 10 + (hash(i, 3) - 0.5) * 120;
     const ang = (hash(i, 4) - 0.5) * 0.12;
     const drop = clamp(k / 0.07);
     const s = drop < 1 ? 1.3 - 0.3 * ease.inQuad(drop) : 1 + 0.02 * Math.exp(-(k - 0.07) * 30) * Math.cos((k - 0.07) * 60);

@@ -631,6 +631,7 @@ on("GET", "/api/finance/data", () => {
     mirror: s.financeConnected ? s.mirror : null,
     investments: s.investments,
     links: s.links,
+    matched: {},
     deadlines: s.deadlines
       .filter((d) => d.finance_category || d.finance_recurring)
       .map((d) => ({
@@ -640,6 +641,9 @@ on("GET", "/api/finance/data", () => {
       })),
   })
 })
+// No payments to propose in the demo: its transactions are made up after the deadlines.
+on("GET", "/api/finance/matches", () => json([]))
+on("POST", "/api/finance/matches/:id", () => fail("this proposal is no longer open", 409))
 on("POST", "/api/finance/sync", () => {
   const s = state()
   if (!s.financeConnected) return fail("not connected", 409)

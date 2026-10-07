@@ -2,12 +2,20 @@
 // a texture compositor and Canvas2D layers uploaded as textures.
 import * as THREE from 'three';
 import { GLSL_COMMON } from './glsl/common';
-import { SCALE } from './scale';
+import { SCALE, VERTICAL } from './scale';
 
-export { SCALE };
-/** Logical canvas: scenes lay out in these px at every output scale. */
-export const W = 1920;
-export const H = 1080;
+export { SCALE, VERTICAL };
+/** Logical canvas: scenes lay out in these px at every output scale (1080x1920 with `?aspect=9x16`). */
+export const W = VERTICAL ? 1080 : 1920;
+export const H = VERTICAL ? 1920 : 1080;
+/**
+ * Where text and key action may go. Full-bleed imagery may fill the frame; lyrics, labels and the
+ * subject stay inside. Upright, the margins clear the overlays of Instagram Reels and YouTube Shorts
+ * (top bar; caption, account and audio at the bottom; like/comment/share column on the right).
+ */
+export const SAFE = VERTICAL
+  ? { top: 240, bottom: 1920 - 470, left: 64, right: 1080 - 160 }
+  : { top: 80, bottom: 1080 - 80, left: 80, right: 1920 - 80 };
 /** Physical (output) size: the logical canvas times SCALE (`?scale=2` → 3840x2160). */
 export const PW = W * SCALE;
 export const PH = H * SCALE;
@@ -179,7 +187,7 @@ export function scaleContext2D(c: CanvasRenderingContext2D, s: number) {
 }
 
 /**
- * A 1920x1080 (logical) Canvas2D surface uploaded as an sRGB texture (decoded to linear when sampled).
+ * A W x H (logical) Canvas2D surface uploaded as an sRGB texture (decoded to linear when sampled).
  * Draw in CSS pixels with origin top-left. Call `upload()` after drawing each frame.
  * The backing canvas is SCALE times larger (`canvas.width` = w*SCALE); the context is pre-scaled
  * (see scaleContext2D), so drawing code works in logical px at every output scale.

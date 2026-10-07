@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import type { FinanceData, FinanceSetup } from "@autocratico/core"
+import { addDays, type FinanceData, type FinanceSetup, type PaymentMatch, today } from "@autocratico/core"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { Account } from "../src/account.ts"
@@ -82,7 +82,7 @@ function withFinance() {
   const config = loadConfig({ data, jobs: false, telegramToken: null, claude: null })
   const finance = new Finance(data, { fetcher: fake.fetcher, debounceMs: 10 })
   const s = services(config, { jobs: null, telegram: null, verifyAccess: null, account: new Account(config, ":memory:"), finance })
-  return { app: createApp(s), data, fake, finance }
+  return { app: createApp(s), s, data, fake, finance }
 }
 
 async function json<T>(r: Response | Promise<Response>): Promise<T> {
@@ -202,5 +202,42 @@ describe("Finance: http connector", () => {
     expect(s).toMatchObject({ connector: null, url: null, connected: false, synced_at: null })
     expect(() => statSync(join(data, "secrets", "finance.json"))).toThrow()
     expect((await app.request("/api/finance/sync", { method: "POST", headers: h })).status).toBe(400)
+  })
+})
+
+describe("Payments found in the finance source", () => {
+  it("proposes them, marks the occurrence paid on a yes and never proposes a dismissed pair again", async () => {
+    const { app, s, data, fake } = withFinance()
+    const h = await owner(app)
+    const day = (n: number) => addDays(today("Europe/Rome"), n)
+    const file = join(data, "deadlines.toml")
+    writeFileSync(
+      file,
+      `${readFileSync(file, "utf8")}\n[[deadline]]\nid = "water-bill"\ntitle = "Water bill Acque"\narea = "home"\ndate = ${day(-3)}\namount = 55.20\n\n[[deadline]]\nid = "gym"\ntitle = "Gym membership"\narea = "health"\ndate = ${day(-1)}\namount = 30.00\n`
+    )
+    fake.db.transactions.push(
+      { id: "w1", date: day(-2), amount: 55.2, description: "SEPA Acque Example", category: "food", type: "expense" },
+      { id: "g1", date: day(-1), amount: 30, description: "Pizza", category: "food", type: "expense" }
+    )
+    await put(app, h, { url: URL_, token: TOKEN })
+    const found = await s.matches.scan()
+    expect(found.map((m) => [m.key, m.transaction.id])).toEqual([
+      [`water-bill@${day(-3)}`, "w1"],
+      [`gym@${day(-1)}`, "g1"], // same amount, same day: proposed, the user says no
+    ])
+    expect(await s.matches.scan()).toEqual([]) // already proposed
+    const open = await json<PaymentMatch[]>(app.request("/api/finance/matches", { headers: h }))
+    expect(open).toHaveLength(2)
+
+    const answer = (id: string, a: string) => app.request(`/api/finance/matches/${id}`, { method: "POST", headers: { ...h, "content-type": "application/json" }, body: JSON.stringify({ answer: a }) })
+    expect((await answer(open[0].id, "paid")).status).toBe(200)
+    expect((await answer(open[0].id, "paid")).status).toBe(409)
+    expect((await answer(open[1].id, "dismiss")).status).toBe(200)
+    expect((await answer("zz", "paid")).status).toBe(400)
+
+    expect(JSON.parse(readFileSync(join(data, "state.json"), "utf8")).done[`water-bill@${day(-3)}`]).toBe(day(0))
+    expect((await json<FinanceData>(app.request("/api/finance/data", { headers: h }))).matched).toEqual({ [`water-bill@${day(-3)}`]: "w1" })
+    expect(await s.matches.scan()).toEqual([])
+    expect(await json(app.request("/api/finance/matches", { headers: h }))).toEqual([])
   })
 })

@@ -10,6 +10,7 @@ import type {
   FinanceData,
   FinanceExpenseInput,
   FinanceSetup,
+  PaymentMatch,
   GmailAccountInput,
   GmailPreview,
   GmailSetup,
@@ -30,6 +31,7 @@ export type {
   FinanceCategory,
   FinanceData,
   FinanceSetup,
+  PaymentMatch,
   FinanceTransaction,
   GmailAccount,
   GmailPreview,
@@ -199,3 +201,6 @@ export const financeData = () => request<FinanceData>("/api/finance/data")
 export const syncFinance = () => post<{ changed: boolean; transactions: number }>("/api/finance/sync")
 export const recordExpense = (e: FinanceExpenseInput) => post<{ id: string }>("/api/finance/transactions", e)
 export const removeExpense = (key: string) => post<Ok>(`/api/finance/transactions/${encodeURIComponent(key)}`, undefined, "DELETE")
+/** Transactions of the finance source that look like the payment of an open occurrence. */
+export const paymentMatches = () => request<PaymentMatch[]>("/api/finance/matches")
+export const answerMatch = (id: string, answer: "paid" | "dismiss") => post<Ok>(`/api/finance/matches/${id}`, { answer })

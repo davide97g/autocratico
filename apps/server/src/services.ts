@@ -11,6 +11,7 @@ import { DataRepo } from "./git.ts"
 import { Inbox } from "./inbox.ts"
 import { Reminders } from "./reminders.ts"
 import { Jobs } from "./jobs.ts"
+import { PaymentMatches } from "./matches.ts"
 import { fanOut, Ntfy } from "./ntfy.ts"
 import { Pulse } from "./pulse.ts"
 import { Store } from "./store.ts"
@@ -27,6 +28,9 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
   const reminders = new Reminders(config.data, config.timeZone)
   const finance = overrides.finance ?? new Finance(config.data, { timeZone: config.timeZone })
   const pulse = new Pulse()
+  // Every channel the user paired; read when a notification goes out, after `s` exists.
+  const notifier = () => fanOut([s.telegram, s.ntfy])
+  const matches = overrides.matches ?? new PaymentMatches({ data: config.data, store, finance, locale: config.locale, notifier, pulse })
   const s: Services = {
     config,
     store,
@@ -42,16 +46,17 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     transcriber: new Transcriber(config),
     reminders,
     finance,
+    matches,
     pulse,
     usage,
     gmailLinks: new GmailLinks(config.data, gmailScript(config)),
     ...overrides,
   }
   if (config.telegramToken && overrides.telegram === undefined) {
-    s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, reminders, transcriber: s.transcriber, changes: s.changes, gmailLinks: s.gmailLinks, jobs: () => s.jobs })
+    s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, reminders, transcriber: s.transcriber, changes: s.changes, gmailLinks: s.gmailLinks, matches: s.matches, jobs: () => s.jobs })
   }
   if (overrides.jobs === undefined) {
-    s.jobs = new Jobs({ config, store, inbox, claude, repo, reminders, finance, pulse: s.pulse, notifier: () => fanOut([s.telegram, s.ntfy]) })
+    s.jobs = new Jobs({ config, store, inbox, claude, repo, reminders, finance: s.finance, matches: s.matches, pulse: s.pulse, notifier })
   }
   return s
 }

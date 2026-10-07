@@ -1,6 +1,6 @@
 // Entry: preview player (default) or export mode (?export=1, driven by scripts/render.ts).
 import { Engine, type AdaptiveSampling } from './engine/engine';
-import { PW, PH, SCALE } from './engine/gl';
+import { W, H, PW, PH, SCALE, VERTICAL } from './engine/gl';
 import { makeTimeline } from './timeline';
 
 const params = new URLSearchParams(location.search);
@@ -9,9 +9,13 @@ const ONLY = params.get('only'); // comma-separated scene ids to load (faster st
 const FROM = params.get('t') ? parseFloat(params.get('t')!) : null;
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
-// physical size: 1920x1080 times ?scale= (the page CSS keeps showing it at 1920x1080)
+// physical size: the logical canvas times ?scale= (the page CSS keeps showing it at the logical size)
 canvas.width = PW;
 canvas.height = PH;
+canvas.style.aspectRatio = `${W} / ${H}`;
+document.documentElement.style.setProperty('--w', `${W}px`);
+document.documentElement.style.setProperty('--h', `${H}px`);
+if (VERTICAL) document.body.classList.add('vertical');
 
 const engine = new Engine(canvas, makeTimeline);
 
@@ -36,8 +40,9 @@ function setupExport() {
     engine,
     duration: engine.duration,
     errors: engine.errors,
-    /** Output size in px (1920x1080 times scale); stream() sends frames of width*height*4 bytes. */
+    /** Output size in px (the logical canvas times scale); stream() sends frames of width*height*4 bytes. */
     scale: SCALE,
+    vertical: VERTICAL,
     width: PW,
     height: PH,
     timeline: TIMELINE.map(({ id, start, end }) => ({ id, start, end })),

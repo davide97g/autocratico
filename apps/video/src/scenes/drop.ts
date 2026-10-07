@@ -6,11 +6,12 @@
 // on the studio grey: from rage to the calm register.
 import type * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D, W, H } from '../engine/gl';
+import { Layer2D, W, H, VERTICAL } from '../engine/gl';
 import { HEX, rgba } from '../engine/palette';
 import { F, font, glyphX, measure } from '../engine/type';
 import type { Line } from '../engine/lyrics';
 import { clamp, ease, lerp } from '../engine/util';
+import { renderUpright, initUpright, type Upright } from './drop-upright';
 import {
   app, display, drawBar, drawBrowser, drawStudio, loadImage, roundRect, statusOf,
   STATUS_COLOR, type Status,
@@ -25,7 +26,7 @@ const MONO = 15, LH = 24, BLK_W = 410, BLK_PAD = 22;
 const COLS = [95, 527, 959, 1391], ROWS = [84, 776];
 const FLY = 0.26; // a block's flight into its card (s), landing on the word
 
-interface Placed extends Block {
+export interface Placed extends Block {
   x: number; y: number; w: number; h: number;
   t0: number; chars: number; status: Status | null;
   /** char index where the date line starts (the counter appears once it is typed) */
@@ -41,8 +42,13 @@ export default class Drop extends Scene {
   hits: [number, number, number] = [0, 0, 0];
   charW = 9;
   headSize = 88;
+  /** The toml's type metrics (the upright cut sets them larger). */
+  ty = { mono: MONO, lh: LH, pad: BLK_PAD, big: 30, small: 12, bigY: 44, smallY: 64, edge: 18 };
+  /** The upright cut's layout and state (drop-upright.ts). */
+  up: Upright | null = null;
 
   override async init() {
+    if (VERTICAL) { await initUpright(this, this.ctx); return; }
     this.img = await loadImage(app('desktop', 'overview'));
     const ly = this.ctx.lyrics;
     this.l1 = ly.get('Il futuro è automatico', 0);
@@ -111,24 +117,25 @@ export default class Drop extends Scene {
   // ------------------------------------------------------------------ toml
   drawBlockBody(c: CanvasRenderingContext2D, b: Placed, x: number, y: number, t: number, alpha: number, bare = false) {
     const n = Math.floor((t - b.t0) * 290);
+    const T = this.ty;
     if (n <= 0 || alpha <= 0) return;
     c.save();
     c.globalAlpha *= alpha;
     // the cell
     if (!bare) {
       c.fillStyle = HEX.ink2;
-      roundRect(c, x, y, b.w, b.h, 12); c.fill();
+      roundRect(c, x, y, b.w, b.h, VERTICAL ? 16 : 12); c.fill();
     }
     c.fillStyle = b.status ? STATUS_COLOR[b.status] : HEX.graphite;
-    roundRect(c, x, y + 10, 3, b.h - 20, 1.5); c.fill();
-    c.font = font(F.mono(400), MONO);
+    if (VERTICAL) { roundRect(c, x, y + 14, 5, b.h - 28, 2.5); c.fill(); } else { roundRect(c, x, y + 10, 3, b.h - 20, 1.5); c.fill(); }
+    c.font = font(F.mono(400), T.mono);
     c.textBaseline = 'alphabetic';
-    let left = n, cxp = x + BLK_PAD, cyp = y + BLK_PAD + MONO;
+    let left = n, cxp = x + T.pad, cyp = y + T.pad + T.mono;
     for (let li = 0; li < b.lines.length && left > 0; li++) {
       const line = b.lines[li]!;
       const shown = Math.min(line.length, left);
       left -= line.length + 1;
-      cyp = y + BLK_PAD + MONO + li * LH - 2;
+      cyp = y + T.pad + T.mono + li * T.lh - 2;
       const eq = line.indexOf(' = ');
       const segs: [number, number, string][] = eq < 0
         ? [[0, line.length, HEX.faint]]
@@ -138,30 +145,30 @@ export default class Drop extends Scene {
         const part = line.slice(a, Math.min(z, shown));
         if (line.startsWith('amount') && a === eq + 3) {
           // amounts are hidden, as in privacy mode
-          drawBar(c, x + BLK_PAD + a * this.charW, cyp - MONO * 0.78, Math.min(z, shown) - a > 0 ? 6 * this.charW : 0, MONO * 0.95, 1, rgba('sheet', 0.85));
+          drawBar(c, x + T.pad + a * this.charW, cyp - T.mono * 0.78, Math.min(z, shown) - a > 0 ? 6 * this.charW : 0, T.mono * 0.95, 1, rgba('sheet', 0.85));
           continue;
         }
         c.fillStyle = col;
-        c.fillText(part, x + BLK_PAD + a * this.charW, cyp);
+        c.fillText(part, x + T.pad + a * this.charW, cyp);
       }
-      cxp = x + BLK_PAD + shown * this.charW;
+      cxp = x + T.pad + shown * this.charW;
     }
     // the cursor while typing
     if (n < b.chars) {
       c.fillStyle = HEX.sheet;
-      c.fillRect(cxp + 1, cyp - MONO * 0.8, this.charW * 0.9, MONO * 1.05);
+      c.fillRect(cxp + 1, cyp - T.mono * 0.8, this.charW * 0.9, T.mono * 1.05);
     }
     // days left, counted as soon as the date is typed
     if (n > b.dateAt + 6) {
       const a = clamp((n - b.dateAt - 6) / 20);
       c.globalAlpha *= a;
-      c.font = font(F.mono(500), 30);
+      c.font = font(F.mono(500), T.big);
       c.textAlign = 'right';
       c.fillStyle = b.status ? STATUS_COLOR[b.status] : HEX.graphite;
-      c.fillText(b.days === null ? '—' : b.days < 0 ? `−${-b.days}` : String(b.days), x + b.w - 18, y + 44);
-      c.font = font(F.mono(400), 12);
+      c.fillText(b.days === null ? '—' : b.days < 0 ? `−${-b.days}` : String(b.days), x + b.w - T.edge, y + T.bigY);
+      c.font = font(F.mono(400), T.small);
       c.fillStyle = HEX.muted;
-      c.fillText(b.days === null ? 'senza data' : 'giorni', x + b.w - 18, y + 64);
+      c.fillText(b.days === null ? 'senza data' : 'giorni', x + b.w - T.edge, y + T.smallY);
     }
     c.restore();
   }
@@ -228,6 +235,7 @@ export default class Drop extends Scene {
 
   // ------------------------------------------------------------------ render
   override render(f: Frame, out: THREE.WebGLRenderTarget): PostOverrides {
+    if (this.up) return renderUpright(this, this.ctx, f, out);
     const t = f.t;
     const c = this.layer.ctx;
     const [h1, , h3] = this.hits;

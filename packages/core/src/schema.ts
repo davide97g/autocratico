@@ -1,6 +1,8 @@
 /** Shapes shared by the server, the web app and future native clients. */
 import { z } from "zod"
 
+import { SHIFTS } from "./holidays.ts"
+
 export const SEVERITIES = ["high", "medium", "low"] as const
 export const Severity = z.enum(SEVERITIES)
 export type Severity = z.infer<typeof Severity>
@@ -15,6 +17,8 @@ export const Deadline = z.object({
   /** First occurrence; null when the date is still "TODO". */
   date: IsoDate.nullable(),
   repeat: z.string(),
+  /** Moves each occurrence off weekends and holidays (`workday`, `tax`: see holidays.ts); `date` stays the nominal one. */
+  shift: z.enum(SHIFTS),
   /** Last day that still counts: no occurrences after it (a deadline that ended, kept for history). */
   until: IsoDate.nullable(),
   severity: Severity,
@@ -52,6 +56,8 @@ export const Occurrence = z.object({
   title: z.string(),
   area: z.string(),
   date: IsoDate,
+  /** The nominal date when `shift` moved this occurrence off a weekend or holiday. */
+  shifted_from: IsoDate.nullable(),
   days: z.number().int(),
   done_on: IsoDate.nullable(),
   repeat: z.string(),
@@ -557,6 +563,24 @@ export const FinanceExpenseInput = z.object({
 })
 export type FinanceExpenseInput = z.infer<typeof FinanceExpenseInput>
 
+/**
+ * A transaction of the finance source that looks like the payment of an open occurrence: proposed to the
+ * user, who marks the occurrence paid (linking it to that transaction) or dismisses it.
+ */
+export const PaymentMatch = z.object({
+  id: z.string(),
+  key: z.string(),
+  title: z.string(),
+  date: IsoDate,
+  /** The occurrence's amount, known or estimated; null when unknown. */
+  amount: z.number().nullable(),
+  amount_basis: AmountBasis.nullable(),
+  /** Why it matches: the source's recurring template, the amount, the category, words of the description. */
+  reasons: z.array(z.enum(["recurring", "amount", "category", "words"])),
+  transaction: FinanceTransaction.pick({ id: true, date: true, amount: true, description: true }),
+})
+export type PaymentMatch = z.infer<typeof PaymentMatch>
+
 export const InvestmentPosition = z.object({
   name: z.string(),
   isin: z.string().nullable(),
@@ -588,6 +612,8 @@ export const FinanceData = z.object({
   investments: z.array(InvestmentSnapshot),
   /** Occurrence key -> transaction id in the finance source, for paid occurrences recorded there. */
   links: z.record(z.string(), z.string()),
+  /** Occurrence key -> transaction id already in the finance source that the user confirmed as its payment. */
+  matched: z.record(z.string(), z.string()),
   /** Deadlines tied to the finance source (finance_category / finance_recurring set). */
   deadlines: z.array(z.object({ id: z.string(), finance_category: z.string().nullable(), finance_recurring: z.string().nullable() })),
 })
@@ -612,7 +638,7 @@ export const UsageLimits = z.object({
 })
 export type UsageLimits = z.infer<typeof UsageLimits>
 
-export const USAGE_SOURCES = ["chat", "telegram", "triage", "digest"] as const
+export const USAGE_SOURCES = ["chat", "telegram", "triage", "digest", "taxreturn", "rules"] as const
 export type UsageSource = (typeof USAGE_SOURCES)[number]
 
 /** One finished agent run: what it took, priced at API list rates by Claude Code (the subscription pays nothing extra). */

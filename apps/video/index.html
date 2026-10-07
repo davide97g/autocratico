@@ -9,7 +9,7 @@
   :root { color-scheme: dark; }
   html, body { margin: 0; height: 100%; background: #050505; color: #f7f7f3; font: 12px/1.4 ui-monospace, Menlo, monospace; overflow: hidden; }
   #wrap { position: absolute; inset: 0 0 64px 0; display: flex; align-items: center; justify-content: center; }
-  #c { max-width: 100%; max-height: 100%; aspect-ratio: 16/9; background: #000; cursor: pointer; }
+  #c { max-width: 100%; max-height: 100%; background: #000; cursor: pointer; }
   #ui { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; padding: 6px 12px; box-sizing: border-box; background: #0b0b0c; }
   #ui.hidden { display: none; } #ui.hidden ~ #wrap { bottom: 0; }
   #scrub { width: 100%; margin: 0; accent-color: #dc2627; }
@@ -20,7 +20,7 @@
   #errs { display: none; position: fixed; top: 8px; left: 8px; right: 8px; max-height: 40vh; overflow: auto; background: #300; color: #fbb; padding: 8px; white-space: pre-wrap; z-index: 9; }
   body.export #ui, body.export #errs { display: none !important; }
   body.export #wrap { inset: 0; }
-  body.export #c { width: 1920px; height: 1080px; max-width: none; max-height: none; }
+  body.export #c { width: var(--w, 1920px); height: var(--h, 1080px); max-width: none; max-height: none; }
 </style>
 </head>
 <body>

@@ -6,6 +6,9 @@
  * read    chat (web app, Telegram): read-only tools, WebFetch only to public bodies.
  * triage  background job on new inbox items: may edit files in the data folder, nothing else;
  *         no web access at all, since it reads untrusted content while holding write access.
+ * research  the `rules` job re-checking the catalog on the web: reads and edits only catalog/ (and
+ *         adds to notes/JOURNAL.md), may read deadlines.toml; never sees the inbox, the archive,
+ *         the profile, the cases or the finances, so a web page cannot get them out.
  */
 import { spawn } from "node:child_process"
 import { existsSync, readdirSync } from "node:fs"
@@ -20,7 +23,7 @@ import { tokens, type Usage } from "./usage.ts"
 
 // Pages Claude may open to check a rule. `*.x` needs Claude Code 2.1.172 or later.
 export const DOMAINS = ["gov.it", "inps.it", "normattiva.it", "gazzettaufficiale.it", "europa.eu", "aci.it"]
-export type Profile = "read" | "triage"
+export type Profile = "read" | "triage" | "research"
 const LANGUAGES = { it: "Italian", en: "English" } as const
 const SESSION = /^[0-9a-f-]{36}$/
 
@@ -50,8 +53,33 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
       denied: ["Edit", "Write", "NotebookEdit", ...secrets],
     }
   }
+  if (profile === "research") {
+    // Read tools are allowed anywhere by default: what holds personal data is denied explicitly.
+    const hidden = [
+      ...["inbox", "archive", "cases", "chats", "jobs", "finance", "out", ".git", ".backup"].map((d) => `${d}/**`),
+      ...["profile.toml", "state.json", "investments.toml", "gmail.toml", "finance.toml", "reminders.json", "usage.json", "notes/SITUATION.md"],
+    ].flatMap((p) => [`Read(${abs(data)}/${p})`, `Grep(${abs(data)}/${p})`, `Glob(${abs(data)}/${p})`])
+    return {
+      allowed: [
+        `Read(${abs(data)}/catalog/**)`,
+        `Read(${abs(data)}/deadlines.toml)`,
+        `Read(${abs(data)}/notes/INSTRUCTIONS.md)`,
+        `Read(${abs(data)}/notes/JOURNAL.md)`,
+        `Glob(${abs(data)}/catalog/**)`,
+        `Grep(${abs(data)}/catalog/**)`,
+        `Edit(${abs(data)}/catalog/**)`,
+        `Write(${abs(data)}/catalog/**)`,
+        `Edit(${abs(data)}/notes/JOURNAL.md)`,
+        "WebSearch",
+        ...DOMAINS.flatMap((d) => [`WebFetch(domain:${d})`, `WebFetch(domain:*.${d})`]),
+        "Bash(python3 scripts/when.py)",
+        "Bash(python3 scripts/when.py:*)",
+      ],
+      denied: ["NotebookEdit", "Task", ...secrets, ...hidden],
+    }
+  }
   // Server-owned files stay out of the agent's reach.
-  const owned = ["state.json", "reminders.json", "usage.json", "chats/**", "jobs/**", "inbox/*/item.json", "finance.toml", "finance/mirror.json", "finance/links.json", "finance/summary.md", ".git/**"].flatMap((p) => [
+  const owned = ["state.json", "reminders.json", "usage.json", "chats/**", "jobs/**", "inbox/*/item.json", "finance.toml", "finance/mirror.json", "finance/links.json", "finance/matches.json", "finance/summary.md", "energy/**", ".git/**"].flatMap((p) => [
     `Edit(${abs(data)}/${p})`,
     `Write(${abs(data)}/${p})`,
   ])
@@ -73,7 +101,7 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
 
 const CHAT_INSTRUCTIONS = `You are answering in the chat of autocratico, the user's personal register of Italian bureaucracy (web app or Telegram).
 - Be direct and brief; use simple Markdown (lists, bold, small tables).
-- Read the data files (deadlines.toml, state.json, profile.toml, cases/, catalog/, notes/, inbox/) before answering about facts and dates. For spending and earnings read finance/summary.md (finance/mirror.json has each transaction); for investments, investments.toml.
+- Read the data files (deadlines.toml, state.json, profile.toml, cases/, catalog/, notes/, inbox/) before answering about facts and dates. For spending and earnings read finance/summary.md (finance/mirror.json has each transaction); for investments, investments.toml; for electricity and gas offers, energy/<supply id>.md (the latest weekly comparison of energy.toml with the market; tell the user to check an offer on the supplier's site before choosing).
 - Wrap every piece of personal data in ||...|| (amounts, birth dates, addresses, document numbers, names of people): the web app hides them in privacy mode and Telegram never shows them.
 - To read, use Read, Glob and Grep; the only commands you may run are \`python3 scripts/upcoming.py [days]\` and \`python3 scripts/when.py [WHEN ...]\`, typed exactly like that (AUTOCRATICO_DATA is already set): no prefixes, cd, absolute paths or pipes.
 - You do know the date and time: each message starts with when it was sent. For date arithmetic (reminder times, "in 90 minutes", "monday at 9", days left until a date, daylight saving changes) run \`python3 scripts/when.py\` with the expressions, e.g. \`python3 scripts/when.py +90m, monday 09:00, 2026-10-16\`, and use its iso values; never say you cannot read the clock.
@@ -195,7 +223,7 @@ export class Claude {
     // The send time goes in the message itself, so a resumed conversation always has the current one.
     child.stdin.end(`[Sent ${localNow(this.config.timeZone)}, ${this.config.timeZone}]\n\n${o.prompt}`)
 
-    const source = o.source ?? (o.profile === "triage" ? "triage" : "chat")
+    const source = o.source ?? (o.profile === "read" ? "chat" : "triage")
     const meter: Meter = {
       limits: (info) => void this.usage?.limits(info).catch((e: Error) => console.error(`usage: ${e.message}`)),
       result: (e) =>

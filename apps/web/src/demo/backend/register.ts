@@ -101,6 +101,8 @@ function patch(d: Deadline, set: Record<string, unknown>) {
       d.severity = (v as Deadline["severity"]) ?? "medium"
     else if (k === "until") d.until = (v as string | null) ?? null
     else if (k === "repeat") d.repeat = (v as string | null) ?? "none"
+    else if (k === "shift")
+      d.shift = (v as Deadline["shift"] | null) ?? "none"
     else if (k === "remind_days") d.remind_days = (v as number[] | null) ?? []
     else if (k === "sensitive") d.sensitive = Boolean(v)
     else if (k === "title" || k === "area") d[k] = String(v)

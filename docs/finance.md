@@ -29,7 +29,7 @@ Overlapping exports (January–March, then February–April) are counted once. R
 
 - **Live**: an `http` source's change feed, or the `csv` folder watch, triggers a sync about a second after a change; the open web app is told through `/api/events` and reloads. An `http` source re-reads only the last 3 months then.
 - **Hourly**: the `finance` job re-reads everything (it also catches edits to older months). One notification per failure streak, with no amounts.
-- Files: `data/finance.toml` (connector and settings, versioned; never the token), `data/finance/mirror.json` (the data), `data/finance/summary.md` (monthly totals per category for the chat agent, amounts in `||…||`), `data/finance/links.json` (occurrence → transaction recorded there). Those three are server-owned; `finance/import/` is yours and the agent's. Disconnecting removes the settings and the synced copy, never the CSV files.
+- Files: `data/finance.toml` (connector and settings, versioned; never the token), `data/finance/mirror.json` (the data), `data/finance/summary.md` (monthly totals per category for the chat agent, amounts in `||…||`), `data/finance/links.json` (occurrence → transaction recorded there), `data/finance/matches.json` (payments found, below). Those are server-owned; `finance/import/` is yours and the agent's. Disconnecting removes the settings and the synced copy, never the CSV files.
 
 ## Paid deadlines → expenses
 
@@ -37,6 +37,16 @@ With a source that can write, marking an occurrence with an amount as done asks 
 
 - `finance_category = "<category id>"` preselects the category (for `csv`, the category name in lower case);
 - `finance_recurring = "<template id>"` says that the source's recurring template is the same payment: the Finance view shows the deadline and leaves the template's projection out, so it is not counted twice.
+
+## Expenses → paid deadlines
+
+The other way round, with any connector (`csv` too): after every sync, and each morning with the reminders, the server looks for expenses that look like the payment of an open occurrence (`packages/core/src/matching.ts`): due from 60 days ago to 10 days ahead, paid up to 25 days early or 10 days late, and
+
+- the transaction belongs to the deadline's `finance_recurring` template, or
+- the amount fits (within 1% of a known amount, 15% of an estimated one) and the category is the deadline's `finance_category`, or a word of the bank description is in the deadline's title or notes, or the dates are at most 5 days apart, or
+- the amount is unknown (`"TODO"`) but both the category and a word agree.
+
+Each pair is proposed once, on Telegram/ntfy and in a card on the Overview: **Mark paid** marks the occurrence done and remembers it as paid by that transaction (so it is not offered for recording again; un-marking it never deletes the bank's transaction), **Not this one** is never proposed again. Nothing is marked without that answer.
 
 ## Investments
 

@@ -238,7 +238,8 @@ export function receipt(seed: number, date: string): Sprite {
 }
 
 /** A poster for the manifesto (affissione): white, mono header and footer, room for the question. */
-export function poster(seed: number, w: number, h: number, head: string, prot: string, foot: string): Sprite {
+/** A pasted poster (manifesto). `k` scales its chrome (header, rule, footer) for the upright cut. */
+export function poster(seed: number, w: number, h: number, head: string, prot: string, foot: string, k = 1): Sprite {
   return sprite(w, h, seed, (c, _mark, rnd) => {
     paperBase(c, w, h, '#FAFAFA', rnd);
     // glue wrinkles: a few faint diagonal tones
@@ -248,11 +249,12 @@ export function poster(seed: number, w: number, h: number, head: string, prot: s
       g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, 'rgba(0,0,0,0.012)'); g.addColorStop(1, 'rgba(0,0,0,0)');
       c.fillStyle = g; c.fillRect(x - 60, 0, 120, h);
     }
-    text(c, head, 64, 70, F.mono(500), 17, HEX.pen, { track: 0.14 });
-    text(c, prot, w - 64, 70, F.mono(400), 17, HEX.graphite, { align: 'right' });
-    c.fillStyle = HEX.pen; c.fillRect(64, 90, w - 128, 2);
-    c.fillStyle = '#CFCFCF'; c.fillRect(64, h - 82, w - 128, 1);
-    text(c, foot, 64, h - 48, F.mono(400), 15, HEX.graphite);
+    const m = k === 1 ? 64 : 54;
+    text(c, head, m, 70 * k, F.mono(500), 17 * k, HEX.pen, { track: 0.14 });
+    text(c, prot, w - m, 70 * k, F.mono(400), 17 * k, HEX.graphite, { align: 'right' });
+    c.fillStyle = HEX.pen; c.fillRect(m, 90 * k, w - 2 * m, 2 * k);
+    c.fillStyle = '#CFCFCF'; c.fillRect(m, h - 82 * k, w - 2 * m, k);
+    text(c, foot, m, h - 48 * k, F.mono(400), 15 * k, HEX.graphite);
   }, 1.3);
 }
 

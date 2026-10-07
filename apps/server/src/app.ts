@@ -26,6 +26,7 @@ import { describeSource, listArchive } from "./sources.ts"
 import { setPersonName, writeProfile } from "./profile.ts"
 import type { Store } from "./store.ts"
 import { finishAnswer } from "./chat-actions.ts"
+import type { PaymentMatches } from "./matches.ts"
 import type { Pulse } from "./pulse.ts"
 import type { Usage } from "./usage.ts"
 import type { Reminders } from "./reminders.ts"
@@ -52,6 +53,8 @@ export type Services = {
   reminders: Reminders
   /** The finance source's mirror (tests pass one with a fake finance server). */
   finance: Finance
+  /** Payments seen in the finance source, proposed for open occurrences. */
+  matches: PaymentMatches
   /** What changed, for the open web apps (`/api/events`). */
   pulse: Pulse
   /** The Claude subscription's limits and the agent's runs, for the Settings card. */
@@ -87,6 +90,7 @@ const ChatBody = z.object({
   /** Occurrence key (`<id>@<date>`) the conversation is about, from "Ask Claude" on a deadline. */
   about: DoneBody.shape.key.max(200).optional(),
 })
+const MatchAnswer = z.object({ answer: z.enum(["paid", "dismiss"]) })
 type Env = { Variables: { caller: Caller } }
 
 const Name = z.string().trim().min(1).max(60)
@@ -529,6 +533,15 @@ export function createApp(s: Services) {
   app.delete("/api/finance/transactions/:key", async (c) => {
     userOf(c)
     return c.json({ ok: await s.finance.removeExpense(c.req.param("key")) })
+  })
+  app.get("/api/finance/matches", (c) => c.json(s.matches.open()))
+  app.post("/api/finance/matches/:id", async (c) => {
+    userOf(c)
+    const body = MatchAnswer.safeParse(await c.req.json().catch(() => null))
+    const id = c.req.param("id")
+    if (!body.success || !/^[0-9a-f]{8}$/.test(id)) return c.json({ error: "invalid request" }, 400)
+    const ok = body.data.answer === "paid" ? (await s.matches.accept(id)) !== null : await s.matches.dismiss(id)
+    return ok ? c.json({ ok }) : c.json({ error: "this proposal is no longer open" }, 409)
   })
 
   /**

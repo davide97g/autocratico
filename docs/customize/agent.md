@@ -13,6 +13,8 @@ What you can change here: what the agents know and do: the chat agent (read-only
 | Background agent prompt | `TRIAGE_INSTRUCTIONS` and `triagePrompt()` in `apps/server/src/jobs.ts` | `triage` job (`triage` profile) |
 | Background agent's answer format | the fenced JSON block at the end of `triagePrompt()` (`items` with `status` and `outcome`, `summary`, `phishing`, `done`) | the server: it updates inbox items, marks occurrences done, notifies |
 | Weekly digest | the prompt inside `#digest` in `apps/server/src/jobs.ts` | `digest` job (`read` profile) |
+| Tax return case | `TAXRETURN_INSTRUCTIONS` and the prompt in `#taxreturn` (`apps/server/src/jobs.ts`) | `taxreturn` job, 1 March (`triage` profile): opens or updates `cases/<year>-730/`; triage then checks the pre-filled return against it |
+| Catalog re-check | `RULES_INSTRUCTIONS` and the prompt in `#rules` (`apps/server/src/jobs.ts`); which entries are due: `catalogVerified()` in `packages/core/src/catalog.ts` | `rules` job, monthly (`research` profile) |
 | Language of answers | `AUTOCRATICO_LOCALE`, or the web UI's locale; `LANGUAGES` in `claude.ts` | appended to every run |
 
 Prefer the first row. A preference in `INSTRUCTIONS.md` survives updates from upstream, while an edit to a prompt in code is a fork you maintain.
@@ -34,6 +36,12 @@ Prefer the first row. A preference in `INSTRUCTIONS.md` survives updates from up
 - Never `secrets/**`, and never the server-owned files in the `owned` list: `state.json`, `reminders.json`, `chats/`, `jobs/`, `inbox/*/item.json`, `finance.toml` and the finance mirror.
 - Every change it makes is a git commit you can undo from Activity.
 
+**`research`** (the `rules` job):
+- Reads and edits only `catalog/`; reads `deadlines.toml` and `notes/INSTRUCTIONS.md`, adds to `notes/JOURNAL.md`.
+- WebSearch, and WebFetch only to `DOMAINS`.
+- Reads of the inbox, the archive, the cases, the profile, the finances and the other personal files are denied by name (read tools are otherwise allowed by default), so a web page it reads has nothing personal to get out.
+- Deadlines it finds moved are only reported: the user corrects them from the chat.
+
 **Safe to change**:
 - `DOMAINS` (to another country's official sites)
 - the wording of the prompts
@@ -42,6 +50,7 @@ Prefer the first row. A preference in `INSTRUCTIONS.md` survives updates from up
 
 **Security-sensitive** (see `AGENTS.md`, "Security-sensitive spots"). Don't loosen these without a reason you can write down:
 - web access for `triage`. Email content is untrusted, and a prompt injection with web access could leak data.
+- what `research` may read or edit: it reads untrusted web pages while holding web access.
 - Edit/Write outside the data folder
 - access to `secrets/`
 - removing a server-owned path from `owned`

@@ -8,7 +8,7 @@
 // 4. "Autocratico!": the only black stamp of the film slams over the paper wall.
 import * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D, W, H } from '../engine/gl';
+import { Layer2D, W, H, SAFE, VERTICAL } from '../engine/gl';
 import { HEX } from '../engine/palette';
 import { F, font, layout } from '../engine/type';
 import { clamp, ease, frameIdx, hash, lerp, prog, TAU } from '../engine/util';
@@ -18,9 +18,12 @@ import { buildWall, looseSheet, type Wall } from './italia-paper';
 import { loadMap, loadPhotos, renderMap, project, MAP_VB, type ItalyMap, type Photo } from './italia-ref';
 import type { Word } from '../engine/lyrics';
 
-const MAP_SCALE = 0.76;
-const MAP_X = 1080, MAP_Y = 44;
-interface Shot { img: ImageBitmap; fx: number; fy: number; z: number; at: number; scroll?: number }
+// upright (VERTICAL): Italy stands under the words, filling the frame's lower two thirds
+const MAP_SCALE = VERTICAL ? 0.91 : 0.76;
+const MAP_X = VERTICAL ? 85 : 1080, MAP_Y = VERTICAL ? 730 : 44;
+/** Upright: where the black stamp lands (across the frame, bottom left to top right) and its angle. */
+const STAMP_V = { x: 490, y: 860, angle: -1.02, len: 1220 };
+interface Shot { img: ImageBitmap; fx: number; fy: number; z: number; at: number; scroll?: number; dy?: number }
 
 export default class Italia extends Scene {
   layer = new Layer2D();
@@ -43,6 +46,9 @@ export default class Italia extends Scene {
       ['activity', 'desktop', 'activity'], ['profile', 'desktop', 'profile'], ['overview', 'desktop', 'overview'],
       ['dlfull', 'desktop', 'deadlines-full'], ['pdead', 'phone', 'deadlines'], ['pover', 'phone', 'overview'],
     ];
+    // upright: the phone captures (natively upright) carry the montage and the inserts
+    if (VERTICAL) names.push(['pinbox', 'phone', 'inbox'], ['pcases', 'phone', 'cases'], ['pactivity', 'phone', 'activity'],
+      ['pprofile', 'phone', 'profile'], ['pdlfull', 'phone', 'deadlines-full']);
     const ims = await Promise.all(names.map(([, d, v]) => capture(app(d, v))));
     names.forEach(([k], i) => (this.caps[k] = ims[i]!));
     this.wall = buildWall(2300, 1400, 11);
@@ -70,7 +76,7 @@ export default class Italia extends Scene {
     for (let i = 0; i < m.n; i++) this.litAt[i] = a + (b - a - 0.1) * Math.pow(d[i]! / dmax, 0.85) + 0.1 * hash(i, 77);
     // the stamp spans ~1500 px
     const s0 = stampSize('AUTOCRATICO!', 100).w;
-    this.stampPx = Math.round(100 * 1480 / s0);
+    this.stampPx = Math.round(100 * (VERTICAL ? STAMP_V.len : 1480) / s0);
   }
 
   override render(f: Frame, out: THREE.WebGLRenderTarget): PostOverrides {
@@ -107,7 +113,7 @@ export default class Italia extends Scene {
     const snap = Math.exp(-k * 10);
     const z = sh.z * (1 + 0.1 * snap * kick) * (1 + 0.02 * k);
     const fy = sh.scroll ? sh.fy + sh.scroll * ease.inOutCubic(clamp(k / 0.3)) : sh.fy;
-    this.cover(c, sh.img, sh.fx - 40 * k, fy, z, 70 * snap * kick, 0);
+    this.cover(c, sh.img, sh.fx - 40 * k, fy, z, 70 * snap * kick, sh.dy ?? 0);
   }
 
   // ------------------------------------------------------------------ 1. "In un attimo"
@@ -146,6 +152,7 @@ export default class Italia extends Scene {
     c.restore();
     // the words, white on ink, and the counter
     const w = this.w;
+    if (VERTICAL) { this.montageWordsV(c, t, lit); return; }
     const S = 150, X = 120, Y = 560;
     let x = X;
     const sp = textW(c, ' ', S);
@@ -161,6 +168,29 @@ export default class Italia extends Scene {
     c.restore();
   }
 
+  /** Upright: "In un" / "attimo" stacked big above the map, the counter beside "In un" on its baseline. */
+  private montageWordsV(c: CanvasRenderingContext2D, t: number, lit: number) {
+    const w = this.w, m = this.map;
+    const S = 250, X = SAFE.left - 4, Y1 = 455, Y2 = 680;
+    const sp = textW(c, ' ', S);
+    let x = X;
+    x += riseWord(c, 'In', x, Y1, S, prog(t, w.in!.start - 0.04, w.in!.start + 0.16), { color: '#fafafa' }) + sp;
+    x += riseWord(c, 'un', x, Y1, S, prog(t, w.un!.start - 0.04, w.un!.start + 0.16), { color: '#fafafa' });
+    riseWord(c, 'attimo', X, Y2, S, prog(t, w.attimo!.start - 0.04, w.attimo!.start + 0.16), { color: '#fafafa' });
+    const shown = Math.min(m.n, lit);
+    const label = `${shown >= 1000 ? `${Math.floor(shown / 1000)}.${String(shown % 1000).padStart(3, '0')}` : shown}`;
+    c.save();
+    c.globalAlpha = clamp((t - w.in!.start + 0.05) / 0.12);
+    c.fillStyle = shown >= m.n ? '#fafafa' : HEX.faint;
+    c.font = font(F.mono(500), 46);
+    const cx = Math.max(X + 560, x + 56);
+    c.fillText(label, cx, Y1 - 52);
+    c.font = font(F.mono(400), 34);
+    c.fillStyle = HEX.faint;
+    c.fillText('comuni', cx, Y1 - 4);
+    c.restore();
+  }
+
   // ------------------------------------------------------------------ 2. "rivoluzioniamo"
   private revolution(c: CanvasRenderingContext2D, t: number) {
     const au = this.ctx.audio;
@@ -173,7 +203,11 @@ export default class Italia extends Scene {
       const tb = au.timeOfBeat(bi + Math.ceil(i / 2)) - (i % 2 ? (au.timeOfBeat(bi + Math.ceil(i / 2)) - au.timeOfBeat(bi + Math.ceil(i / 2) - 1)) / 2 : 0);
       if (tb > cuts[cuts.length - 1]! + 0.12 && tb < wd.end) cuts.push(tb);
     }
-    const seq: [string, number, number, number][] = [
+    const seq: [string, number, number, number][] = VERTICAL ? [
+      // upright: the phone, one page per cut, cropped tight on what is in the letters
+      ['pdead', 520, 1330, 1.35], ['pinbox', 560, 760, 1.35], ['pcases', 560, 700, 1.35], ['pactivity', 600, 1900, 1.35],
+      ['pdead', 520, 1620, 1.4], ['pprofile', 560, 820, 1.35], ['pcases', 560, 1720, 1.35], ['pinbox', 600, 1250, 1.35],
+    ] : [
       ['deadlines', 1300, 950, 1.4], ['inbox', 2150, 800, 1.5], ['cases', 1400, 900, 1.35], ['activity', 2250, 1000, 1.45],
       ['profile', 1150, 700, 1.4], ['pdead', 590, 1600, 1.0], ['overview', 1400, 600, 1.35], ['pover', 590, 1200, 1.0],
     ];
@@ -183,6 +217,13 @@ export default class Italia extends Scene {
     const sh: Shot = { img: this.caps[key]!, fx, fy, z, at: cuts[ci]! };
 
     c.fillStyle = HEX.ink; c.fillRect(0, 0, W, H);
+    if (VERTICAL) {
+      // upright: the whole phone page glows faintly through the ink around the letters
+      c.save();
+      c.globalAlpha = 0.075;
+      this.shot(c, { ...sh, dy: 845 - H / 2 }, t);
+      c.restore();
+    }
     // the lit map stays behind the letters, dimmed
     c.save();
     c.globalAlpha = 0.3;
@@ -202,22 +243,31 @@ export default class Italia extends Scene {
     const fam = F.sans(900);
     const L0 = layout(lines[1]!, fam, 100, -4.5);
     const size = Math.floor(100 * 1800 / L0.width);
-    const trk = -0.045 * size;
-    const Ls = lines.map((s) => layout(s, fam, size, trk));
+    // upright: each line set as wide as the frame allows (a justified stack), centred on the safe box
+    const sizes = VERTICAL ? lines.map((s) => Math.floor(100 * 1010 / layout(s, fam, 100, -4.5).width)) : [size, size];
+    const Ls = lines.map((s, i) => layout(s, fam, sizes[i]!, -0.045 * sizes[i]!));
     const lead = size * 0.9;
     const push = 1 + 0.04 * prog(t, t0, wd.end);
     const yMid = H / 2 + size * 0.36;
+    const CY = 845; // upright: the block's centre
+    const ys = VERTICAL
+      ? (() => { const a = sizes[0]!, b = sizes[1]!, top = CY - (0.73 * a + 0.12 * a + 0.73 * b) / 2; return [top + 0.73 * a, top + 0.85 * a + 0.73 * b]; })()
+      : [yMid - 0.5 * lead, yMid + 0.5 * lead];
+    if (VERTICAL) sh.dy = CY - H / 2;
     const sung = clamp((t - t0 + 0.06) / Math.max(0.3, wd.end - t0 - 0.3));
     const n = 14; // letters (the hyphen comes with the U)
     m.font = font(fam, size);
     m.fillStyle = '#fff';
     m.save();
-    m.translate(W / 2, H / 2);
+    const pcy = VERTICAL ? CY : H / 2;
+    m.translate(W / 2, pcy);
     m.scale(push, push);
-    m.translate(-W / 2, -H / 2);
+    m.translate(-W / 2, -pcy);
     let li = 0;
     Ls.forEach((L, row) => {
-      const x0 = W / 2 - L.width / 2, y0 = yMid + (row - 0.5) * lead;
+      const x0 = W / 2 - L.width / 2, y0 = ys[row]!;
+      const size = sizes[row]!;
+      if (VERTICAL) m.font = font(fam, size);
       L.glyphs.forEach((g) => {
         const idx = g.ch === '-' ? li - 1 : li++;
         const k = clamp((sung - idx / n) * n / 1.3);
@@ -281,7 +331,12 @@ export default class Italia extends Scene {
     const bB = au.timeOfBeat(Math.round(au.beatAt(w.pallosa!.start + 0.95)));
     const bC = au.timeOfBeat(Math.round(au.beatAt(bB + 0.01)) + 1);
     const D = 0.3;
-    const inserts = [
+    const inserts = VERTICAL ? [
+      // upright: the phone, full-bleed
+      { at: bA, sh: { img: this.caps.pdlfull!, fx: 590, fy: 900, z: 1.0, at: bA, scroll: 1700 } as Shot },
+      { at: bB, sh: { img: this.caps.pover!, fx: 590, fy: 1250, z: 1.3, at: bB } as Shot },
+      { at: bC, sh: { img: this.caps.pinbox!, fx: 590, fy: 1000, z: 1.15, at: bC, scroll: 500 } as Shot },
+    ] : [
       { at: bA, sh: { img: this.caps.dlfull!, fx: 1300, fy: 500, z: 1.15, at: bA, scroll: 1700 } as Shot },
       { at: bB, sh: { img: this.caps.overview!, fx: 2300, fy: 700, z: 1.7, at: bB } as Shot },
       { at: bC, sh: { img: this.caps.inbox!, fx: 2150, fy: 760, z: 1.45, at: bC, scroll: 500 } as Shot },
@@ -315,9 +370,9 @@ export default class Italia extends Scene {
       const a = bB + D, p = slow(a, bC);
       this.wallBg(c, t, t0, 0);
       const ph = P.fila!;
-      const h = 900, wd = (h * ph.img.width) / ph.img.height;
+      const h = VERTICAL ? 1120 : 900, wd = (h * ph.img.width) / ph.img.height;
       c.save();
-      c.translate(980, 540);
+      if (VERTICAL) c.translate(492, 830); else c.translate(980, 540);
       c.rotate(-0.045 + 0.02 * p);
       c.scale(1 + 0.03 * p, 1 + 0.03 * p);
       c.shadowColor = 'rgba(0,0,0,0.35)'; c.shadowBlur = 40; c.shadowOffsetY = 18;
@@ -337,7 +392,9 @@ export default class Italia extends Scene {
       c.fillStyle = 'rgba(232,232,232,0.42)'; c.fillRect(0, 0, W, H);
       this.dust(c, t, t0, sk);
       if (sk > -0.07) {
-        shakeAmt = drawStamp(c, 'AUTOCRATICO!', 960, 470, this.stampPx, sk + 0.07, { color: 'pen', seed: 23, angle: -0.07 });
+        shakeAmt = VERTICAL
+          ? drawStamp(c, 'AUTOCRATICO!', STAMP_V.x, STAMP_V.y, this.stampPx, sk + 0.07, { color: 'pen', seed: 23, angle: STAMP_V.angle })
+          : drawStamp(c, 'AUTOCRATICO!', 960, 470, this.stampPx, sk + 0.07, { color: 'pen', seed: 23, angle: -0.07 });
       }
       this.falling(c, t - t0, 0);
     }
@@ -352,7 +409,7 @@ export default class Italia extends Scene {
     c.save();
     c.translate(W / 2, H / 2);
     c.rotate(-0.012 + 0.012 * p);
-    const s = 0.93 + 0.06 * p - 0.01 * jolt;
+    const s = (VERTICAL ? 1.42 : 0.93) + 0.06 * p - 0.01 * jolt;
     c.scale(s, s);
     c.drawImage(this.wall.cv, -this.wall.w / 2 + (p - 0.5) * 40, -this.wall.h / 2, this.wall.w, this.wall.h);
     c.restore();
@@ -362,7 +419,9 @@ export default class Italia extends Scene {
   /** Loose sheets falling through the light in slow motion: 1 = the far one (behind the stamp), 0 = the near one, out of focus. */
   private falling(c: CanvasRenderingContext2D, tt: number, i: number) {
     const L = this.loose[i]!;
-    const x = i ? 1300 - tt * 22 : 1930 - tt * 20, y = i ? -330 + tt * 100 : -520 + tt * 120;
+    // upright: the near sheet drifts through the bottom right corner, clear of the stamp's diagonal
+    const x = i ? 1300 - tt * 22 : VERTICAL ? 1080 - tt * 20 : 1930 - tt * 20;
+    const y = i ? -330 + tt * 100 : VERTICAL ? 1180 + tt * 110 : -520 + tt * 120;
     c.save();
     c.translate(x + Math.sin(tt * 0.8 + i) * 30, y);
     c.rotate((i ? 0.5 : -0.35) + Math.sin(tt * 0.5 + i * 2) * 0.12);
@@ -380,7 +439,7 @@ export default class Italia extends Scene {
       let x = h1 * W + (h3 - 0.5) * 16 * tau + Math.sin(tau * 0.6 + i) * 6;
       let y = h2 * H - (3 + h4 * 9) * tau;
       if (burst > 0) {
-        const dx = x - 960, dy = y - 470, d = Math.hypot(dx, dy) + 60;
+        const dx = x - (VERTICAL ? STAMP_V.x : 960), dy = y - (VERTICAL ? STAMP_V.y : 470), d = Math.hypot(dx, dy) + 60;
         x += (dx / d) * burst * (0.4 + h5); y += (dy / d) * burst * (0.4 + h5);
       }
       x = ((x % W) + W) % W; y = ((y % H) + H) % H;
@@ -404,6 +463,7 @@ export default class Italia extends Scene {
       ['l’Italia', w.litalia!, 400, HEX.graphite, -0.02], ['lenta', w.lenta!, 300, HEX.muted, -0.01],
       ['e', w.e!, 300, HEX.muted, -0.01], ['pallosa', pal, 300, HEX.muted, trk],
     ];
+    if (VERTICAL) { this.slipV(c, t, parts); return; }
     const sp = textW(c, ' ', S, 300, 0);
     const width = parts.reduce((a, [s, , wt, , tr]) => a + textW(c, s, S, wt, tr), 0) + sp * 3;
     const open = prog(t, w.litalia!.start - 0.05, w.litalia!.start + 0.15, ease.outCubic);
@@ -418,5 +478,30 @@ export default class Italia extends Scene {
     for (const [s, wd, wt, col, tr] of parts) {
       x += riseWord(c, s, x, Y, S, prog(t, wd.start - 0.04, wd.start + 0.2), { weight: wt, color: col, tracking: tr }) + sp;
     }
+  }
+
+  /** Upright: two slips stacked at the top left, "l’Italia" and then "lenta e pallosa" (clear of the stamp's diagonal). */
+  private slipV(c: CanvasRenderingContext2D, t: number, parts: [string, Word, number, string, number][]) {
+    const S = 62, X = SAFE.left + 34, Y0 = 330, LEAD = 96;
+    const sp = textW(c, ' ', S, 300, 0);
+    const rows = [parts.slice(0, 1), parts.slice(1)];
+    rows.forEach((row, r) => {
+      const Y = Y0 + r * LEAD;
+      const at = row[0]![1].start;
+      const width = row.reduce((a, [s, , wt, , tr]) => a + textW(c, s, S, wt, tr), 0) + sp * (row.length - 1);
+      const open = prog(t, at - 0.05, at + 0.15, ease.outCubic);
+      if (open <= 0) return;
+      c.save();
+      c.shadowColor = 'rgba(0,0,0,0.22)'; c.shadowBlur = 18; c.shadowOffsetY = 6;
+      c.fillStyle = '#ececec';
+      c.translate(X - 30, Y - S * 1.02);
+      c.rotate(r ? 0.006 : -0.01);
+      c.fillRect(0, 0, (width + 60) * open, S * 1.42);
+      c.restore();
+      let x = X;
+      for (const [s, wd, wt, col, tr] of row) {
+        x += riseWord(c, s, x, Y, S, prog(t, wd.start - 0.04, wd.start + 0.2), { weight: wt, color: col, tracking: tr }) + sp;
+      }
+    });
   }
 }

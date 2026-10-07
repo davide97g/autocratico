@@ -469,10 +469,11 @@ function Main({
             action: { label: t.live.undo, onClick: () => void onDoneRef.current(o, !done, false) },
             duration: 7000,
           })
-        // A payment: offer to record it in the finance source, or to delete what was recorded for it.
+        // A payment: offer to record it in the finance source, or to delete what was recorded for it
+        // (not when the payment is already there: a transaction confirmed as this occurrence's).
         if (o.amount_basis !== null) {
           const f = await financeData().catch(() => null)
-          if (f?.mirror && f.write && done !== Boolean(f.links[o.key])) setExpense({ o, mode: done ? "record" : "remove", finance: f, doneOn: done_on })
+          if (f?.mirror && f.write && done !== Boolean(f.links[o.key]) && !(done && f.matched[o.key])) setExpense({ o, mode: done ? "record" : "remove", finance: f, doneOn: done_on })
         }
       } catch (e) {
         setError(t.app.saveFailed((e as Error).message))

@@ -8,16 +8,22 @@
 //   half-beat pushes in.
 import * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D, W, H } from '../engine/gl';
+import { Layer2D, W, H, SAFE, VERTICAL } from '../engine/gl';
 import { F, font } from '../engine/type';
 import { clamp, ease, hash, keys, lerp, mulberry32, smoothstep } from '../engine/util';
-import { drawStamp, drawStudio, loadImage } from './_motifs';
+import { drawStamp, drawStudio, loadImage, stampSize } from './_motifs';
 import {
   type Sprite, calendarPage, camera, drawSprite, envelopeGreen, envelopeWhite, f24, letter, note, pecRow, photoSprite, shakeAt,
 } from './open-paper';
 
 const LEVELS = [3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-const K = 1.12; // screen px per image px at an exact level (covers the frame's diagonal under roll)
+// Upright (9:16) the dive centres a little above the frame's middle, inside SAFE, and the levels are
+// drawn a hair larger so the square images still cover every corner from there under roll.
+const V = VERTICAL;
+const CX = V ? 540 : W / 2, CY = V ? 880 : H / 2;
+const K = V ? 1.16 : 1.12; // screen px per image px at an exact level (covers the frame's diagonal under roll)
+/** Upright: the stamp size whose letters span `w` px (the border bleeds a little past them). */
+const fitStamp = (text: string, w: number) => Math.round((w / (stampSize(text, 100).w - 84)) * 100);
 const lvlPath = (z: number, grey = true) => `ref/earth/zoom-z${z.toFixed(1).padStart(4, '0')}${grey ? '-grey' : ''}.jpg`;
 
 interface Drop { s: Sprite; t: number; x: number; y: number; rot: number; scale: number; sway: number; spin: number }
@@ -31,6 +37,9 @@ export default class Open extends Scene {
   drops: Drop[] = [];
   tR = 0.11; tPEC = 4.04; tF24 = 5.27; tSC = 7.23;
   zk: [number, number][] = [];
+  /** The dive's stamps: text, hit time, x, y, size, angle. */
+  st: [string, number, number, number, number, number][] = [];
+  scSize = 335;
 
   override async init() {
     const ly = this.ctx.lyrics;
@@ -40,10 +49,24 @@ export default class Open extends Scene {
     this.tSC = ly.get('Scadenza').words[0]!.start;
     const { tR, tPEC, tF24, tSC } = this;
     // the dive: slow over the globe while «Raccomandata» is shouted, then a surge after each shout
-    this.zk = [
-      [tR - 0.06, 2.92], [tR, 3.0], [tR + 1.6, 3.7], [tPEC - 0.9, 5.6], [tPEC, 7.0], [tPEC + 0.5, 7.9],
-      [tF24, 10.2], [tF24 + 1.26, 12.4], [tSC, 15.9],
-    ];
+    this.zk = V
+      // upright the globe starts closer, filling the width: the hook's first frame is the planet
+      ? [[tR - 0.06, 3.36], [tR, 3.42], [tR + 1.6, 3.95], [tPEC - 0.9, 5.6], [tPEC, 7.0], [tPEC + 0.5, 7.9],
+        [tF24, 10.2], [tF24 + 1.26, 12.4], [tSC, 15.9]]
+      : [[tR - 0.06, 2.92], [tR, 3.0], [tR + 1.6, 3.7], [tPEC - 0.9, 5.6], [tPEC, 7.0], [tPEC + 0.5, 7.9],
+        [tF24, 10.2], [tF24 + 1.26, 12.4], [tSC, 15.9]];
+    // upright: each stamp's letters as wide as the safe box allows, stacked down the frame as we dive
+    const sw = SAFE.right - SAFE.left;
+    this.st = V
+      ? [['RACCOMANDATA!', tR, 490, 650, fitStamp('RACCOMANDATA!', sw * 0.95), -0.07],
+        ['PEC!', tPEC, 500, 600, fitStamp('PEC!', 600), 0.08],
+        ['F24!', tF24, 470, 1050, fitStamp('F24!', 640), -0.1]]
+      : [['RACCOMANDATA!', tR, 960, 560, 150, -0.07],
+        ['PEC!', tPEC, 1130, 600, 250, 0.08],
+        ['F24!', tF24, 800, 500, 270, -0.1]];
+    // «Scadenza!» is the biggest stamp: upright too its letters run nearly edge to edge and the frame
+    // crops its border, as in the wide cut
+    this.scSize = V ? fitStamp('SCADENZA!', 960) : 335;
     const imgs = await Promise.all([
       ...LEVELS.map((z) => loadImage(lvlPath(z))),
       loadImage(lvlPath(3, false)),
@@ -58,7 +81,8 @@ export default class Open extends Scene {
     this.lv = imgs.slice(0, LEVELS.length);
     const rest = imgs.slice(LEVELS.length);
     this.color3 = rest[0]!;
-    this.facade = photoSprite(rest[1]!, 1800, { contrast: 1.05 });
+    // upright the palace is drawn bigger: its centre (the pediment, two bays of windows) fills the width
+    this.facade = photoSprite(rest[1]!, V ? 2500 : 1800, { contrast: 1.05 });
     const [mastro, pila, bollo, blocco, datario, olivetti] = rest.slice(2);
 
     // the rain on «Scadenza!»: the papers named by the shouts, forms, notes, and real props
@@ -89,10 +113,11 @@ export default class Open extends Scene {
     for (let k = 0; k < N; k++) {
       const u = k / (N - 1);
       const [s, scale] = made[k % made.length]!;
-      const heap = 90 + 640 * Math.pow(u, 0.85);
+      // upright the heap climbs higher up the taller frame, over its narrower width
+      const heap = V ? 110 + 1080 * Math.pow(u, 0.85) : 90 + 640 * Math.pow(u, 0.85);
       this.drops.push({
-        s, scale: scale * (0.9 + r() * 0.2), t: a + (b - a) * Math.pow(u, 0.72),
-        x: -60 + r() * 2040, y: H + 60 - heap * (0.65 + r() * 0.35),
+        s, scale: scale * (0.9 + r() * 0.2) * (V ? 1.12 : 1), t: a + (b - a) * Math.pow(u, 0.72),
+        x: V ? -40 + r() * 1160 : -60 + r() * 2040, y: H + 60 - heap * (0.65 + r() * 0.35),
         rot: (r() - 0.5) * 0.9, sway: (r() - 0.5) * 120, spin: (r() - 0.5) * 3,
       });
     }
@@ -125,7 +150,7 @@ export default class Open extends Scene {
       const S = 2048 * K * Math.pow(2, z - lvl);
       cc.save();
       cc.globalAlpha = alpha;
-      cc.translate(W / 2, H / 2);
+      cc.translate(CX, CY);
       cc.rotate(roll);
       cc.drawImage(img, -S / 2, -S / 2, S, S);
       cc.restore();
@@ -149,7 +174,7 @@ export default class Open extends Scene {
     const R = (2048 * K * Math.pow(2, z - hi)) / 2;
     sc.save();
     sc.globalCompositeOperation = 'destination-in';
-    const g = sc.createRadialGradient(W / 2, H / 2, R * 0.55, W / 2, H / 2, R * 0.98);
+    const g = sc.createRadialGradient(CX, CY, R * 0.55, CX, CY, R * 0.98);
     g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     sc.fillStyle = g; sc.fillRect(0, 0, W, H);
     sc.restore();
@@ -165,20 +190,22 @@ export default class Open extends Scene {
     c.save();
     c.globalAlpha = a * 0.92;
     c.fillStyle = '#e6e6e6';
-    c.font = font(F.mono(500), 22);
-    c.letterSpacing = '2px';
+    // upright: inside SAFE (under the platform's header, above its caption) and phone-sized
+    const hx = V ? SAFE.left + 8 : 96;
+    c.font = font(F.mono(500), V ? 32 : 22);
+    c.letterSpacing = V ? '3px' : '2px';
     const place = t < tPEC ? 'TERRA' : t < tF24 ? 'ITALIA' : 'ROMA · VIA XX SETTEMBRE';
-    c.fillText(place, 96, 112);
-    c.font = font(F.mono(400), 20);
-    c.letterSpacing = '0.5px';
+    c.fillText(place, hx, V ? SAFE.top + 56 : 112);
+    c.font = font(F.mono(400), V ? 30 : 20);
+    c.letterSpacing = V ? '1px' : '0.5px';
     c.fillStyle = '#bdbdbd';
-    c.fillText('41,9062° N   12,4976° E', 96, H - 128);
+    c.fillText('41,9062° N   12,4976° E', hx, V ? SAFE.bottom - 66 : H - 128);
     const km = 25829.5 * Math.pow(2, -(z - 3));
     const alt = km >= 10 ? `${Math.round(km).toLocaleString('it-IT')} km` : km >= 1 ? `${km.toFixed(1).replace('.', ',')} km` : `${Math.round(km * 1000)} m`;
-    c.fillText(`ALT ${alt}`, 96, H - 96);
+    c.fillText(`ALT ${alt}`, hx, V ? SAFE.bottom - 24 : H - 96);
     // the target: four corner brackets closing in on the centre
-    const s = lerp(150, 70, (z - 3) / 13);
-    const L = 22, x0 = W / 2 - s / 2, y0 = H / 2 - s / 2;
+    const s = lerp(150, 70, (z - 3) / 13) * (V ? 1.2 : 1);
+    const L = V ? 26 : 22, x0 = CX - s / 2, y0 = CY - s / 2;
     c.strokeStyle = 'rgba(235,235,235,0.75)'; c.lineWidth = 2;
     c.beginPath();
     for (const [x, y, dx, dy] of [[x0, y0, 1, 1], [x0 + s, y0, -1, 1], [x0, y0 + s, 1, -1], [x0 + s, y0 + s, -1, -1]] as [number, number, number, number][]) {
@@ -212,11 +239,7 @@ export default class Open extends Scene {
       this.drawEarth(c, t, z, roll);
       this.hud(c, t, z);
       // stamps on the lens; the next dive punches through each one
-      const st: [string, number, number, number, number, number][] = [
-        ['RACCOMANDATA!', tR, 960, 560, 150, -0.07],
-        ['PEC!', tPEC, 1130, 600, 250, 0.08],
-        ['F24!', tF24, 800, 500, 270, -0.1],
-      ];
+      const st = this.st;
       st.forEach(([s, th, x, y, size, ang], i) => {
         const next = i + 1 < st.length ? st[i + 1]![1] : tSC;
         // the dive punches through it just before the next shout
@@ -237,9 +260,10 @@ export default class Open extends Scene {
       const k = t - tSC;
       const slam = 1 + 0.12 * Math.exp(-Math.max(0, k) * 14);
       c.save();
-      camera(c, 960, 560, lerp(1.0, 1.07, ease.outQuad(u)) * slam, lerp(0.012, 0, u));
+      if (V) camera(c, 492, 820, lerp(1.0, 1.07, ease.outQuad(u)) * slam, lerp(0.012, 0, u), 492 - W / 2, 820 - H / 2);
+      else camera(c, 960, 560, lerp(1.0, 1.07, ease.outQuad(u)) * slam, lerp(0.012, 0, u));
       const fh = this.facade.h;
-      drawSprite(c, this.facade, { x: 960, y: H + 30 - fh / 2, shadow: 0.6 });
+      drawSprite(c, this.facade, { x: V ? 540 : 960, y: H + 30 - fh / 2, shadow: 0.6 });
       for (const d of this.drops) {
         const fall = 0.42;
         const p = (t - (d.t - fall)) / fall;
@@ -254,13 +278,13 @@ export default class Open extends Scene {
         if (kk >= 0 && kk < 0.15 && d.scale > 0.5) { const s2 = shakeAt(t, d.t, 4, 22, Math.round(d.t * 100)); sh[0] += s2[0]; sh[1] += s2[1]; }
       }
       c.restore();
-      shake = Math.max(shake, drawStamp(c, 'SCADENZA!', 960, 470, 335, t - tSC + 0.07, { seed: 14, angle: -0.06 }) * 1.6);
+      shake = Math.max(shake, drawStamp(c, 'SCADENZA!', V ? 540 : 960, V ? 780 : 470, this.scSize, t - tSC + 0.07, { seed: 14, angle: -0.06 }) * 1.6);
     }
 
     // the last half-beat before the cut pushes in
     const au = this.ctx.audio;
     const tPush = au.timeOfBeat(Math.round(au.beatAt(end)) - 0.5);
-    const push = keys(t, [[tPush, 1], [end, 1.32, ease.inCubic]]);
+    const push = keys(t, [[tPush, 1], [end, V ? 1.2 : 1.32, ease.inCubic]]);
 
     this.ctx.comp.draw(this.ctx.renderer, this.layer.upload(), out, { mode: 'replace' });
     const light = t >= tSC;

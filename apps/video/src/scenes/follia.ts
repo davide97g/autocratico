@@ -5,7 +5,7 @@
 // perspective and accelerating, and the frame goes white and silent (~41.3 s) for the drop.
 import type * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D, W, H } from '../engine/gl';
+import { Layer2D, W, H, VERTICAL, SAFE } from '../engine/gl';
 import { HEX } from '../engine/palette';
 import { F, glyphX, measure } from '../engine/type';
 import type { Line, Word } from '../engine/lyrics';
@@ -27,12 +27,18 @@ interface Poster {
   s: P.Sprite; cx: number; cy: number; rot: number;
   line: Line; rows: number[][]; size: number; top: number;
   suck: number; dur: number;
+  /** Upright cut: each row set as large as the width allows (sizes), from x0 (poster px). */
+  sizes?: number[]; x0?: number;
+  /** Upright cut: where this poster's FOLLIA! lands (screen px). */
+  stampY?: number;
 }
 
 const WEIGHT_Q = 700;
 const TRACK = -0.04;
-/** The point everything is centralised into (screen px). */
-const PX = W / 2, PY = 470;
+/** The point everything is centralised into (screen px): upright, the optical centre of SAFE. */
+const PX = VERTICAL ? 492 : W / 2, PY = VERTICAL ? 845 : 470;
+/** Upright cut: posters span the frame's width, their text the safe box (SAFE.left .. SAFE.right). */
+const V = { cx: 500, w: 980, k: 1.8, textW: SAFE.right - SAFE.left, wordY: 1150 };
 
 export default class Follia extends Scene {
   layer = new Layer2D();
@@ -46,6 +52,8 @@ export default class Follia extends Scene {
   tF1 = 0; tF2 = 0; tScad = 0; tVis = 0; tCen = 0; tCenEnd = 0; tWhite = 0;
   tCasino = 0; tCasinoEnd = 0; tPerse = 0;
   stamp1 = 300; stamp2 = 300; visSize = 380;
+  /** Upright cut: the banner's row sizes, and CENTRALIZZATE!'s size. */
+  bannerSizes: number[] = []; centralSize = 100;
 
   override async init() {
     const ly = this.ctx.lyrics;
@@ -109,7 +117,7 @@ export default class Follia extends Scene {
       P.bollettino(28, '06/10/2026'),
     ];
     const rnd = mulberry32(4242);
-    const X0 = -820, X1 = W + 820, Y0 = -520, Y1 = H + 520;
+    const X0 = VERTICAL ? -560 : -820, X1 = W + (VERTICAL ? 560 : 820), Y0 = VERTICAL ? -700 : -520, Y1 = H + (VERTICAL ? 700 : 520);
     const cw = 330, ch = 270;
     const pts: { x: number; y: number }[] = [];
     for (let y = Y0; y < Y1; y += ch) for (let x = X0; x < X1; x += cw) pts.push({ x: x + (rnd() - 0.5) * 180, y: y + (rnd() - 0.5) * 150 });
@@ -131,10 +139,14 @@ export default class Follia extends Scene {
       it.suck = this.tCen + 0.08 + clamp(d * 0.45 + rnd() * 0.18, 0, 0.62);
       // the sheets behind CENTRALIZZATE! clear first, so the word reads
       const sy = H / 2 + (p.y - H / 2) * 0.615;
-      if (sy > 720) it.suck = Math.max(this.tCen - 0.04, it.suck - 0.28 * clamp((sy - 720) / 200));
+      if (VERTICAL) {
+        // upright the word sits across the middle of the wall: its band clears as it is shouted
+        const dw = Math.abs(sy - (V.wordY - 50));
+        if (dw < 260) it.suck = Math.min(it.suck, this.tCen - 0.2 + 0.2 * (dw / 260));
+      } else if (sy > 720) it.suck = Math.max(this.tCen - 0.04, it.suck - 0.28 * clamp((sy - 720) / 200));
       it.dur = 0.58 + rnd() * 0.16;
       // carte perse: a few top sheets around the posters fall off the wall
-      const out = Math.abs(p.x - W / 2) > 790 || Math.abs(p.y - H / 2) > 445;
+      const out = VERTICAL ? Math.abs(p.x - V.cx) > 470 || p.y < 220 || p.y > 1540 : Math.abs(p.x - W / 2) > 790 || Math.abs(p.y - H / 2) > 445;
       const onScreen = p.x > -60 && p.x < W + 60 && p.y > -40 && p.y < H + 40;
       if (i > n * 0.62 && out && onScreen && rnd() < 0.75) it.fall = this.tPerse + rnd() * 0.32;
       this.items.push(it);
@@ -151,6 +163,7 @@ export default class Follia extends Scene {
       const top = 100 + (h - 190 - rows.length * size * 1.02) / 2;
       return { s, cx, cy, rot, line, rows, size, top, suck: this.tCen - 0.12 + 0 * k, dur: 0.34 };
     };
+    if (VERTICAL) { this.initUpright(l1, l2, l3); return; }
     this.posters = [
       mk(31, 1560, 860, 'AVVISO AL CITTADINO', 'Prot. n. 2026/0247', 'Ufficio relazioni con il pubblico · Sportello 3 · lun–ven 9:00–11:30',
         l1, [[0, 1, 2], [3], [4, 5]], 960, 548, -0.012, 230, 0),
@@ -166,6 +179,51 @@ export default class Follia extends Scene {
     const w100 = stampSize('FOLLIA!', 100, { seed: 51 }).w;
     this.stamp1 = Math.round((100 * 1640) / w100);
     this.stamp2 = Math.round((100 * 2060) / w100);
+  }
+
+  /** Per-row sizes: each row as large as `width` allows, capped. */
+  fitRows(line: Line, rows: number[][], width: number, cap: number, weight = WEIGHT_Q) {
+    const fam = F.sans(weight);
+    return rows.map((r) => Math.min(cap, (100 * width) / measure(r.map((i) => line.words[i]!.w).join(' '), fam, 100, TRACK * 100)));
+  }
+  /** Baselines of rows of different sizes, the first cap line at `top`; returns them and the bottom. */
+  rowBase(sizes: number[], top: number) {
+    const ys: number[] = [];
+    let y = top + sizes[0]! * 0.74;
+    sizes.forEach((s, i) => { if (i) y += 0.22 * sizes[i - 1]! + 0.76 * s; ys.push(y); });
+    return { ys, bottom: y + 0.06 * sizes[sizes.length - 1]! };
+  }
+
+  /**
+   * The upright cut (9:16): each question becomes a tall poster across the frame, its rows stacked and set
+   * as large as the safe width allows (key words biggest), FOLLIA! slammed huge below the question.
+   */
+  initUpright(l1: Line, l2: Line, l3: Line) {
+    const h = 1320, cy = 880, top = cy - h / 2, x0 = SAFE.left - (V.cx - V.w / 2), rowsTop = 90 * V.k + 64;
+    const w100 = stampSize('FOLLIA!', 100, { seed: 51 }).w;
+    this.stamp1 = Math.round((100 * 1060) / w100);
+    this.stamp2 = Math.round((100 * 1190) / w100);
+    const s1h = stampSize('FOLLIA!', this.stamp1, { seed: 51 }).h, s2h = stampSize('FOLLIA!', this.stamp2, { seed: 52 }).h;
+    const mk = (seed: number, head: string, prot: string, foot: string, line: Line, rows: number[][], rot: number, cap: number, stampH: number): Poster => {
+      const s = P.poster(seed, V.w, h, head, prot, foot, V.k);
+      const sizes = this.fitRows(line, rows, V.textW, cap);
+      // no answer under it: the question is centred on the sheet
+      const { bottom } = this.rowBase(sizes, rowsTop);
+      const rt = stampH ? rowsTop : rowsTop + (h - 82 * V.k - 40 - bottom) / 2;
+      const stampY = top + bottom + stampH / 2;
+      return { s, cx: V.cx, cy, rot, line, rows, size: 0, top: rt, suck: this.tCen - 0.12, dur: 0.34, sizes, x0, stampY };
+    };
+    this.posters = [
+      mk(31, 'AVVISO AL CITTADINO', 'Prot. n. 2026/0247', 'Sportello 3 · lun–ven 9:00–11:30', l1, [[0, 1, 2], [3], [4, 5]], -0.012, 230, s1h),
+      mk(32, 'COMUNICAZIONE', 'Prot. n. 2026/0248', 'Munirsi di marca da bollo', l2, [[0, 1, 2], [3], [4, 5, 6], [7]], 0.014, 300, 0),
+      mk(33, 'AVVISO', 'Prot. n. 2026/0249', 'Sportello chiuso per inventario', l3, [[0, 1], [2], [3]], -0.008, 270, s2h - 30),
+    ];
+    this.bannerSizes = this.fitRows(this.l4, [[0, 1], [2, 3]], V.textW, 160);
+    this.visSize = Math.min(420, (100 * V.textW) / measure('VISIBILI!', F.sans(900), 100, TRACK * 100));
+    // the banner fits its lockup: header, two rows, VISIBILI!, footer
+    const bh = Math.round(this.rowBase(this.bannerSizes, 90 * V.k + 60).bottom + 0.2 * this.bannerSizes[1]! + this.visSize * 0.95 + 82 * V.k + 40);
+    this.banner = P.poster(34, V.w + 40, bh, 'MANIFESTO', 'Art. 1', 'Affisso il 03/10/2026', V.k);
+    this.centralSize = (100 * V.textW) / measure('CENTRALIZZATE!', F.sans(900), 100, TRACK * 100);
   }
 
   // ------------------------------------------------------------------ timing helpers
@@ -288,7 +346,8 @@ export default class Follia extends Scene {
     const s = p.s;
     c.translate(-s.w / 2, -s.h / 2);
     c.drawImage(s.cv, -s.pad, -s.pad, s.w + s.pad * 2, s.h + s.pad * 2);
-    this.drawRows(c, t, p.line, p.rows, 72, p.top, p.size, HEX.pen);
+    if (p.sizes) this.drawRowsSized(c, t, p.line, p.rows, p.x0!, p.top, p.sizes, HEX.pen);
+    else this.drawRows(c, t, p.line, p.rows, 72, p.top, p.size, HEX.pen);
     c.restore();
   }
 
@@ -315,6 +374,30 @@ export default class Follia extends Scene {
     });
   }
 
+  /** drawRows for the upright cut: every row at its own size (a stacked poster lockup). */
+  drawRowsSized(c: CanvasRenderingContext2D, t: number, line: Line, rows: number[][], x0: number, top: number, sizes: number[], col: string, weight = WEIGHT_Q) {
+    const fam = F.sans(weight);
+    const { ys } = this.rowBase(sizes, top);
+    rows.forEach((r, ri) => {
+      const size = sizes[ri]!, y = ys[ri]!;
+      const text = r.map((i) => line.words[i]!.w.replace(/^‘/, '’')).join(' ');
+      let ci = 0;
+      for (const wi of r) {
+        const w: Word = line.words[wi]!;
+        const k = t - w.start + 0.02;
+        if (k >= 0) {
+          const a = clamp(k / 0.05);
+          const dy = (1 - ease.outCubic(clamp(k / 0.1))) * size * 0.08;
+          c.save();
+          c.globalAlpha *= a;
+          display(c, w.w.replace(/^‘/, '’'), x0 + glyphX(text, ci, fam, size, TRACK * size), y + dy, size, { weight, color: col });
+          c.restore();
+        }
+        ci += Array.from(w.w).length + 1;
+      }
+    });
+  }
+
   drawBanner(c: CanvasRenderingContext2D, t: number) {
     const sl = this.slap(t, this.tScad);
     if (!sl) return;
@@ -323,13 +406,19 @@ export default class Follia extends Scene {
     const b = this.banner;
     c.save();
     if (sk.u > 0) this.applySuck(c, sk.k, -0.4 * sk.u * sk.u);
-    c.translate(W / 2, H / 2 + 6);
+    if (VERTICAL) c.translate(V.cx, PY);
+    else c.translate(W / 2, H / 2 + 6);
     c.rotate(-0.006);
     c.scale(sl.s, sl.s);
     c.globalAlpha = sl.a;
     c.translate(-b.w / 2, -b.h / 2);
     c.drawImage(b.cv, -b.pad, -b.pad, b.w + b.pad * 2, b.h + b.pad * 2);
-    this.drawRows(c, t, this.l4, [[0, 1, 2, 3]], 64, 122, 104, HEX.pen);
+    let vx = 58, vy = 565;
+    if (VERTICAL) {
+      const x0 = SAFE.left - (V.cx - b.w / 2), top = 90 * V.k + 60;
+      this.drawRowsSized(c, t, this.l4, [[0, 1], [2, 3]], x0, top, this.bannerSizes, HEX.pen);
+      vx = x0 - 6; vy = this.rowBase(this.bannerSizes, top).bottom + 0.2 * this.bannerSizes[1]! + this.visSize * 0.74;
+    } else this.drawRows(c, t, this.l4, [[0, 1, 2, 3]], 64, 122, 104, HEX.pen);
     // VISIBILI!: the big word, slammed on its start
     const v = this.l4.words[4]!;
     const k = t - v.start + 0.03;
@@ -338,7 +427,7 @@ export default class Follia extends Scene {
       const s = u < 1 ? 1.1 - 0.1 * ease.inQuad(u) : 1;
       const size = this.visSize;
       c.save();
-      c.translate(58, 565);
+      c.translate(vx, vy);
       c.scale(s, s);
       c.globalAlpha *= 0.3 + 0.7 * u;
       display(c, 'VISIBILI!', 0, 0, size, { weight: 900, color: HEX.pen });
@@ -352,10 +441,10 @@ export default class Follia extends Scene {
     const k = t - w.start + 0.03;
     if (k < 0 || t >= this.tWhite) return;
     const text = 'CENTRALIZZATE!';
-    const size = 176;
+    const size = VERTICAL ? this.centralSize : 176;
     const fam = F.sans(900);
     const tw = measure(text, fam, size, TRACK * size);
-    const x0 = W / 2 - tw / 2, y0 = 950;
+    const x0 = VERTICAL ? SAFE.left : W / 2 - tw / 2, y0 = VERTICAL ? V.wordY : 950;
     const u = clamp(k / 0.06);
     const s = u < 1 ? 1.12 - 0.12 * ease.inQuad(u) : 1;
     // at the end, the word too goes into the point, letter by letter from the outside in
@@ -393,20 +482,24 @@ export default class Follia extends Scene {
     const [p1, p2, p3] = this.posters as [Poster, Poster, Poster];
     this.drawPoster(c, t, z, p1, this.ctx.start);
     let shake = 0;
-    const stamp = (size: number, t0: number, seed: number, angle: number, suck: number) => {
+    const stamp = (size: number, t0: number, seed: number, angle: number, suck: number, x = W / 2, y = H / 2 + 10) => {
       const sk = this.suck(t, suck, 0.34);
       if (sk.u >= 1) return 0;
       c.save();
       if (sk.u > 0) this.applySuck(c, sk.k, -0.4 * sk.u * sk.u);
       this.applyCam(c, z);
-      const sh = drawStamp(c, 'FOLLIA!', W / 2, H / 2 + 10, size, t - t0 + 0.07, { seed, angle });
+      const sh = drawStamp(c, 'FOLLIA!', x, y, size, t - t0 + 0.07, { seed, angle });
       c.restore();
       return sh;
     };
-    shake = Math.max(shake, stamp(this.stamp1, this.tF1, 51, -0.105, this.tCen - 0.12));
+    shake = Math.max(shake, VERTICAL
+      ? stamp(this.stamp1, this.tF1, 51, -0.085, this.tCen - 0.12, 505, p1.stampY!)
+      : stamp(this.stamp1, this.tF1, 51, -0.105, this.tCen - 0.12));
     this.drawPoster(c, t, z, p2, p2.line.words[0]!.start);
     this.drawPoster(c, t, z, p3, p3.line.words[0]!.start);
-    shake = Math.max(shake, stamp(this.stamp2, this.tF2, 52, 0.085, this.tCen - 0.12) * 1.4);
+    shake = Math.max(shake, (VERTICAL
+      ? stamp(this.stamp2, this.tF2, 52, 0.075, this.tCen - 0.12, 505, p3.stampY! + 36)
+      : stamp(this.stamp2, this.tF2, 52, 0.085, this.tCen - 0.12)) * 1.4);
 
     this.drawBanner(c, t);
     this.drawCentral(c, t);

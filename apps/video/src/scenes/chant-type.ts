@@ -1,6 +1,6 @@
 // "FUTURO AUTOCRATICO" ×2: white Geist Black on ink redaction bars. Shared by `chant` (which sets
 // them) and `outro` (whose first beat wipes the last bar out of frame).
-import { W } from '../engine/gl';
+import { W, VERTICAL } from '../engine/gl';
 import { HEX } from '../engine/palette';
 import { F, font, measure } from '../engine/type';
 import { clamp, ease } from '../engine/util';
@@ -17,12 +17,22 @@ const TR = -0.045;
 export function chantWords(ly: Lyrics): ChantWord[] {
   const a = ly.get('futuro autocratico', 0).words, b = ly.get('futuro autocratico', 1).words;
   const fam = F.sans(900);
-  const mk = (text: string, start: number, size: number, cy: number, round: number, prevEnd = 0): ChantWord => {
+  /** Upright: the size that sets `text` `width` px wide. */
+  const fit = (text: string, width: number) => Math.floor(100 * width / measure(text, fam, 100, TR * 100));
+  const mk = (text: string, start: number, size: number, cy: number, round: number, prevEnd = 0, cx = W / 2): ChantWord => {
     const tw = measure(text, fam, size, TR * size);
     const pad = size * 0.2;
     const w = Math.max(tw + pad * 2, round === 2 ? W + 80 : 0);
-    return { text, start, size, cy, x: (W - w) / 2, w, tx: (W - tw) / 2, round, from: Math.max(start - 0.04, prevEnd) };
+    return { text, start, size, cy, x: round === 2 ? (W - w) / 2 : cx - w / 2, w, tx: cx - tw / 2, round, from: Math.max(start - 0.04, prevEnd) };
   };
+  // upright: stacked as wide as the frame allows, FUTURO at the top of the safe box and AUTOCRATICO
+  // below the cards; the second time both run edge to edge
+  if (VERTICAL) return [
+    mk('FUTURO', a[0]!.start, fit('FUTURO', 850), 410, 1, 0, 492),
+    mk('AUTOCRATICO', a[1]!.start, fit('AUTOCRATICO', 850), 1215, 1, 0, 492),
+    mk('FUTURO', b[0]!.start, fit('FUTURO', 1040), 440, 2, a[1]!.end),
+    mk('AUTOCRATICO', b[1]!.start, fit('AUTOCRATICO', 1040), 1245, 2),
+  ];
   return [
     mk('FUTURO', a[0]!.start, 220, 214, 1),
     mk('AUTOCRATICO', a[1]!.start, 220, 870, 1),

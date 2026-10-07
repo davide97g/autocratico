@@ -6,9 +6,9 @@
 // "Autocratico", then the line and the mono footnote. The last frame holds.
 import * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D, W, H } from '../engine/gl';
+import { Layer2D, W, H, VERTICAL, SAFE } from '../engine/gl';
 import { HEX } from '../engine/palette';
-import { F, font, glyphX, measure } from '../engine/type';
+import { F, font, fitSize, glyphX, measure } from '../engine/type';
 import { clamp, ease, frameIdx, hash, lerp } from '../engine/util';
 import type { Line } from '../engine/lyrics';
 import { app, drawBrowser, drawIcon, drawPhone, drawStudio, loadImage, roundRect } from './_motifs';
@@ -27,6 +27,18 @@ const LINE_Y = 622, LINE_SIZE = 108;
 /** The closing card: icon centre and size, wordmark baseline and size. */
 const ICON_Y = 318, ICON_S = 292, MARK_Y = 690, MARK_SIZE = 152;
 
+/**
+ * The upright cut (9:16): everything centred on the safe box's axis. The line is stacked ("Il futuro
+ * è" / "automatico."), and its second row is where the wordmark lands, so the redaction turns one
+ * word into the other in place. Sizes are fitted in init.
+ */
+const V = {
+  cx: (SAFE.left + SAFE.right) / 2,
+  l1: 842, l2: 1004, iconY: 526, iconS: 280, markY: 990,
+  /** the devices: browser (left, top, width), phone (cx, cy, height), keycap (x, y, size) */
+  bx: 64, by: 318, bw: 1180, px: 278, py: 1214, ph: 960, kx: 716, ky: 1150, ks: 150,
+};
+
 export default class Outro extends Scene {
   layer = new Layer2D();
   desk!: ImageBitmap; deskP!: ImageBitmap; ph!: ImageBitmap; phP!: ImageBitmap;
@@ -36,6 +48,8 @@ export default class Outro extends Scene {
   words!: ChantWord[];
   L!: Line;
   tPress = 0; tBlack = 0; tCut = 0;
+  /** Line and wordmark sizes (wide: the constants; upright: fitted to the safe box). */
+  ls = LINE_SIZE; ms = MARK_SIZE;
 
   override async init() {
     [this.desk, this.deskP, this.ph, this.phP] = await Promise.all([
@@ -52,6 +66,10 @@ export default class Outro extends Scene {
     const kicks = au.events('kick', this.L.words[3]!.start + 0.4, this.L.words[3]!.start + 0.8);
     this.tBlack = kicks.length ? kicks[kicks.length - 1]![0] : 81.66;
     this.tCut = this.tBlack + 0.33; // the bass stops: the music is over
+    if (VERTICAL) {
+      this.ls = Math.min(168, fitSize('automatico.', F.sans(600), 800, 400, -0.04 * 400));
+      this.ms = Math.min(168, fitSize('Autocratico', F.sans(900), 800, 400, -0.045 * 400));
+    }
   }
 
   /** The screens with every redaction drawn up to its progress (bars grow left to right). */
@@ -80,7 +98,7 @@ export default class Outro extends Scene {
     this.layer.clear();
     let post: PostOverrides;
     if (t < this.tBlack) {
-      this.studio(c, t);
+      if (VERTICAL) this.studioV(c, t); else this.studio(c, t);
       post = { paper: 1, grain: 0.03, vignette: 0.15 };
     } else {
       post = this.end(c, t);
@@ -120,13 +138,47 @@ export default class Outro extends Scene {
     if (out < 1) for (const cw of this.words.slice(2)) drawChantWord(c, cw, t, out * (W + 120) * (cw.text === 'FUTURO' ? 1.12 : 1));
   }
 
+  /**
+   * Upright: the browser at full width (a little wider than the frame, panning slowly left), the
+   * phone overlapping it at the bottom left, the P key on the right. The push goes to the amounts in
+   * the browser; then the devices sink under the stacked line.
+   */
+  studioV(c: CanvasRenderingContext2D, t: number) {
+    const t0 = this.ctx.start;
+    drawStudio(c, { drift: t * 0.12 });
+    this.screens(t);
+    const settle = ease.outCubic(clamp((t - t0) / 0.9));
+    const push = ease.inOutCubic(clamp((t - (this.tPress - 1.5)) / 1.4)) * (1 - ease.inOutCubic(clamp((t - (this.tPress + 0.62)) / 0.75)));
+    const sink = ease.inOutCubic(clamp((t - (this.L.start - 0.6)) / 0.62));
+    const z = lerp(1.03, 1, settle) * lerp(1, 0.94, sink) * (1 + 0.012 * clamp((t - t0) / 3.5)) * lerp(1, 1.5, push);
+    // world focus (the amounts column of the October card) -> frame point, as the push grows
+    const fx = lerp(W / 2, 470, push), fy = lerp(H / 2, 700, push);
+    const px = lerp(W / 2, V.cx, push), py = lerp(H / 2, 760, push);
+    const dy = (1 - settle) * 24 + sink * 880;
+    const pan = -70 * clamp((t - t0) / (this.L.start - t0));
+    c.save();
+    c.translate(px, py + dy);
+    c.scale(z, z);
+    c.translate(-fx, -fy);
+    drawBrowser(c, this.deskCv, V.bx + pan, V.by, V.bw, {});
+    drawPhone(c, this.phCv, V.px + 8 * Math.sin(t * 0.4), V.py - 8 * settle, V.ph, {});
+    c.restore();
+    c.save();
+    c.translate(0, sink * 880);
+    this.keycap(c, t);
+    c.restore();
+    this.line(c, t, HEX.pen);
+    const out = ease.inCubic(clamp((t - t0) / 0.24));
+    if (out < 1) for (const cw of this.words.slice(2)) drawChantWord(c, cw, t, out * (W + 120) * (cw.text === 'FUTURO' ? 1.12 : 1));
+  }
+
   /** The P keycap and the tooltip "Nascondi i dati personali" (topbar.hideData). */
   keycap(c: CanvasRenderingContext2D, t: number) {
     const tin = this.ctx.audio.beats.find((b) => b > this.tPress - 1.3)!; // a beat before the press
     const a = ease.outCubic(clamp((t - tin) / 0.35));
     if (a <= 0) return;
     const press = t < this.tPress - 0.06 ? 0 : t < this.tPress ? (t - this.tPress + 0.06) / 0.06 : 1 - ease.outCubic(clamp((t - this.tPress - 0.12) / 0.25));
-    const s = 132, x = 1680, y = 820 + (1 - a) * 40, d = 10 * press;
+    const s = VERTICAL ? V.ks : 132, x = VERTICAL ? V.kx : 1680, y = (VERTICAL ? V.ky : 820) + (1 - a) * 40, d = 10 * press;
     c.save();
     c.globalAlpha = a;
     // shadow + the key's skirt
@@ -143,7 +195,7 @@ export default class Outro extends Scene {
     c.strokeStyle = 'rgba(0,0,0,0.06)'; c.lineWidth = 1;
     roundRect(c, x + 0.5, y + d + 0.5, s - 1, s - 5, 24); c.stroke();
     c.fillStyle = HEX.pen;
-    c.font = font(F.sans(500), 54);
+    c.font = font(F.sans(500), VERTICAL ? 62 : 54);
     c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillText('P', x + s / 2, y + d + s / 2 - 2);
     c.restore();
@@ -152,20 +204,22 @@ export default class Outro extends Scene {
     if (tip > 0) {
       c.save();
       c.globalAlpha = tip;
-      c.font = font(F.sans(500), 22);
+      const ts = VERTICAL ? 32 : 22, th = VERTICAL ? 64 : 46, tp = VERTICAL ? 24 : 18;
+      c.font = font(F.sans(500), ts);
       const label = 'Nascondi i dati personali';
       const tw = c.measureText(label).width;
-      const bx = x + s - tw - 36, by = y - 64 - (1 - tip) * 8;
+      const bx = x + s - tw - tp * 2, by = y - (VERTICAL ? th + 18 : 64) - (1 - tip) * 8;
       c.fillStyle = HEX.pen;
-      roundRect(c, bx, by, tw + 36, 46, 12); c.fill();
+      roundRect(c, bx, by, tw + tp * 2, th, VERTICAL ? 16 : 12); c.fill();
       c.fillStyle = HEX.sheet; c.textBaseline = 'middle';
-      c.fillText(label, bx + 18, by + 24);
+      c.fillText(label, bx + tp, by + (VERTICAL ? th / 2 + 1 : 24));
       c.restore();
     }
   }
 
   /** "Il futuro è automatico." centred; words rise in from their start. `hide` 0..1 fades all but the last word. */
   line(c: CanvasRenderingContext2D, t: number, col: string, hide = 0, lastAlpha = 1) {
+    if (VERTICAL) return this.lineV(c, t, col, hide, lastAlpha);
     const fam = F.sans(600), size = LINE_SIZE, tr = -0.04 * size;
     const text = this.L.text;
     const x0 = (W - measure(text, fam, size, tr)) / 2;
@@ -193,8 +247,46 @@ export default class Outro extends Scene {
     });
     c.restore();
   }
+  /** Upright: two centred rows, "Il futuro è" over "automatico.". */
+  lineV(c: CanvasRenderingContext2D, t: number, col: string, hide = 0, lastAlpha = 1) {
+    const fam = F.sans(600), size = this.ls, tr = -0.04 * size;
+    const ws = this.L.words, n = ws.length;
+    const rows = [{ words: ws.slice(0, n - 1), y: V.l1 }, { words: ws.slice(n - 1), y: V.l2 }];
+    c.save();
+    c.font = font(fam, size);
+    c.letterSpacing = `${tr}px`;
+    for (const row of rows) {
+      const text = row.words.map((w) => w.w).join(' ');
+      const x0 = V.cx - measure(text, fam, size, tr) / 2;
+      let ci = 0;
+      row.words.forEach((w) => {
+        const wx = x0 + glyphX(text, ci, fam, size, tr);
+        ci += Array.from(w.w).length + 1;
+        const k = t - (w.start - 0.02);
+        if (k < 0) return;
+        const p = ease.outCubic(clamp(k / 0.18));
+        const al = w === ws[n - 1] ? lastAlpha : 1 - hide;
+        if (al <= 0) return;
+        c.save();
+        c.beginPath();
+        c.rect(wx - 20, row.y - size * 1.05, measure(w.w, fam, size, tr) + 60, size * 1.4);
+        c.clip();
+        c.globalAlpha = clamp(p * 1.6) * al;
+        c.fillStyle = col;
+        c.fillText(w.w, wx, row.y + (1 - p) * size * 0.9);
+        c.restore();
+      });
+    }
+    c.restore();
+  }
+
   /** Where the last word of the line sits (x0, width). */
   lastWord() {
+    if (VERTICAL) {
+      const fam = F.sans(600), size = this.ls, w = this.L.words[this.L.words.length - 1]!.w;
+      const ww = measure(w, fam, size, -0.04 * size);
+      return { x: V.cx - ww / 2, w: ww };
+    }
     const fam = F.sans(600), size = LINE_SIZE, tr = -0.04 * size;
     const text = this.L.text, w = this.L.words[this.L.words.length - 1]!.w;
     const x0 = (W - measure(text, fam, size, tr)) / 2 + glyphX(text, text.length - w.length, fam, size, tr);
@@ -205,14 +297,17 @@ export default class Outro extends Scene {
   end(c: CanvasRenderingContext2D, t: number): PostOverrides {
     c.fillStyle = '#000';
     c.fillRect(0, 0, W, H);
+    // layout: the wide constants, or the upright one (V)
+    const CX = VERTICAL ? V.cx : W / 2, IY = VERTICAL ? V.iconY : ICON_Y, IS = VERTICAL ? V.iconS : ICON_S;
+    const MY = VERTICAL ? V.markY : MARK_Y, LY = VERTICAL ? V.l2 : LINE_Y, LS = this.ls, MS = this.ms;
     // the icon slams in on the hit
     const k = t - this.tBlack;
     const drop = clamp(k / 0.075);
     const s = drop < 1 ? 1.4 - 0.4 * ease.inQuad(drop) : 1 + 0.025 * Math.exp(-(k - 0.075) * 18) * Math.cos((k - 0.075) * 40);
     c.save();
     c.globalAlpha = 0.35 + 0.65 * drop;
-    c.translate(W / 2, ICON_Y); c.scale(s, s);
-    drawIcon(c, 0, 0, ICON_S);
+    c.translate(CX, IY); c.scale(s, s);
+    drawIcon(c, 0, 0, IS);
     c.restore();
     const shake = drop < 1 ? 0 : 18 * Math.exp(-(k - 0.075) * 20);
 
@@ -220,37 +315,45 @@ export default class Outro extends Scene {
     // wordmark's place and a bar redacts it into "Autocratico" (Geist Black)
     const kc = t - this.tCut;
     const lw = this.lastWord();
-    const mfam = F.sans(900), mtr = -0.045 * MARK_SIZE;
+    const mfam = F.sans(900), mtr = -0.045 * MS;
     const mark = 'Autocratico';
-    const mw = measure(mark, mfam, MARK_SIZE, mtr), mx = (W - mw) / 2;
+    const mw = measure(mark, mfam, MS, mtr), mx = VERTICAL ? CX - mw / 2 : (W - mw) / 2;
     const glide = ease.inOutCubic(clamp(kc / 0.24));
-    const sc = lerp(1, MARK_SIZE / LINE_SIZE, glide);
-    const cx = lerp(lw.x + lw.w / 2, W / 2, glide), by = lerp(LINE_Y, MARK_Y, glide);
+    const sc = lerp(1, MS / LS, glide);
+    const cx = lerp(lw.x + lw.w / 2, CX, glide), by = lerp(LY, MY, glide);
     const cover = ease.inOutCubic(clamp((kc - 0.22) / 0.12)), leave = ease.inOutCubic(clamp((kc - 0.36) / 0.14));
     this.line(c, t, HEX.sheet, ease.outCubic(clamp(kc / 0.16)), kc < 0 ? 1 : 0);
     if (kc >= 0 && kc < 0.34) {
       c.save();
       c.translate(cx, by); c.scale(sc, sc);
-      c.font = font(F.sans(600), LINE_SIZE); c.letterSpacing = `${-0.04 * LINE_SIZE}px`;
+      c.font = font(F.sans(600), LS); c.letterSpacing = `${-0.04 * LS}px`;
       c.fillStyle = HEX.sheet;
       c.fillText(this.L.words[this.L.words.length - 1]!.w, -lw.w / 2, 0);
       c.restore();
     }
     if (kc >= 0.34) {
       c.save();
-      c.font = font(mfam, MARK_SIZE); c.letterSpacing = `${mtr}px`;
+      c.font = font(mfam, MS); c.letterSpacing = `${mtr}px`;
       c.fillStyle = HEX.sheet;
-      c.fillText(mark, mx, MARK_Y);
+      c.fillText(mark, mx, MY);
       c.restore();
     }
     if (cover > 0.02 && leave < 0.98) {
-      const bw = Math.max(lw.w * MARK_SIZE / LINE_SIZE, mw) + 56, bx0 = W / 2 - bw / 2;
+      const bw = Math.max(lw.w * MS / LS, mw) + 56, bx0 = CX - bw / 2;
       const xa = bx0 + bw * leave, xb = bx0 + bw * cover;
       c.fillStyle = HEX.sheet;
-      roundRect(c, xa, MARK_Y - MARK_SIZE * 0.86, Math.max(0, xb - xa), MARK_SIZE * 1.06, 12); c.fill();
+      roundRect(c, xa, MY - MS * 0.86, Math.max(0, xb - xa), MS * 1.06, 12); c.fill();
     }
     // the line, the footnote, the credits
     const fade = (d: number, dur: number) => ease.outCubic(clamp((t - this.tCut - d) / dur));
+    if (VERTICAL) this.endTextV(c, fade);
+    else this.endText(c, fade);
+    const a = hash(frameIdx(t), 5) * Math.PI * 2;
+    return { grain: 0.035, vignette: 0.2, bloom: 0.2, shake: [Math.cos(a) * shake, Math.sin(a) * shake] };
+  }
+
+  /** The wide card's text: tagline, footnote, image credits. */
+  endText(c: CanvasRenderingContext2D, fade: (d: number, dur: number) => number) {
     const k1 = fade(0.5, 0.4);
     if (k1 > 0) {
       c.save();
@@ -278,7 +381,49 @@ export default class Outro extends Scene {
       c.fillText('Immagini: Sentinel-2 cloudless 2016 di EOX (dati Copernicus modificati) · NASA · ISTAT · Wikimedia Commons — crediti in apps/video/public/ref/CREDITS.md', W / 2, 1028);
       c.restore();
     }
-    const a = hash(frameIdx(t), 5) * Math.PI * 2;
-    return { grain: 0.035, vignette: 0.2, bloom: 0.2, shake: [Math.cos(a) * shake, Math.sin(a) * shake] };
+  }
+
+  /**
+   * The upright card's text, centred in the safe box under the wordmark: the tagline on two rows,
+   * the footnote, the address (the card also closes the short cutdowns), then the image credits.
+   */
+  endTextV(c: CanvasRenderingContext2D, fade: (d: number, dur: number) => number) {
+    const x = V.cx, y = V.markY;
+    const put = (k: number, dy: number, f: () => void) => {
+      if (k <= 0) return;
+      c.save();
+      c.globalAlpha = k;
+      c.textAlign = 'center';
+      c.translate(0, (1 - k) * dy);
+      f();
+      c.restore();
+    };
+    put(fade(0.5, 0.4), 14, () => {
+      c.font = font(F.sans(400), 54); c.letterSpacing = '-0.8px';
+      c.fillStyle = '#c8c8c8';
+      c.fillText('Il registro personale', x, y + 104);
+      c.fillText('della burocrazia italiana', x, y + 170);
+    });
+    put(fade(0.66, 0.4), 10, () => {
+      c.font = font(F.mono(400), 30);
+      c.fillStyle = '#8a8a8a';
+      c.fillText('open source · i tuoi dati restano a casa', x, y + 250);
+    });
+    put(fade(0.8, 0.4), 10, () => {
+      c.font = font(F.mono(500), 40); c.letterSpacing = '0.5px';
+      c.fillStyle = HEX.sheet;
+      c.fillText('autocratico.it', x, y + 340);
+    });
+    put(fade(0.92, 0.35), 0, () => {
+      c.font = font(F.mono(400), 20);
+      c.fillStyle = '#5e5e5e';
+      const lines = [
+        'Immagini: Sentinel-2 cloudless 2016 di EOX',
+        '(dati Copernicus modificati) · NASA · ISTAT ·',
+        'Wikimedia Commons — crediti in',
+        'apps/video/public/ref/CREDITS.md',
+      ];
+      lines.forEach((l, i) => c.fillText(l, x, SAFE.bottom - 72 + i * 26));
+    });
   }
 }

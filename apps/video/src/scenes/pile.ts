@@ -9,19 +9,24 @@
 //      the cartella di pagamento smashes in with a red flash.
 import * as THREE from 'three';
 import { Scene, type Frame, type PostOverrides } from '../engine/scene';
-import { Layer2D, W, H } from '../engine/gl';
+import { Layer2D, W, H, VERTICAL } from '../engine/gl';
 import { HEX, rgba } from '../engine/palette';
 import { F, font, layout } from '../engine/type';
 import { clamp, ease, hash, lerp, mulberry32, TAU } from '../engine/util';
-import { drawStamp, drawStudio, loadImage, roundRect } from './_motifs';
+import { drawStamp, drawStudio, loadImage, roundRect, stampSize } from './_motifs';
 import type { Line } from '../engine/lyrics';
 import {
   type Sprite, camera, drawSprite, dust, inSprite, landing, lyricStrip, photoSprite, shakeAt, warnIcon,
 } from './open-paper';
-import { cartella, ledger, LOGIN, loginWindow, PORTALS } from './pile-paper';
+import { cartella, ledger, ledgerTall, LOGIN, loginWindow, PORTALS } from './pile-paper';
+import { lyricStack } from './pile-upright';
 
 const WIN_POS: [number, number, number][] = [
   [335, 270, -0.05], [975, 245, 0.03], [1605, 290, -0.025], [365, 795, 0.04], [1000, 775, -0.035], [1630, 805, 0.05],
+];
+/** Upright: two columns of three, overlapping a hair, bleeding off the sides. */
+const WIN_POS_V: [number, number, number][] = [
+  [300, 470, -0.05], [790, 430, 0.03], [285, 880, 0.04], [795, 850, -0.035], [300, 1290, -0.025], [780, 1270, 0.05],
 ];
 const CF = 'RSSMRA80A41H501U';
 
@@ -32,6 +37,8 @@ export default class Pile extends Scene {
   kit = 11.35; winT: number[] = []; tMail = 16.17;
 
   archive!: ImageBitmap; bollo!: Sprite; office!: Sprite;
+  // upright cut
+  bookV!: Sprite; vRows: { idx: number[]; size: number; y: number }[] = []; gSize = 100; stSize: number[] = [];
 
   override async init() {
     const ly = this.ctx.lyrics, au = this.ctx.audio;
@@ -57,9 +64,11 @@ export default class Pile extends Scene {
     this.archive = archive;
     this.bollo = photoSprite(bollo, 300);
     this.office = photoSprite(office, 1750, { contrast: 1.1, bright: 0.9 });
+    if (VERTICAL) this.initUpright();
   }
 
   render(f: Frame, out: THREE.WebGLRenderTarget): PostOverrides {
+    if (VERTICAL) return this.renderUpright(f, out);
     const t = f.t;
     const c = this.layer.ctx;
     this.layer.clear();
@@ -237,6 +246,371 @@ export default class Pile extends Scene {
 
     this.ctx.comp.draw(this.ctx.renderer, this.layer.upload(), out, { mode: 'replace' });
     return { paper: 1, grain: 0.035, vignette: 0.16, shake, exposure, flash };
+  }
+
+  // ================================================================ the upright cut (9:16)
+  initUpright() {
+    this.bookV = ledgerTall();
+    // «La burocrazia / è per i / vecchi:» — each row of strips set as large as the width allows
+    const c = this.layer.ctx;
+    const stripW = (s: string, size: number) => {
+      c.save(); c.font = font(F.sans(900), size); c.letterSpacing = `${-0.04 * size}px`;
+      const w = c.measureText(s).width + size * 0.32; c.restore(); return w;
+    };
+    const w = this.L1.words;
+    const rows = [[0, 1], [2, 3, 4], [5]];
+    const sizes = rows.map((row) => {
+      const at100 = row.reduce((s, i) => s + stripW(w[i]!.w.toUpperCase(), 100), 0);
+      const gaps = 14 * (row.length - 1);
+      return Math.min(190, (100 * (830 - gaps)) / at100);
+    });
+    let y = 268;
+    this.vRows = rows.map((idx, i) => {
+      const s = sizes[i]!;
+      y += 0.87 * s;
+      const r = { idx, size: s, y };
+      y += 0.13 * s + 18;
+      return r;
+    });
+    this.gSize = (172 * 900) / stampSize('GERONTOCRAZIA', 172, { seed: 21 }).w;
+    this.stSize = ['IMU', 'TARI', 'BOLLO'].map((s, i) => Math.min(290, (300 * 800) / stampSize(s, 300, { seed: 30 + i }).w));
+  }
+
+  renderUpright(f: Frame, out: THREE.WebGLRenderTarget): PostOverrides {
+    const t = f.t;
+    const c = this.layer.ctx;
+    this.layer.clear();
+    const { L1, L2, L3, L4 } = this;
+    let shake: [number, number] = [0, 0];
+    const addShake = (s: [number, number]) => { shake = [shake[0] + s[0], shake[1] + s[1]]; };
+    const stampShake = (s: number) => addShake([(hash(Math.round(t * 60), 3) - 0.5) * s * 2.2, (hash(Math.round(t * 60), 4) - 0.5) * s * 2.2]);
+    let exposure = 1, flash = 0;
+
+    if (t < L2.start) {
+      // ------------------------------------------------ the register: one tall page fills the phone
+      drawStudio(c, { drift: t * 0.1 });
+      const pre = t < this.kit;
+      const k = t - this.kit;
+      const punch = pre ? 0 : 0.12 * Math.exp(-k * 8);
+      const u = clamp((t - this.ctx.start) / (L2.start - this.ctx.start));
+      const zoom = (pre ? lerp(0.95, 0.98, clamp((t - this.ctx.start) / (this.kit - this.ctx.start))) : lerp(1.02, 1.08, ease.outQuad(clamp(k / 1.5)))) + punch;
+      c.save();
+      // a slow tilt down the page
+      camera(c, pre ? 540 : 556, pre ? 1000 : lerp(1000, 1060, ease.outQuad(clamp(k / 1.5))), zoom, pre ? -0.04 : -0.028 + u * 0.01);
+      drawSprite(c, this.bookV, { x: 540, y: 1000, rot: -0.012 });
+      dust(c, t, this.kit, 540, 1000, 900, 160, 7, 'rgba(60,60,60,');
+      dust(c, t, this.kit, 540, 760, 640, 60, 8, 'rgba(250,250,250,');
+      c.restore();
+      if (pre) {
+        const g = c.createRadialGradient(500, 900, 120, 540, 920, 1150);
+        g.addColorStop(0, 'rgba(0,0,0,0.25)'); g.addColorStop(1, 'rgba(0,0,0,0.78)');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+      }
+      if (!pre) { addShake(shakeAt(t, this.kit, 22, 12, 41)); flash = 0.28 * Math.pow(0.5, k / 0.04); }
+      exposure = pre ? 0.85 : 1;
+      const w = L1.words;
+      const tG = w[6]!.start;
+      if (t >= tG) {
+        // «gerontocrazia»: cut to the archive (its tall middle), registers rotting on the shelves
+        const kz = t - tG;
+        const z = 1.08 + kz * 0.05 + 0.06 * Math.exp(-kz * 10);
+        const iw = this.archive.width, ih = this.archive.height;
+        const sc = Math.max(W / iw, H / ih) * z;
+        c.drawImage(this.archive, W / 2 - (iw * sc) / 2 + 60, H / 2 - (ih * sc) / 2, iw * sc, ih * sc);
+        c.fillStyle = 'rgba(230,230,230,0.12)'; c.fillRect(0, 0, W, H);
+        addShake(shakeAt(t, tG, 16, 14, 42));
+      }
+      for (const row of this.vRows) {
+        let x = 64;
+        row.idx.forEach((wi, j) => {
+          const s = w[wi]!.w.toUpperCase();
+          const bw = strip(c, s, x, row.y, row.size, t - w[wi]!.start, (j % 2 ? 1 : -1) * (0.012 + 0.008 * ((wi * 7) % 3)), wi);
+          x += bw + 14;
+        });
+      }
+      stampShake(drawStamp(c, 'GERONTOCRAZIA', 492, 1120, this.gSize, t - tG + 0.07, { seed: 21, angle: -0.12 }) * 1.3);
+    } else if (t < this.tMail) {
+      // ------------------------------------------------ six portals, two columns of three
+      drawStudio(c, { drift: t * 0.1 });
+      let punch = 0;
+      for (const tw of this.winT) if (t >= tw) punch += 0.018 * Math.exp(-(t - tw) * 9);
+      const tS = [L3.words[0]!.start, L3.words[1]!.start, L3.words[2]!.start];
+      for (const ts of tS) if (t >= ts) punch += 0.03 * Math.exp(-(t - ts) * 8);
+      const drift = clamp((t - L2.start) / (this.tMail - L2.start));
+      c.save();
+      camera(c, 540, lerp(880, 840, drift), 0.98 + drift * 0.05 + punch, -0.012 + drift * 0.014);
+      const wPw = L2.words[3]!, tErr0 = L2.words[6]!.start, tErr1 = L2.words[8]!.start;
+      const SC = 0.86;
+      this.winT.forEach((tw, i) => {
+        const [x, y, rot] = WIN_POS_V[i]!;
+        const ang = Math.atan2(y - 860, x - 540);
+        const l = landing(t, tw, 0.09, { dx: Math.cos(ang) * 260, dy: Math.sin(ang) * 300, drot: (i % 2 ? 1 : -1) * 0.1, from: 0.3 });
+        if (!l) return;
+        if (l.k >= 0 && l.k < 0.25) addShake(shakeAt(t, tw, 7, 20, 50 + i));
+        const place = { x: x + l.dx, y: y + l.dy, rot: rot + l.drot, scale: SC * l.scale, lift: l.lift, alpha: l.alpha };
+        drawSprite(c, this.wins[i]!, place);
+        const tE = lerp(tErr0, tErr1, i / 5);
+        const err = t >= tE;
+        inSprite(c, this.wins[i]!, place, () => {
+          const nCf = Math.floor(clamp((t - tw - 0.02) / 0.28) * CF.length);
+          c.font = font(F.mono(500), 22); c.fillStyle = HEX.pen; c.textBaseline = 'middle';
+          c.fillText(CF.slice(0, nCf), LOGIN.cf.x + 16, LOGIN.cf.y + LOGIN.cf.h / 2 + 1);
+          const pStart = Math.max(wPw.start, tw + 0.05);
+          const nDots = Math.floor(clamp((t - pStart) / Math.max(0.12, wPw.end - wPw.start)) * 12);
+          c.fillStyle = HEX.pen;
+          for (let d = 0; d < nDots; d++) { c.beginPath(); c.arc(LOGIN.pw.x + 22 + d * 19, LOGIN.pw.y + LOGIN.pw.h / 2, 5, 0, TAU); c.fill(); }
+          if (err) {
+            const ek = clamp((t - tE) / 0.06);
+            c.globalAlpha = ek;
+            c.strokeStyle = HEX.overdue; c.lineWidth = 2.6;
+            roundRect(c, LOGIN.pw.x, LOGIN.pw.y, LOGIN.pw.w, LOGIN.pw.h, 9); c.stroke();
+            roundRect(c, LOGIN.cf.x, LOGIN.cf.y, LOGIN.cf.w, LOGIN.cf.h, 9); c.stroke();
+            // a bigger error band than the wide cut's: the phone shows it at 40%
+            c.fillStyle = rgba('overdue', 0.12); roundRect(c, LOGIN.err.x - 8, LOGIN.err.y - 10, LOGIN.cf.w + 16, 44, 8); c.fill();
+            warnIcon(c, LOGIN.err.x + 2, LOGIN.err.y + 2, 24);
+            c.font = font(F.sans(700), 23); c.fillStyle = HEX.overdue; c.textBaseline = 'alphabetic';
+            c.fillText(PORTALS[i]!.err, LOGIN.err.x + 36, LOGIN.err.y + 21, LOGIN.cf.w - 40);
+          }
+        });
+        if (err && t - tE < 0.2) addShake(shakeAt(t, tE, 4, 20, 70 + i));
+      });
+      const lb = landing(t, tS[2]! - 0.02, 0.08, { from: 0.6, drot: 0.4, dx: 160, dy: 200 });
+      if (lb) drawSprite(c, this.bollo, { x: 800 + lb.dx, y: 1200 + lb.dy, rot: 0.16 + lb.drot, scale: 0.9 * lb.scale, lift: lb.lift, alpha: lb.alpha });
+      // IMU, TARI, bollo: stamped down the column of portals
+      const st: [string, number, number, number][] = [['IMU', 330, 520, -0.12], ['TARI', 640, 820, 0.08], ['BOLLO', 470, 1110, -0.06]];
+      st.forEach(([s, x, y, a], i) => stampShake(drawStamp(c, s, x, y, this.stSize[i]!, t - tS[i]! + 0.07, { seed: 30 + i, angle: a })));
+      c.restore();
+      if (t >= tErr1) addShake(shakeAt(t, tErr1, 10, 16, 77));
+      if (t < L3.start) lyricStack(c, L2, t, [[0, 1, 2, 3], [4, 5, 6, 7, 8]], { key: ['nessuno'] });
+      else lyricStack(c, L3, t, [[0, 1, 2], [3, 4, 5, 6, 7]]);
+    } else if (t < L4.start) {
+      // ------------------------------------------------ the PEC falls down the list into Spam
+      drawStudio(c, { drift: t * 0.1 });
+      const u = clamp((t - this.tMail) / (L4.start - this.tMail));
+      const k0 = t - this.tMail;
+      c.save();
+      camera(c, lerp(540, 520, ease.inOutCubic(u)), lerp(860, 880, u), 1.02 + u * 0.04 + 0.05 * Math.exp(-k0 * 8), 0);
+      this.mailV(c, t);
+      c.restore();
+      if (k0 < 0.25) addShake(shakeAt(t, this.tMail, 8, 18, 90));
+      lyricStack(c, L3, t, [[0, 1, 2], [3, 4, 5, 6, 7]], { key: ['spam'] });
+    } else {
+      // ------------------------------------------------ evado… poi la cartella: bam!
+      drawStudio(c, { drift: t * 0.1 });
+      const bam = L4.words[8]!;
+      const loom0 = L4.words[7]!.start;
+      const pushU = clamp((t - L4.start) / (bam.start - L4.start));
+      const tPoi = L4.words[5]!.start;
+      if (t >= tPoi) {
+        const ru = clamp((t - tPoi) / (bam.start - tPoi));
+        const sc = 0.82, oh = this.office.h * sc;
+        drawSprite(c, this.office, { x: 560, y: 930 + oh / 2 + (1 - ease.outCubic(ru)) * 800, scale: sc, alpha: 0.9 * clamp(ru * 3), shadow: 0 });
+      }
+      c.save();
+      camera(c, 540, 860, 1 + ease.inQuad(pushU) * 0.05, 0);
+      this.calmV(c, t);
+      c.restore();
+      if (t >= loom0 && t < bam.start + 0.05) {
+        const lu = ease.inCubic(clamp((t - loom0) / (bam.start - loom0)));
+        const g = c.createRadialGradient(540, 860, 0, 540, 860, lerp(1600, 820, lu));
+        g.addColorStop(0, `rgba(0,0,0,${0.5 * lu})`); g.addColorStop(0.6, `rgba(0,0,0,${0.32 * lu})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+      }
+      const l = landing(t, bam.start, 0.07, { from: 0.9, drot: 0.15, dy: -80 });
+      if (l) {
+        const k = t - bam.start;
+        c.save();
+        camera(c, 540, 900, 1 + 0.06 * Math.exp(-Math.max(0, k) * 5) + Math.max(0, k) * 0.04, 0);
+        drawSprite(c, this.cart, { x: 510, y: 860 + l.dy, rot: -0.05 + l.drot, scale: 0.9 * l.scale, lift: l.lift, alpha: Math.min(1, l.alpha * 2) });
+        c.restore();
+        if (k >= 0) {
+          c.fillStyle = rgba('overdue', 0.62 * Math.pow(0.5, k / 0.07));
+          c.fillRect(0, 0, W, H);
+          addShake(shakeAt(t, bam.start, 34, 9, 99));
+          flash = 0.35 * Math.pow(0.5, k / 0.05);
+          // BAM!, giant, across the lower half of the cartella
+          const bk = clamp(k / 0.06);
+          const size = 350;
+          c.save();
+          c.translate(492, 1300);
+          c.rotate(-0.08);
+          c.scale(1.35 - 0.35 * ease.outCubic(bk), 1.35 - 0.35 * ease.outCubic(bk));
+          c.font = font(F.sans(900), size);
+          c.letterSpacing = `${-0.05 * size}px`;
+          c.textAlign = 'center';
+          c.fillStyle = HEX.overdue;
+          c.globalAlpha = clamp(bk * 2);
+          c.fillText('BAM!', 0, 0);
+          c.restore();
+        }
+      }
+    }
+
+    this.ctx.comp.draw(this.ctx.renderer, this.layer.upload(), out, { mode: 'replace' });
+    return { paper: 1, grain: 0.035, vignette: 0.16, shake, exposure, flash };
+  }
+
+  /** The calm line, upright: two rows, larger, on the optical centre. */
+  calmV(c: CanvasRenderingContext2D, t: number) {
+    const ws = this.L4.words;
+    const rows = [[0, 1, 2, 3, 4], [5, 6, 7]];
+    const size = 64;
+    const fam = F.sans(500);
+    rows.forEach((row, ri) => {
+      const text = row.map((i) => ws[i]!.w).join(' ');
+      const lay = layout(text, fam, size);
+      const x0 = 500 - lay.width / 2, y = 740 + ri * 90;
+      let ci = 0;
+      for (const wi of row) {
+        const w = ws[wi]!;
+        const n = Array.from(w.w).length;
+        const a = clamp((t - w.start) / 0.12);
+        if (a > 0) {
+          c.save();
+          c.globalAlpha = a;
+          c.font = font(wi === 7 ? F.sans(700) : fam, size);
+          c.fillStyle = ri === 0 ? HEX.graphite : HEX.pen;
+          c.fillText(w.w, x0 + lay.glyphs[ci]!.x, y + (1 - ease.outCubic(a)) * 10);
+          c.restore();
+        }
+        ci += n + 1;
+      }
+    });
+  }
+
+  /** The mail client as a tall window: the list on top, the folders as a tab bar at the bottom. */
+  mailV(c: CanvasRenderingContext2D, t: number) {
+    const ws = this.L3.words;
+    const tPEC = ws[4]!.start, tFin = ws[5]!.start, tSpam = ws[7]!.start;
+    const X = 40, Y = 120, WW = 1000, HH = 1060;
+    c.save();
+    c.shadowColor = 'rgba(0,0,0,0.22)'; c.shadowBlur = 60; c.shadowOffsetY = 26;
+    c.fillStyle = HEX.sheet; roundRect(c, X, Y, WW, HH, 24); c.fill();
+    c.restore();
+    c.save();
+    roundRect(c, X, Y, WW, HH, 24); c.clip();
+    c.fillStyle = '#efefef'; c.fillRect(X, Y, WW, 56);
+    c.fillStyle = HEX.bezel; c.fillRect(X, Y + 56, WW, 1);
+    for (let k = 0; k < 3; k++) { c.fillStyle = ['#c9c9c9', '#d4d4d4', '#dcdcdc'][k]!; c.beginPath(); c.arc(X + 30 + k * 24, Y + 28, 8, 0, TAU); c.fill(); }
+    c.font = font(F.sans(500), 20); c.fillStyle = HEX.graphite; c.textAlign = 'center';
+    c.fillText('Posta — Posta in arrivo', X + WW / 2, Y + 35); c.textAlign = 'left';
+    c.font = font(F.sans(700), 50); c.fillStyle = HEX.pen; c.fillText('Posta in arrivo', X + 40, Y + 148);
+    c.fillStyle = '#f2f2f2'; roundRect(c, X + WW - 250, Y + 98, 210, 64, 32); c.fill();
+    c.strokeStyle = HEX.faint; c.lineWidth = 2.4; c.beginPath(); c.arc(X + WW - 212, Y + 128, 10, 0, TAU); c.stroke();
+    c.beginPath(); c.moveTo(X + WW - 205, Y + 136); c.lineTo(X + WW - 197, Y + 144); c.stroke();
+    c.font = font(F.sans(400), 26); c.fillStyle = HEX.faint; c.fillText('Cerca', X + WW - 182, Y + 139);
+    // the folders, a tab bar at the foot of the window
+    const TY = Y + HH - 132;
+    const spamIn = t >= tSpam;
+    const sk = spamIn ? t - tSpam : -1;
+    const folders: [string, string][] = [
+      ['Arrivo', t >= tFin + 0.15 ? '2' : '3'], ['Speciali', ''], ['Bozze', '1'], ['Spam', spamIn ? '13' : '12'], ['Cestino', ''],
+    ];
+    let fx = X + 28;
+    let spamC = { x: 0, y: 0 };
+    const chips: { name: string; count: string; x: number; w: number }[] = [];
+    c.font = font(F.sans(600), 28);
+    for (const [name, count] of folders) {
+      const nw = c.measureText(name).width;
+      const cw = count ? c.measureText(count).width + 12 : 0;
+      const w = nw + cw + 40;
+      chips.push({ name, count, x: fx, w });
+      fx += w + 12;
+    }
+    // list
+    const RY = Y + 196, RH = 136, LW = WW;
+    const rows: [string, string, string, string, boolean][] = [
+      ['Offerte Luce e Gas', 'Ultimi giorni: blocca il prezzo!', 'Solo per te un’offerta riservata…', '09:02', false],
+      ['Condominio Via Roma', 'Verbale assemblea ordinaria', 'In allegato il verbale della seduta del…', '08:47', true],
+      ['protocollo@pec.comune.esempio.it', 'Avviso di pagamento TARI 2026', 'POSTA CERTIFICATA · postacert.eml', '08:14', true],
+      ['Supermercato', 'I tuoi punti stanno per scadere', 'Usali entro domenica', 'ieri', false],
+      ['Banca', 'Estratto conto disponibile', 'Il documento è nella tua area personale', 'ieri', false],
+      ['Corriere Espresso', 'Il tuo pacco è in consegna', 'Oggi tra le 9:00 e le 13:00', 'ieri', false],
+      ['Mamma', 'Domenica pranzo da noi?', 'Porta il pane', '2 ott', false],
+    ];
+    const gap = ease.inOutCubic(clamp((t - tFin - 0.12) / 0.3));
+    c.save();
+    c.beginPath(); c.rect(X, RY, WW, TY - RY); c.clip();
+    rows.forEach((r, i) => {
+      if (i === 2) return;
+      const yy = RY + i * RH - (i > 2 ? gap * RH : 0);
+      this.mailRowV(c, X, yy, LW, RH, r, false, 0);
+    });
+    c.restore();
+    c.fillStyle = '#f7f7f7'; c.fillRect(X, TY, WW, HH - (TY - Y));
+    c.fillStyle = HEX.bezel; c.fillRect(X, TY, WW, 1);
+    for (const ch of chips) {
+      const isSpam = ch.name === 'Spam', first = ch.name === 'Arrivo';
+      const cy = TY + 66;
+      if (first) { c.fillStyle = '#e6e6e6'; roundRect(c, ch.x, cy - 34, ch.w, 68, 34); c.fill(); }
+      if (isSpam) {
+        spamC = { x: ch.x + ch.w / 2, y: cy };
+        c.fillStyle = spamIn ? rgba('overdue', 0.14 * (0.6 + 0.4 * Math.exp(-sk * 4))) : '#efefef';
+        roundRect(c, ch.x, cy - 34, ch.w, 68, 34); c.fill();
+      }
+      const red = isSpam && spamIn;
+      c.font = font(F.sans(600), 28);
+      c.fillStyle = red ? HEX.overdue : HEX.pen;
+      c.fillText(ch.name, ch.x + 20, cy + 10);
+      if (ch.count) {
+        const pop = red ? 1 + 0.5 * Math.exp(-sk * 10) : 1;
+        c.save(); c.translate(ch.x + ch.w - 20, cy); c.scale(pop, pop);
+        c.font = font(F.sans(700), 26); c.textAlign = 'right';
+        c.fillStyle = red ? HEX.overdue : HEX.muted;
+        c.fillText(ch.count, 0, 9); c.restore();
+      }
+    }
+    c.restore();
+    // the PEC row: highlighted on «PEC», lifted on «finita», dropped into Spam on «spam»
+    const r = rows[2]!;
+    const hl = t >= tPEC ? 1 : 0;
+    const mv = ease.inOutCubic(clamp((t - tFin) / (tSpam - tFin)));
+    if (mv >= 1 && t > tSpam + 0.02) return;
+    const sx = X, sy = RY + 2 * RH;
+    const endSc = 0.1;
+    const tx = spamC.x - (LW * endSc) / 2, ty = spamC.y - (RH * endSc) / 2;
+    const x = lerp(sx, tx, mv), y = lerp(sy, ty, ease.inQuad(mv)) - Math.sin(mv * Math.PI) * 140;
+    const sc = lerp(1, endSc, ease.inQuad(mv)) * (1 + 0.04 * Math.sin(Math.min(1, (t - tFin) / 0.15) * Math.PI) * (mv < 0.2 ? 1 : 0));
+    c.save();
+    c.translate(x, y);
+    c.rotate(0.1 * Math.sin(mv * Math.PI));
+    c.scale(sc, sc);
+    if (t >= tFin) {
+      c.save();
+      c.shadowColor = 'rgba(0,0,0,0.3)'; c.shadowBlur = 40; c.shadowOffsetY = 24;
+      c.fillStyle = HEX.sheet; roundRect(c, 0, 0, LW, RH, 14); c.fill();
+      c.restore();
+    }
+    this.mailRowV(c, 0, 0, LW, RH, r, true, hl);
+    c.restore();
+  }
+
+  mailRowV(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: [string, string, string, string, boolean], pec: boolean, hl: number) {
+    const [from, subj, prev, time, unread] = r;
+    c.save();
+    c.fillStyle = HEX.sheet; c.fillRect(x, y, w, h);
+    if (hl > 0) {
+      c.fillStyle = rgba('overdue', 0.09 * hl); roundRect(c, x, y, w, h, 14); c.fill();
+      c.fillStyle = HEX.overdue; roundRect(c, x, y + 12, 7, h - 24, 3.5); c.fill();
+    }
+    c.fillStyle = HEX.bezel; c.fillRect(x + 24, y + h - 1, w - 48, 1);
+    if (unread) { c.fillStyle = hl ? HEX.overdue : HEX.pen; c.beginPath(); c.arc(x + 30, y + 40, 7, 0, TAU); c.fill(); }
+    c.font = pec ? font(F.mono(700), 26) : font(F.sans(unread ? 700 : 600), 30);
+    c.fillStyle = HEX.pen;
+    c.fillText(from, x + 54, y + 50, w - 200);
+    let sx = x + 54;
+    if (pec) {
+      c.fillStyle = hl ? HEX.overdue : HEX.pen; roundRect(c, sx, y + 64, 72, 36, 9); c.fill();
+      c.font = font(F.sans(700), 21); c.fillStyle = '#fff'; c.fillText('PEC', sx + 15, y + 89);
+      sx += 88;
+    }
+    c.font = font(F.sans(unread ? 600 : 500), 28); c.fillStyle = HEX.pen;
+    c.fillText(subj, sx, y + 92, w - (sx - x) - 40);
+    c.font = font(F.sans(400), 24); c.fillStyle = HEX.muted;
+    c.fillText(prev, x + 54, y + 124, w - 100);
+    c.textAlign = 'right'; c.font = font(F.sans(500), 24);
+    c.fillText(time, x + w - 30, y + 50);
+    c.restore();
   }
 
   // ---------------------------------------------------------------- the calm line

@@ -70,6 +70,30 @@ bun scripts/render.ts stills --t 42.74,68.61 --only drop,phone  # PNGs to look a
 bun scripts/render.ts sheet --from 0 --to 83 --n 32 --cols 8    # a contact sheet
 ```
 
+## The upright cut (Reels, Shorts)
+
+The same film laid out at 1080x1920 for Instagram Reels and YouTube Shorts: `?aspect=9x16` in the
+preview, `--vertical` for render.ts. Each plate has its own upright composition (a branch on
+`VERTICAL`; the wide cut is unchanged), with text and subject inside the platforms' safe box
+(`SAFE` in `src/engine/gl.ts`). Art direction in [docs/VERTICAL.md](docs/VERTICAL.md).
+
+```sh
+bun scripts/shorts.ts film      # the whole film -> ../../var/video/autocratico-vertical.mp4 (+ -share.mp4 to upload)
+bun scripts/shorts.ts all       # the two short cuts, each closed by the end card -> ../../var/video/shorts/
+```
+
+The short cuts (`scripts/shorts.ts`):
+- `follia` (≈ 20 s): "La multa come obiettivo dello Stato?" through "Pratico, rapido, autocratico!".
+- `esempi` (≈ 18 s): "Inoltro, scatto, un vocale" through the two "futuro autocratico".
+
+Both end on "Il futuro è automatico." and the end card, started on the same beat phase so the
+groove carries over the cut. Every range renders in 10 s chunks, each in a fresh browser (a long
+upright render once crashed the headless browser); a rerun skips the chunks already on disk.
+
+The cover: `thumb.html?v=dark&aspect=9x16`, captured with
+`bun tools/shot.ts "http://localhost:5173/thumb.html?v=dark&aspect=9x16" cover.png 1080x1920`.
+Its content sits in the centred 3:4 band the Instagram profile grid shows.
+
 ## Regenerate the app captures
 
 ```sh
