@@ -94,6 +94,12 @@ The cover: `thumb.html?v=dark&aspect=9x16`, captured with
 `bun tools/shot.ts "http://localhost:5173/thumb.html?v=dark&aspect=9x16" cover.png 1080x1920`.
 Its content sits in the centred 3:4 band the Instagram profile grid shows.
 
+## Instagram posts
+
+`posts.html` draws the feed posts (1080×1350) with the film's type, props, captures and Bollo;
+`bun tools/posts.ts` captures every slide into `../../var/video/posts/`. Order and captions in
+[docs/POSTS.md](docs/POSTS.md).
+
 ## Regenerate the app captures
 
 ```sh
