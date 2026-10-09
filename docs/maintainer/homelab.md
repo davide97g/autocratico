@@ -39,6 +39,7 @@ Personal instructions for every agent go in `data/notes/INSTRUCTIONS.md` (langua
 | `autocratico.it`, `www.autocratico.it` | 8791 | landing page + waitlist (`deploy/compose.site.yml`) | public |
 | `app.autocratico.it` | 8790 | the register (`deploy/compose.homelab.yml`) | Cloudflare Access |
 | `demo.autocratico.it` | 8793 | public demo (`deploy/compose.demo.yml`) | public |
+| a second register's host | 8794 | another person's register (`deploy/compose.homelab.yml` again, see 7) | Cloudflare Access |
 
 Moving the app to another host means: the host in the Access application, `PUBLIC_ORIGIN` (write requests must come from it), the Gmail OAuth client's redirect URI (`https://<host>/oauth/gmail` in Google Cloud), and the iOS shortcut's URL.
 
@@ -103,3 +104,12 @@ Upgrading from a version with device pairing: the register is kept, old device c
 - 03:00 every day: commit of the register in `data/.git` and `autocratico-YYYY-MM-DD.tar.gz` in the backup folder (14 kept, mode 0600, they contain the secrets). Copy that folder to the NAS too.
 - Update: push to `main`, redeploy in Dokploy. Claude Code is pinned by `CLAUDE_CODE_VERSION` in the Dockerfile (auto-update is off inside the container).
 - Logs: `docker logs autocratico-…`; job history: **Activity** in the web app or `/stato` in Telegram.
+
+## 7. A second register
+
+Another person's register is the same compose file deployed again (see ../self-hosting.md, "More than one person"):
+
+1. On the box: a new data folder and backup folder (`chmod 700`), e.g. next to the first one.
+2. Dokploy: a second compose app from `deploy/compose.homelab.yml`, with its own `AUTOCRATICO_DATA_DIR`, `AUTOCRATICO_BACKUP_DIR`, `AUTOCRATICO_PORT=8794`, `PUBLIC_ORIGIN`, `TELEGRAM_BOT_TOKEN` (a new bot) and `AUTOCRATICO_REGISTERS` pointing back to the first; the same `CLAUDE_CODE_OAUTH_TOKEN`, `CF_ACCESS_TEAM` and ASR folder. Add `AUTOCRATICO_REGISTERS` to the first app too, and redeploy it.
+3. Cloudflare: a tunnel hostname to `http://localhost:8794` and a self-hosted Access application for it, allowing the emails of the people who use that register; its AUD tag goes in `CF_ACCESS_AUD`.
+4. Setup code: with two apps running, `docker ps -qf name=autocratico` matches both; use the container name Dokploy gave the new one.

@@ -72,6 +72,7 @@ on("GET", "/api/session", () =>
     authenticated: true,
     user: { name: state().name, onboarded: true },
     needsCode: false,
+    registers: [],
   })
 )
 on("POST", "/api/setup", () => fail("already set up", 409))

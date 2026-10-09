@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 
 import { ChangeError } from "../src/changes.ts"
 import { type Claude, tools } from "../src/claude.ts"
-import { type Config, loadConfig } from "../src/config.ts"
+import { type Config, loadConfig, parseRegisters } from "../src/config.ts"
 import { cleanSteps, Jobs, parseTriage, recorder } from "../src/jobs.ts"
 import { topicOf } from "../src/pulse.ts"
 import { outgoing } from "../src/telegram.ts"
@@ -72,6 +72,27 @@ describe("account", () => {
     // Only one user.
     expect((await post(app, "/api/setup", { name: "Eve", password: PASSWORD })).status).toBe(409)
     expect((await post(app, "/api/setup", { name: "Eve", password: PASSWORD }, me)).status).toBe(409)
+  })
+
+  it("offers the other registers to the owner only", async () => {
+    const registers = [{ name: "Shop", url: "https://shop.example.com" }]
+    const { app } = setup({ registers })
+    const before = (await (await app.request("/api/session", { headers: LOCAL })).json()) as any
+    expect(before.registers).toEqual([])
+    const me = await owner(app)
+    expect(((await (await app.request("/api/session", { headers: me })).json()) as any).registers).toEqual(registers)
+  })
+
+  it("reads AUTOCRATICO_REGISTERS strictly", () => {
+    expect(parseRegisters(undefined)).toEqual([])
+    expect(parseRegisters("Casa=https://home.example.com/x, Négozio=https://shop.example.com")).toEqual([
+      { name: "Casa", url: "https://home.example.com" },
+      { name: "Négozio", url: "https://shop.example.com" },
+    ])
+    expect(parseRegisters("Dev=http://127.0.0.1:8791")).toEqual([{ name: "Dev", url: "http://127.0.0.1:8791" }])
+    for (const bad of ["https://no-name.example.com", "Plain=http://shop.example.com", "Js=javascript:alert(1)", "Creds=https://u:p@x.example.com"]) {
+      expect(() => parseRegisters(bad)).toThrow(/AUTOCRATICO_REGISTERS/)
+    }
   })
 
   it("logs in with the masterpass and locks out after five wrong tries", async () => {

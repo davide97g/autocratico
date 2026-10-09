@@ -16,6 +16,7 @@ Everything about an install is either in the data folder (the register, `finance
 | `TZ_DEADLINES` | `Europe/Rome` | time zone of "today", the reminders and the job schedules, for the server and the Python scripts. In Docker it follows `TZ`. |
 | `AUTOCRATICO_LOCALE` | `it` | `it` or `en`: language of Telegram, ntfy, job messages and the background agent's summaries. The web app has its own switch. |
 | `TELEGRAM_BOT_TOKEN` | — | turns the Telegram bot on ([telegram.md](telegram.md)). |
+| `AUTOCRATICO_REGISTERS` | — | other registers to switch to, each its own instance: `Name=https://host`, comma separated (`https`, or `http` on loopback). The web app shows a "Switch to" link for each to the logged-in owner; nothing is shared between them ([self-hosting.md](self-hosting.md#more-than-one-person)). |
 | `NTFY_URL`, `NTFY_TOKEN` | — | push notifications through ntfy: a topic URL, and a token for a protected server ([ntfy.md](ntfy.md)). |
 | `BACKUP_DIR` | — (`/backups` in Docker) | where the nightly `autocratico-YYYY-MM-DD.tar.gz` go; unset, no backup archives. |
 | `BETTER_AUTH_SECRET` | generated into `data/secrets/auth.json` | signs the session cookies; set it only to manage it yourself. |

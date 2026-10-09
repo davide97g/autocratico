@@ -540,6 +540,7 @@ function Main({
           onChat={() => setChatOpen((v) => !v)}
           onAsk={ask}
           live={live}
+          registers={session.registers}
         />
 
         <main className="@container flex min-w-0 flex-col gap-5 lg:gap-8">
@@ -613,7 +614,7 @@ function Main({
         {chatDocked && chat}
       </div>
 
-      <TabBar view={view} onView={go} name={name} counts={counts} />
+      <TabBar view={view} onView={go} name={name} counts={counts} registers={session.registers} />
 
       {chatSheet && (
         <div
@@ -631,7 +632,7 @@ function Main({
       <p className="px-gutter py-5 text-xs text-muted-foreground lg:px-6">{t.app.footer}</p>
       {tour && data && <Tour onClose={() => onTour(false)} />}
       <DropToInbox onOpenInbox={openInbox} />
-      <CommandPalette open={command} onOpenChange={setCommand} data={data} actions={commandActions} />
+      <CommandPalette open={command} onOpenChange={setCommand} data={data} actions={commandActions} registers={session.registers} />
       <ShortcutsDialog open={shortcuts} onOpenChange={setShortcuts} />
       <Toaster />
       <ExpenseDialog

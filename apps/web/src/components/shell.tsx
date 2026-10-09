@@ -1,6 +1,7 @@
 import * as React from "react"
 import {
   ArchiveIcon,
+  ArrowLeftRightIcon,
   ArrowUpIcon,
   BellIcon,
   BookOpenIcon,
@@ -39,7 +40,7 @@ import { Switch } from "@/components/ui/switch"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { LOCALES, type Locale, useI18n } from "@/i18n"
-import type { LiveJobs } from "@/lib/api"
+import type { LiveJobs, Session } from "@/lib/api"
 import { type Connection, useConnection } from "@/lib/events"
 import { capitalize, duration, parseDate, useNow } from "@/lib/format"
 import { STYLE } from "@/lib/status"
@@ -330,11 +331,13 @@ export function Sidebar({
   onChat,
   onAsk,
   live,
+  registers,
 }: {
   view: View
   onView: (v: View) => void
   name: string | null
   counts: Counts
+  registers: Session["registers"]
   compact: boolean
   onCompact: (v: boolean) => void
   chatOpen: boolean
@@ -465,6 +468,42 @@ export function Sidebar({
             </div>
           )}
         </div>
+        {registers.map((r) =>
+          compact ? (
+            <Tooltip key={r.url}>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-muted-foreground"
+                    render={<a href={r.url} aria-label={`${t.sidebar.switchTo} ${r.name}`} />}
+                    nativeButton={false}
+                  />
+                }
+              >
+                <ArrowLeftRightIcon />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {t.sidebar.switchTo} <Sensitive>{r.name}</Sensitive>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button
+              key={r.url}
+              variant="ghost"
+              size="sm"
+              className="-mt-2 justify-start text-muted-foreground"
+              render={<a href={r.url} />}
+              nativeButton={false}
+            >
+              <ArrowLeftRightIcon data-icon="inline-start" />
+              <span className="truncate">
+                {t.sidebar.switchTo} <Sensitive>{r.name}</Sensitive>
+              </span>
+            </Button>
+          )
+        )}
       </div>
     </aside>
   )
@@ -748,7 +787,19 @@ const TABS: View[] = ["overview", "deadlines", "cases", "inbox"]
 const MORE = VIEWS.filter((v) => !TABS.includes(v.id))
 
 /** Phones and tablets: a floating tab bar above the home indicator, the rest of the sections in a sheet. */
-export function TabBar({ view, onView, name, counts }: { view: View; onView: (v: View) => void; name: string | null; counts: Counts }) {
+export function TabBar({
+  view,
+  onView,
+  name,
+  counts,
+  registers,
+}: {
+  view: View
+  onView: (v: View) => void
+  name: string | null
+  counts: Counts
+  registers: Session["registers"]
+}) {
   const { t } = useI18n()
   const { enabled, setEnabled } = usePrivacy()
   const [more, setMore] = React.useState(false)
@@ -838,6 +889,20 @@ export function TabBar({ view, onView, name, counts }: { view: View; onView: (v:
                 {counts[v.id] != null && counts[v.id]! > 0 && (
                   <span className="ml-auto font-mono text-xs opacity-60">{counts[v.id]}</span>
                 )}
+              </Button>
+            ))}
+            {registers.map((r) => (
+              <Button
+                key={r.url}
+                variant="ghost"
+                className="h-12 justify-start gap-3 rounded-xl px-3 text-base text-muted-foreground"
+                render={<a href={r.url} />}
+                nativeButton={false}
+              >
+                <ArrowLeftRightIcon data-icon="inline-start" className="size-5" />
+                <span className="truncate">
+                  {t.sidebar.switchTo} <Sensitive>{r.name}</Sensitive>
+                </span>
               </Button>
             ))}
           </div>

@@ -160,6 +160,7 @@ export function createApp(s: Services) {
       authenticated: caller.via !== "none",
       user: caller.user ? { name: caller.user.name, onboarded: caller.user.onboarded } : null,
       needsCode: !owner && config.auth === "prod",
+      registers: caller.user ? config.registers : [],
     }
   }
   /** Better Auth's Set-Cookie headers, passed on to the browser. */

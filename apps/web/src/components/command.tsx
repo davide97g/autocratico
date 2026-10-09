@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import {
+  ArrowLeftRightIcon,
   CalendarClockIcon,
   CornerDownLeftIcon,
   EyeOffIcon,
@@ -24,10 +25,11 @@ import { cn } from "cn"
 
 import { Kbd, MOD } from "@/components/kbd"
 import { type View, VIEWS } from "@/components/shell"
+import { Sensitive } from "@/components/privacy"
 import { StatusBadge } from "@/components/status"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useI18n } from "@/i18n"
-import type { Data } from "@/lib/api"
+import type { Data, Session } from "@/lib/api"
 import { PALETTES, type Palette } from "@/lib/palettes"
 import { parseDate } from "@/lib/format"
 import { level } from "@/lib/status"
@@ -88,11 +90,14 @@ export function CommandPalette({
   onOpenChange,
   data,
   actions,
+  registers = [],
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   data: Data | null
   actions: CommandActions
+  /** Other registers: a link each, opened in place. */
+  registers?: Session["registers"]
 }) {
   const { t, fmt } = useI18n()
   const [query, setQuery] = React.useState("")
@@ -192,10 +197,24 @@ export function CommandPalette({
     action("language", LanguagesIcon, t.command.actions.language, actions.onLanguage)
     action("settings", SlidersHorizontalIcon, t.command.actions.settings, () => actions.onView("settings"))
     action("shortcuts", KeyboardIcon, t.command.actions.shortcuts, actions.onShortcuts, ["?"])
+    for (const r of registers) {
+      all.push({
+        id: `register:${r.url}`,
+        group: "actions",
+        icon: ArrowLeftRightIcon,
+        label: (
+          <>
+            {t.command.actions.switchTo} <Sensitive>{r.name}</Sensitive>
+          </>
+        ),
+        text: `${t.command.actions.switchTo} ${r.name}`,
+        run: close(() => window.location.assign(r.url)),
+      })
+    }
 
     const shown = all.filter((i) => i.group === "ask" || i.group === "deadlines" || i.group === "cases" || !q || matches(i.text, q))
     return GROUP_ORDER.flatMap((g) => shown.filter((i) => i.group === g))
-  }, [q, query, data, actions, t, fmt, onOpenChange])
+  }, [q, query, data, actions, registers, t, fmt, onOpenChange])
 
   const current = Math.min(active, items.length - 1)
   React.useEffect(() => {

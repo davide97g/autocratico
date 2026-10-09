@@ -28,6 +28,8 @@ export type Config = {
   python: string
   /** Local speech to text (parakeet-cli + model + ffmpeg); null when any piece is missing. */
   asr: { bin: string; model: string; threads: number } | null
+  /** Other registers (instances) the web app offers to switch to. */
+  registers: { name: string; url: string }[]
 }
 
 function env(name: string): string | undefined {
@@ -73,6 +75,27 @@ function ntfy(): Config["ntfy"] {
   return { url, token: env("NTFY_TOKEN") ?? null }
 }
 
+/** AUTOCRATICO_REGISTERS="Name=https://other.example.com, Other=https://…": links only, nothing is shared. */
+export function parseRegisters(value: string | undefined): Config["registers"] {
+  if (!value?.trim()) return []
+  return value.split(",").map((entry) => {
+    const at = entry.indexOf("=")
+    const name = entry.slice(0, at).trim()
+    const raw = entry.slice(at + 1).trim()
+    let url: URL | null = null
+    try {
+      url = new URL(raw)
+    } catch {
+      // reported below
+    }
+    const loopback = url && url.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)
+    if (at < 1 || !name || name.length > 40 || !url || (url.protocol !== "https:" && !loopback) || url.username || url.password) {
+      throw new Error(`AUTOCRATICO_REGISTERS: expected Name=https://host, comma separated (got ${entry.trim()})`)
+    }
+    return { name, url: url.origin }
+  })
+}
+
 export function loadConfig(overrides: Partial<Config> = {}): Config {
   const auth = env("AUTOCRATICO_AUTH") === "prod" ? "prod" : "dev"
   const team = env("CF_ACCESS_TEAM")
@@ -96,6 +119,7 @@ export function loadConfig(overrides: Partial<Config> = {}): Config {
     claude: findClaude(),
     python: env("PYTHON") ?? "python3",
     asr: findAsr(),
+    registers: parseRegisters(env("AUTOCRATICO_REGISTERS")),
     ...overrides,
   }
   validate(config)

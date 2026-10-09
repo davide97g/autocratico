@@ -34,6 +34,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       NTFY_URL: ${NTFY_URL:-}
       NTFY_TOKEN: ${NTFY_TOKEN:-}
+      AUTOCRATICO_REGISTERS: ${AUTOCRATICO_REGISTERS:-}
     ports:
       - "127.0.0.1:${PORT:-8790}:8790"
     volumes:

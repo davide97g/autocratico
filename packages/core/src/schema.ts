@@ -359,6 +359,8 @@ export const Session = z.object({
   user: z.object({ name: z.string(), onboarded: z.boolean() }).nullable(),
   /** The first setup needs the one-time code printed by the server (prod). */
   needsCode: z.boolean(),
+  /** Other registers to switch to, each its own instance (AUTOCRATICO_REGISTERS); empty until logged in. */
+  registers: z.array(z.object({ name: z.string(), url: z.string() })),
 })
 export type Session = z.infer<typeof Session>
 

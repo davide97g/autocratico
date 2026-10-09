@@ -14,9 +14,12 @@ services:
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:?run `claude setup-token` and paste the token}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       AUTOCRATICO_LOCALE: ${AUTOCRATICO_LOCALE:-it}
+      # Other registers to switch to (each its own Dokploy compose from this file), e.g. "Name=https://…".
+      AUTOCRATICO_REGISTERS: ${AUTOCRATICO_REGISTERS:-}
     # Only the Cloudflare tunnel (on the host) reaches the app: bound to loopback.
+    # A second register runs this same file as another compose, with its own port, folders and bot.
     ports:
-      - "127.0.0.1:8790:8790"
+      - "127.0.0.1:${AUTOCRATICO_PORT:-8790}:8790"
     volumes:
       - ${AUTOCRATICO_DATA_DIR:?set AUTOCRATICO_DATA_DIR, e.g. /home/<user>/autocratico/data}:/data
       - ${AUTOCRATICO_BACKUP_DIR:?set AUTOCRATICO_BACKUP_DIR, e.g. /home/<user>/backups/autocratico}:/backups

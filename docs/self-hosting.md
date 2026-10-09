@@ -105,6 +105,16 @@ The server then rejects any request without a valid Access token, even from the 
 - **iOS share sheet**: [ios-shortcut.md](ios-shortcut.md).
 - **Personal instructions** for every agent (language, mailboxes, preferences): `data/notes/INSTRUCTIONS.md`.
 
+### More than one person
+
+One instance is one register with one owner. For a second person (a partner, a parent, a sole proprietorship with its own paperwork), run a second instance: another data folder, another masterpass, another address. Nothing is shared, so neither agent can read the other's files, and a mistake in one cannot leak into the other.
+
+- Same image, another compose project: `docker compose -p autocratico-second --env-file second.env -f deploy/compose.yml up -d`, with its own `AUTOCRATICO_DATA_DIR`, `AUTOCRATICO_BACKUP_DIR`, `PORT` and `PUBLIC_ORIGIN`.
+- Its own Telegram bot (one token cannot be polled by two servers) and its own ntfy topic; both people can pair their chats with either bot.
+- The same `CLAUDE_CODE_OAUTH_TOKEN` works for both, but they share the subscription's limits.
+- `AUTOCRATICO_REGISTERS` on each points to the other (`Name=https://…`): the sidebar, the "More" sheet and ⌘K then offer a "Switch to" link. Sessions are per address, so both stay logged in; on a phone, add each to the Home Screen and name them as you like.
+- Something that belongs to both (a house, a car) lives in the register of whoever it is in the name of.
+
 ### Speech to text
 
 Voice messages sent to the Telegram bot are transcribed on the server, never by an outside service. Put a static `parakeet-cli` (from [whisper.cpp](https://github.com/ggml-org/whisper.cpp), built with `-DBUILD_SHARED_LIBS=OFF` on a glibc ≥ 2.38 system) and a ggml Parakeet model (e.g. `ggml-parakeet-tdt-0.6b-v3-q8_0.bin`, multilingual) in one folder, set `AUTOCRATICO_ASR_DIR` to it, and add the override:
