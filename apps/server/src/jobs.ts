@@ -315,6 +315,8 @@ export class Jobs {
       const pattern = SCHEDULES[name]
       if (pattern) {
         this.#crons[name] = new Cron(pattern, { timezone: this.#c.config.timeZone, protect: true }, () => {
+          // A source that was never set up: no run, so the log doesn't fill with skips every few minutes.
+          if (this.#unconfigured(name)) return
           void this.trigger(name)
         })
       }
@@ -450,11 +452,22 @@ export class Jobs {
     }
   }
 
+  /** Why a job that reads a source has nothing to do (the source is not set up), or null. */
+  #unconfigured(name: JobName): string | null {
+    const { config, finance } = this.#c
+    if (name === "gmail" && !existsSync(join(config.data, "secrets", "credentials.json"))) return "Gmail not configured"
+    if (name === "imap" && !imapConnected(config.data)) return "no IMAP mailbox connected"
+    if (name === "finance" && !finance.configured()) return "no finance source connected"
+    if (name === "energy" && !existsSync(join(config.data, "energy.toml"))) return "no energy.toml"
+    return null
+  }
+
   // ---------- jobs ----------
 
   async #finance(): Promise<string> {
     const { finance } = this.#c
-    if (!finance.configured()) return "skipped: no finance source connected"
+    const missing = this.#unconfigured("finance")
+    if (missing) return `skipped: ${missing}`
     try {
       const r = await finance.sync("full")
       this.#financeFailing = false
@@ -470,8 +483,8 @@ export class Jobs {
   /** scripts/gmail.py or scripts/imap.py `sync --all`, then triage for what arrived. */
   async #mail(kind: "gmail" | "imap"): Promise<string> {
     const { config } = this.#c
-    if (kind === "gmail" && !existsSync(join(config.data, "secrets", "credentials.json"))) return "skipped: Gmail not configured"
-    if (kind === "imap" && !imapConnected(config.data)) return "skipped: no IMAP mailbox connected"
+    const missing = this.#unconfigured(kind)
+    if (missing) return `skipped: ${missing}`
     const before = new Set(this.#c.inbox.list().map((i) => i.id))
     // Also after a failure or a timeout: what was downloaded until then is in the inbox.
     const arrived = () => {
@@ -703,7 +716,8 @@ End your answer with exactly one fenced json block, nothing after it:
   /** Compares the supplies in energy.toml with ARERA's open data (scripts/offers.py); tells when switching pays. */
   async #energy(): Promise<string> {
     const { config, store } = this.#c
-    if (!existsSync(join(config.data, "energy.toml"))) return "skipped: no energy.toml"
+    const missing = this.#unconfigured("energy")
+    if (missing) return `skipped: ${missing}`
     let out: EnergyResult
     try {
       const { stdout } = await exec(config.python, ["scripts/offers.py"], {
