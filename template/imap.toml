@@ -1,0 +1,9 @@
+# IMAP mailboxes (Yahoo, PEC, Libero, …) synced by `python3 scripts/imap.py sync --all`
+# (every 10 minutes on the server), read-only. Add them from Settings → Other mailboxes (IMAP)
+# (or: python3 scripts/imap.py login --account NAME --host HOST --user ADDRESS, password on stdin).
+# Host, user and app password stay in secrets/imap/<name>.json, never here.
+#
+# [[account]]
+# name = "yahoo"
+# folders = ["INBOX"]   # which folders to read
+# days = 365            # how far back the first sync goes

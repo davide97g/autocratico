@@ -100,6 +100,7 @@ The server then rejects any request without a valid Access token, even from the 
 ## 5. Optional pieces
 
 - **Gmail** (read-only): [gmail.md](gmail.md). The OAuth redirect URI is `PUBLIC_ORIGIN/oauth/gmail`.
+- **Other mailboxes** over IMAP (Yahoo, PEC, Libero…, read-only): [imap.md](imap.md).
 - **Telegram** or **ntfy**: [telegram.md](telegram.md), [ntfy.md](ntfy.md).
 - **Finance**: a finance server or your bank's CSV exports, [finance.md](finance.md).
 - **iOS share sheet**: [ios-shortcut.md](ios-shortcut.md).

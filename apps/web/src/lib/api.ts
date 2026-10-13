@@ -14,6 +14,8 @@ import type {
   GmailAccountInput,
   GmailPreview,
   GmailSetup,
+  ImapAccountInput,
+  ImapSetup,
   InboxDetail,
   InboxItem,
   JobRun,
@@ -36,6 +38,8 @@ export type {
   GmailAccount,
   GmailPreview,
   GmailSetup,
+  ImapAccount,
+  ImapSetup,
   Activity,
   ArchiveEntry,
   Case,
@@ -180,6 +184,11 @@ export const authorizeGmail = (name: string) =>
   post<{ url: string; type: "web" | "installed" }>(`/api/gmail/accounts/${encodeURIComponent(name)}/authorize`)
 /** Finish the sign-in with the address Google sent the browser back to. */
 export const completeGmail = (url: string) => post<{ name: string; address: string }>("/api/gmail/complete", { url })
+
+export const imapSetup = () => request<ImapSetup>("/api/imap")
+/** Checks the sign-in before saving; the answer lists the mailbox's folders. */
+export const saveImapAccount = (a: ImapAccountInput) => post<{ folders: string[] }>("/api/imap/accounts", a)
+export const removeImapAccount = (name: string) => post<Ok>(`/api/imap/accounts/${encodeURIComponent(name)}`, undefined, "DELETE")
 export const devices = () => request<Device[]>("/api/devices")
 export const createDevice = (name: string) => post<{ token: string }>("/api/devices", { name })
 export const revokeDevice = (id: string) => post<{ ok: boolean }>(`/api/devices/${id}`, undefined, "DELETE")

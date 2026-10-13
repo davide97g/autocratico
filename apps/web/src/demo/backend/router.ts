@@ -460,8 +460,8 @@ on("GET", "/api/jobs/live", () => json(live()))
 
 function nextRun(job: string): string | null {
   const d = new Date()
-  if (job === "gmail" || job === "finance") {
-    d.setMinutes(job === "gmail" ? 37 : 4, 0, 0)
+  if (job === "gmail" || job === "imap" || job === "finance") {
+    d.setMinutes(job === "gmail" ? 37 : job === "imap" ? 42 : 4, 0, 0)
     if (d.getTime() < Date.now()) d.setHours(d.getHours() + 1)
     return d.toISOString()
   }
@@ -589,6 +589,12 @@ on("DELETE", "/api/gmail/accounts/:name", (_, [name]) => {
 })
 on("POST", "/api/gmail/accounts/:name/authorize", () => demoOnly())
 on("POST", "/api/gmail/complete", () => demoOnly())
+
+// ---------- IMAP (no mailbox in the demo: adding one needs a real server) ----------
+
+on("GET", "/api/imap", () => json({ accounts: [] }))
+on("POST", "/api/imap/accounts", () => demoOnly())
+on("DELETE", "/api/imap/accounts/:name", () => demoOnly())
 
 // ---------- Finance ----------
 

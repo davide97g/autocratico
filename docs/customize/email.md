@@ -1,6 +1,6 @@
 # Email sources
 
-What you can change here: how mail reaches the inbox. Today only Gmail is synced, read-only, over the Gmail API. Three ways to bring in another mailbox, from no code to a proper sync: forward it to Gmail, post it to `/api/ingest`, or write an IMAP sync next to `gmail.py`.
+What you can change here: how mail reaches the inbox. Gmail is synced over the Gmail API, and any other mailbox over IMAP ([../imap.md](../imap.md): Yahoo, PEC, Libero…), both read-only. For a source that is neither, forward it to a synced mailbox or post it to `/api/ingest`.
 
 ## How Gmail works today
 
@@ -66,18 +66,16 @@ with imaplib.IMAP4_SSL(os.environ["IMAP_HOST"]) as imap:
 
 Keep the IMAP password out of the repository and out of the data folder's versioned files: put it in the environment or in a `0600` file under `data/secrets/`. Use an app password, or a read-only account if the provider offers one.
 
-## Option 3: a real IMAP sync
+## Option 3: the IMAP sync
 
-For mail to look exactly like Gmail's (archived `message.md`, a pointer item with `from`, paced triage), write `scripts/imap.py` modelled on `gmail.py`:
+Built in: [../imap.md](../imap.md). `scripts/imap.py` saves mail exactly like Gmail's (archived `message.md` with `provider: imap`, a pointer item with `from`, paced triage), reusing `gmail.py`'s helpers; the `imap` job runs it every 10 minutes; Settings → Other mailboxes (IMAP) (`apps/server/src/imap.ts`, `apps/web/src/components/imap.tsx`) checks the sign-in and stores the app password. To sync another kind of source the same way, these are the pieces it needed:
 
 1. **Paths**: take them from `store.py` (`DATA_DIR`). Keep to the standard library.
-2. **Archive**: save each message the way `gmail.py` does (`archive/email/<date>-<subject>-<id>/message.md` plus attachments), with the same safe-name rules.
-3. **Pointer item**: write one per new message the way `_inbox_item` does (`source: "email"`, `ref`). `important` and `marketing` come from your own rules, since IMAP has no Gmail labels.
-4. **Accounts**: remember the last UID per account, e.g. in `data/imap.toml`. Credentials go in `data/secrets/`.
-5. **The job**:
-   - Add an `imap` entry to `JOB_NAMES` and `SCHEDULES` in `apps/server/src/jobs.ts`, plus a `#imap()` that runs the script like `#gmail()` does and queues triage.
-   - Add it to the job list in `apps/server/src/openapi.ts` and `docs/architecture.md`.
-6. **Settings** (optional): copy the Gmail card's pattern in `apps/server/src/gmail.ts` and `apps/web/src/views/settings.tsx`.
+2. **Archive**: save each message the way `gmail.py` does (`archive/email/<date>-<subject>-<id>/message.md` plus attachments), with the same safe-name rules. Give it an id that is not hex (`imap-…`), so the web app never builds a Gmail link for it.
+3. **Pointer item**: write one per new message with `_inbox_item` (`source: "email"`, `ref`). `important` and `marketing` come from your own rules where there are no Gmail labels (IMAP: flagged = important, `List-Unsubscribe` = marketing).
+4. **Accounts**: settings in a TOML file in the data folder (`imap.toml`), credentials together with the host they go to in `data/secrets/`, the sync position next to the archive (`archive/email/.imap.json`).
+5. **The job**: an entry in `JOB_NAMES` and `SCHEDULES` in `apps/server/src/jobs.ts`, run by `#mail()` like Gmail's, which queues triage; the job list in `apps/server/src/openapi.ts`, `docs/architecture.md` and the web app's `jobs` names in `i18n/`.
+6. **Settings**: a class like `apps/server/src/imap.ts` behind routes in `app.ts` (also in `openapi.ts` and the demo router), a card like `apps/web/src/components/imap.tsx`.
 
 ## Security
 

@@ -31,11 +31,12 @@ export type Notifier = {
   notify(text: string, buttons?: Button[][]): Promise<void>
 }
 
-export const JOB_NAMES = ["gmail", "finance", "triage", "reminders", "digest", "backup", "taxreturn", "rules", "energy"] as const
+export const JOB_NAMES = ["gmail", "imap", "finance", "triage", "reminders", "digest", "backup", "taxreturn", "rules", "energy"] as const
 export type JobName = (typeof JOB_NAMES)[number]
 
 const SCHEDULES: Record<JobName, string | null> = {
   gmail: "*/10 * * * *",
+  imap: "5-59/10 * * * *", // between the Gmail runs
   finance: "0 * * * *", // full re-read; the change feed brings edits within seconds
   triage: null, // runs when new items arrive
   reminders: "30 8 * * *",
@@ -78,6 +79,15 @@ type Context = {
   pulse?: Pulse
 }
 
+/** An IMAP mailbox has its connection in secrets/imap/ (scripts/imap.py, apps/server/src/imap.ts). */
+function imapConnected(data: string): boolean {
+  try {
+    return readdirSync(join(data, "secrets", "imap")).some((f) => f.endsWith(".json"))
+  } catch {
+    return false
+  }
+}
+
 const TEXT = {
   it: {
     reminders: "Promemoria",
@@ -89,6 +99,7 @@ const TEXT = {
     triageFailed: "Elaborazione dei nuovi documenti non riuscita",
     phishing: "Possibile phishing: non aprire link e non pagare",
     gmailFailed: "Sincronizzazione Gmail non riuscita",
+    imapFailed: "Sincronizzazione della posta IMAP non riuscita",
     financeFailed: "Sincronizzazione delle finanze non riuscita",
     digest: "Riepilogo settimanale",
     taxreturn: (year: number) => `Dichiarazione ${year}: pratica pronta`,
@@ -116,6 +127,7 @@ const TEXT = {
     triageFailed: "Processing new documents failed",
     phishing: "Possible phishing: do not open links or pay",
     gmailFailed: "Gmail sync failed",
+    imapFailed: "IMAP mail sync failed",
     financeFailed: "Finance sync failed",
     digest: "Weekly digest",
     taxreturn: (year: number) => `Tax return ${year}: case ready`,
@@ -282,7 +294,7 @@ export class Jobs {
   #waiting: JobName[] = []
   #tick: NodeJS.Timeout | null = null
   #offFinance: (() => void) | null = null
-  #gmailFailing = false
+  #failing = { gmail: false, imap: false }
   #financeFailing = false
   #pacedAt = 0
 
@@ -416,7 +428,9 @@ export class Jobs {
   #run(name: JobName, run: JobRun, manual: boolean): Promise<string> {
     switch (name) {
       case "gmail":
-        return this.#gmail()
+        return this.#mail("gmail")
+      case "imap":
+        return this.#mail("imap")
       case "finance":
         return this.#finance()
       case "triage":
@@ -453,9 +467,11 @@ export class Jobs {
     }
   }
 
-  async #gmail(): Promise<string> {
+  /** scripts/gmail.py or scripts/imap.py `sync --all`, then triage for what arrived. */
+  async #mail(kind: "gmail" | "imap"): Promise<string> {
     const { config } = this.#c
-    if (!existsSync(join(config.data, "secrets", "credentials.json"))) return "skipped: Gmail not configured"
+    if (kind === "gmail" && !existsSync(join(config.data, "secrets", "credentials.json"))) return "skipped: Gmail not configured"
+    if (kind === "imap" && !imapConnected(config.data)) return "skipped: no IMAP mailbox connected"
     const before = new Set(this.#c.inbox.list().map((i) => i.id))
     // Also after a failure or a timeout: what was downloaded until then is in the inbox.
     const arrived = () => {
@@ -464,13 +480,13 @@ export class Jobs {
       return added
     }
     try {
-      const { stdout } = await exec(config.python, ["scripts/gmail.py", "sync", "--all"], {
+      const { stdout } = await exec(config.python, [`scripts/${kind}.py`, "sync", "--all"], {
         cwd: config.root,
         env: { ...process.env, AUTOCRATICO_DATA: config.data },
         timeout: 15 * 60_000,
         maxBuffer: 16 * 1024 * 1024,
       })
-      this.#gmailFailing = false
+      this.#failing[kind] = false
       const added = arrived()
       const important = added.filter((i) => i.important).length
       const marketing = added.filter((i) => i.marketing).length
@@ -482,8 +498,8 @@ export class Jobs {
       const err = e as { stderr?: string; message: string }
       const reason = (err.stderr ?? "").trim().split("\n").at(-1) || err.message
       // One alert per failure streak, not one every 10 minutes.
-      if (!this.#gmailFailing) await this.#c.notifier()?.notify(`${this.#t.gmailFailed}: ${reason}`)
-      this.#gmailFailing = true
+      if (!this.#failing[kind]) await this.#c.notifier()?.notify(`${kind === "gmail" ? this.#t.gmailFailed : this.#t.imapFailed}: ${reason}`)
+      this.#failing[kind] = true
       throw new Error(reason)
     }
   }

@@ -10,7 +10,7 @@ Autocratico is one person's register for Italian paperwork, published so others 
 - The **register** is a folder of plain-text files (`data/`, never committed): deadlines in TOML, cases in Markdown, an inbox of everything that arrived, an archive. No database; git gives history and undo.
 - A **server** (`apps/server`, Hono on Node 24) serves an installable **web app** (`apps/web`, React + shadcn/ui) and runs scheduled **jobs**.
 - An **agent** is headless Claude Code (`claude -p`) with fixed tool profiles: the background agent files new inbox items into the register (edits only `data/`, no web, no secrets); the chat agent is read-only and asks the server for reminders and corrections through fenced blocks the server validates.
-- **Sources** feed the inbox: uploads, the iOS share sheet, a Telegram bot, WhatsApp exports, Gmail (read-only). A **finance** connector mirrors expenses (a finance server or bank CSV exports). **Notifications** go to Telegram and/or ntfy, always redacted.
+- **Sources** feed the inbox: uploads, the iOS share sheet, a Telegram bot, WhatsApp exports, Gmail and IMAP mailboxes (read-only). A **finance** connector mirrors expenses (a finance server or bank CSV exports). **Notifications** go to Telegram and/or ntfy, always redacted.
 - Defaults are Italian: public bodies, F24, euro, `Europe/Rome`, an Italian and English interface. All of them are listed in [docs/customize/country.md](docs/customize/country.md).
 - The rules every agent follows are in [AGENTS.md](AGENTS.md); personal preferences of one install go in `data/notes/INSTRUCTIONS.md`.
 
@@ -50,7 +50,7 @@ Settings first: many wishes need no code.
 | another time zone | `TZ` / `TZ_DEADLINES` ([configuration](docs/configuration.md)) | — |
 | another country, currency or a third language | — | [customize/country.md](docs/customize/country.md) |
 | other kinds of deadlines (areas) or new fields | `area` is free text in `deadlines.toml` | [customize/data-model.md](docs/customize/data-model.md) |
-| email that isn't Gmail | forward it to a Gmail account | [customize/email.md](docs/customize/email.md) |
+| email that isn't Gmail | an IMAP mailbox in Settings ([imap.md](docs/imap.md)) | [customize/email.md](docs/customize/email.md) |
 | my budgeting app or my bank in the Finance view | a finance server, or CSV exports ([finance.md](docs/finance.md)) | [customize/finance-connector.md](docs/customize/finance-connector.md) |
 | notifications somewhere else | Telegram or ntfy | [customize/notifications.md](docs/customize/notifications.md) |
 | the agent to behave differently | `INSTRUCTIONS.md` | [customize/agent.md](docs/customize/agent.md) |
@@ -64,7 +64,7 @@ Parts that only serve the maintainer, or that you may not need. Delete them in t
 - **Marketing** (maintainer-only): `apps/site`, `apps/waitlist`, `apps/video`, `deploy/compose.site.yml`, `deploy/site.*`, `deploy/waitlist.Dockerfile`, `docs/maintainer/site-and-demo.md`. Nothing else imports them; remove their lines from AGENTS.md (Layout).
 - **The maintainer's deployment**: `deploy/compose.homelab.yml`, `docs/maintainer/homelab.md`.
 - **Public demo**: `apps/web/src/demo/`, `apps/web/src/i18n/demo.ts`, `apps/web/test/demo.test.ts`, the `build:demo`/`dev:demo` scripts, the `demoPage()` plugin and `__DEMO_*` defines in `apps/web/vite.config.ts`, the demo import in `apps/web/src/main.tsx`, `deploy/compose.demo.yml`, `deploy/demo.*`, the demo step in `.github/workflows/ci.yml`. Keeping it costs one thing: every new `/api` route needs a pretend answer in `apps/web/src/demo/backend/router.ts`.
-- **Finance, Gmail, Telegram, ntfy, speech to text**: inert until configured. Leaving them unconfigured is simpler than deleting them; if you do delete one, follow its guide backwards (routes in `app.ts`, the job in `jobs.ts`, the Settings card, `Status`, the demo router, its tests).
+- **Finance, Gmail, IMAP, Telegram, ntfy, speech to text**: inert until configured. Leaving them unconfigured is simpler than deleting them; if you do delete one, follow its guide backwards (routes in `app.ts`, the job in `jobs.ts`, the Settings card, `Status`, the demo router, its tests).
 
 ## Never break
 

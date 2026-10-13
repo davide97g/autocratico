@@ -29,7 +29,7 @@ FROM node:24-trixie-slim
 ARG CLAUDE_CODE_VERSION=2.1.288
 # Time zone of the deadlines, the jobs and the Python CLIs: docker build --build-arg TZ=Europe/Berlin (or TZ at runtime).
 ARG TZ=Europe/Rome
-# python3: the CLIs in scripts/ (Gmail sync, upcoming, ics); git: history of the data folder;
+# python3: the CLIs in scripts/ (Gmail and IMAP sync, upcoming, ics); git: history of the data folder;
 # ffmpeg + libgomp1: voice messages (Opus to WAV, and the runtime parakeet-cli links against);
 # libheif: iPhone HEIC photos to JPEG for the agent; poppler-utils: Claude Code reads PDF page ranges with pdftoppm.
 RUN apt-get update \

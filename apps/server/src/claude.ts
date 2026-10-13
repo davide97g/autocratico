@@ -57,7 +57,7 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
     // Read tools are allowed anywhere by default: what holds personal data is denied explicitly.
     const hidden = [
       ...["inbox", "archive", "cases", "chats", "jobs", "finance", "out", ".git", ".backup"].map((d) => `${d}/**`),
-      ...["profile.toml", "state.json", "investments.toml", "gmail.toml", "finance.toml", "reminders.json", "usage.json", "notes/SITUATION.md"],
+      ...["profile.toml", "state.json", "investments.toml", "gmail.toml", "imap.toml", "finance.toml", "reminders.json", "usage.json", "notes/SITUATION.md"],
     ].flatMap((p) => [`Read(${abs(data)}/${p})`, `Grep(${abs(data)}/${p})`, `Glob(${abs(data)}/${p})`])
     return {
       allowed: [

@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, extname, join, resolve, sep } from "node:path"
 
-import { type ChatEvent, FinanceConnectInput, FinanceExpenseInput, GmailAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
+import { type ChatEvent, FinanceConnectInput, FinanceExpenseInput, GmailAccountInput, ImapAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
 import { type Context, Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
 import { secureHeaders } from "hono/secure-headers"
@@ -18,6 +18,7 @@ import { type Finance, FinanceError } from "./finance.ts"
 import type { DataRepo } from "./git.ts"
 import { Gmail, GmailError } from "./gmail.ts"
 import { type GmailLinks, GmailLinkError } from "./gmail-links.ts"
+import { Imap, imapChecker, ImapError } from "./imap.ts"
 import { IMAGE_TYPES, thumbnail } from "./images.ts"
 import { documentFile, type Inbox, MAX_UPLOAD, type Upload } from "./inbox.ts"
 import { JOB_NAMES, type JobName, type Jobs } from "./jobs.ts"
@@ -63,6 +64,8 @@ export type Services = {
   gmailLinks: GmailLinks
   /** Override for tests: Gmail setup with a fake Google. */
   gmail?: Gmail
+  /** Override for tests: IMAP setup with a fake sign-in check. */
+  imap?: Imap
   /** Override for tests: verifies the Cloudflare Access JWT. */
   verifyAccess?: ((t: string | undefined) => Promise<boolean>) | null
 }
@@ -104,6 +107,7 @@ const IngestJson = z.object({ text: z.string().max(200_000).optional(), title: z
 export function createApp(s: Services) {
   const { config, store, inbox, devices, account, claude, repo } = s
   const gmail = s.gmail ?? new Gmail(config.data)
+  const imap = s.imap ?? new Imap(config.data, imapChecker(config))
   const app = new Hono<Env>()
 
   app.use(
@@ -137,6 +141,7 @@ export function createApp(s: Services) {
   })
   app.onError((e, c) => {
     if (e instanceof GmailError) return c.json({ error: e.message }, e.status)
+    if (e instanceof ImapError) return c.json({ error: e.message }, e.status)
     if (e instanceof GmailLinkError) return c.json({ error: e.message, code: e.code }, e.status)
     if (e instanceof FinanceError) return c.json({ error: e.message }, e.status)
     if (e instanceof AccountError) {
@@ -500,6 +505,24 @@ export function createApp(s: Services) {
     const body = z.object({ url: z.string().min(1).max(4000) }).safeParse(await c.req.json().catch(() => null))
     if (!body.success) return c.json({ error: "invalid request" }, 400)
     return c.json(await gmail.complete(body.data.url))
+  })
+
+  // ---------- IMAP mailboxes (app passwords stay on the server) ----------
+
+  app.get("/api/imap", (c) => c.json(imap.setup()))
+  app.post("/api/imap/accounts", async (c) => {
+    userOf(c)
+    const body = ImapAccountInput.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    const r = await imap.saveAccount(body.data)
+    commit(`IMAP: account ${body.data.name}`)
+    return c.json(r)
+  })
+  app.delete("/api/imap/accounts/:name", async (c) => {
+    userOf(c)
+    const removed = await imap.removeAccount(c.req.param("name"))
+    if (removed) commit(`IMAP: account ${c.req.param("name")} removed`)
+    return removed ? c.json({ ok: true }) : c.json({ error: "not found" }, 404)
   })
 
   // ---------- ingest tokens and Telegram ----------

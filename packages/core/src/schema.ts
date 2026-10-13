@@ -428,6 +428,43 @@ export const GmailAccountInput = z.object({
 })
 export type GmailAccountInput = z.infer<typeof GmailAccountInput>
 
+/** IMAP mailboxes (scripts/imap.py): names follow the Gmail rule, hosts are public names over TLS. */
+export const IMAP_HOST = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/
+/** Providers the Settings form fills in; "other" asks for the host. */
+export const IMAP_PRESETS = [
+  { id: "yahoo", host: "imap.mail.yahoo.com", port: 993 },
+  { id: "aruba-pec", host: "imaps.pec.aruba.it", port: 993 },
+  { id: "libero", host: "imapmail.libero.it", port: 993 },
+] as const
+
+export const ImapAccount = z.object({
+  name: z.string(),
+  /** From secrets/imap/<name>.json; the password never leaves the server. */
+  host: z.string().nullable(),
+  port: z.number().int().nullable(),
+  user: z.string().nullable(),
+  folders: z.array(z.string()),
+  /** How far back the first sync goes. */
+  days: z.number().int(),
+  state: z.enum(["connected", "disconnected"]),
+})
+export type ImapAccount = z.infer<typeof ImapAccount>
+
+export const ImapSetup = z.object({ accounts: z.array(ImapAccount) })
+export type ImapSetup = z.infer<typeof ImapSetup>
+
+export const ImapAccountInput = z.object({
+  name: z.string().regex(GMAIL_NAME),
+  host: z.string().trim().toLowerCase().regex(IMAP_HOST),
+  port: z.number().int().min(1).max(65535).default(993),
+  user: z.string().trim().min(1).max(200),
+  /** Omitted when only the folders change: the saved one is kept. */
+  password: z.string().min(1).max(200).optional(),
+  folders: z.array(z.string().trim().min(1).max(200)).min(1).max(20).default(["INBOX"]),
+  days: z.number().int().min(1).max(3650).default(365),
+})
+export type ImapAccountInput = z.infer<typeof ImapAccountInput>
+
 // ---------- Finance: mirror of a finance source (expenses, earnings), investments ----------
 
 export const FINANCE_TYPES = ["expense", "earning"] as const

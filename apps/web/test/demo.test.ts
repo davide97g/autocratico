@@ -10,6 +10,7 @@ import {
   FinanceSetup,
   GmailPreview,
   GmailSetup,
+  ImapSetup,
   InboxDetail,
   InboxItem,
   LiveJobs,
@@ -80,6 +81,7 @@ describe("demo server", () => {
     Reminder.array().parse(await get("/api/reminders"))
     Usage.parse(await get("/api/usage"))
     GmailSetup.parse(await get("/api/gmail"))
+    ImapSetup.parse(await get("/api/imap"))
     FinanceSetup.parse(await get("/api/finance"))
     const finance = FinanceData.parse(await get("/api/finance/data"))
     // The Finance view takes the first transaction as the oldest.

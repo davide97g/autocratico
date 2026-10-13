@@ -10,7 +10,7 @@
  │  apps/server (Hono, Node 24)                                                           │
  │   ├─ /api  session · data · done · chat · ingest · inbox · activity · account · status │
  │   ├─ web app (apps/web/dist, PWA)                                                      │
- │   ├─ scheduler: gmail (10 min) · triage (on new items) · finance (hourly)             │
+ │   ├─ scheduler: gmail · imap (10 min) · triage (on new items) · finance (hourly)      │
  │   │             reminders (08:30) · digest (Mon 08:00) · backup (03:00)                │
  │   │             energy (Mon 06:30) · rules (1st, 07:00) · taxreturn (1 Mar)            │
  │   ├─ Telegram bot: notifications, commands, chat, files → inbox                        │
@@ -19,7 +19,7 @@
  │   └─ claude -p  (headless Claude Code, user's subscription)                            │
  │         read: chat, digest · triage: edits data/ only, no web (triage, taxreturn)      │
  │         research: rules, reads and edits catalog/ only, official sites                 │
- │  scripts/*.py: gmail.py sync --all · upcoming.py · ics.py · offers.py (ARERA data)     │
+ │  scripts/*.py: gmail.py · imap.py sync --all · upcoming.py · ics.py · offers.py       │
  └─────────────────────────────────────┬──────────────────────────────────────────────────┘
                                        ▼
                      /data (bind mount): TOML + Markdown + inbox + archive, local git
@@ -48,7 +48,8 @@ The chat agent (web and Telegram) stays read-only. When the user asks for a remi
 | iOS/macOS share sheet | Shortcut → `POST /api/ingest` | ingest-only bearer token (+ Access service token behind Cloudflare Access) |
 | Telegram | bot in a private chat: text, voice (transcribed locally), files | paired chat ids |
 | Gmail (several accounts) | `gmail.py sync --all` every 10 min | OAuth per account, read-only |
-| Email from anywhere | forward to a synced Gmail account, or post it to `/api/ingest` ([customize/email.md](customize/email.md)) | — |
+| IMAP mailboxes (Yahoo, PEC, …) | `imap.py sync --all` every 10 min ([imap.md](imap.md)) | app password per mailbox in `secrets/imap/`, read-only |
+| Email from anywhere | forward to a synced mailbox, or post it to `/api/ingest` ([customize/email.md](customize/email.md)) | — |
 | WhatsApp | Export chat → share to the Shortcut or upload the .zip | as above |
 | Finance | `http` connector (change feed + hourly) or `csv` files in `finance/import/` | token in `secrets/finance.json` |
 | Native apps (later) | same API, `/api/openapi.json` | masterpass session |
