@@ -64,11 +64,12 @@ describe("IMAP setup", () => {
   it("saves nothing when the sign-in fails", async () => {
     const { app, data } = withImap(false)
     const h = await owner(app)
+    const before = readFileSync(join(data, "imap.toml"), "utf8")
     const r = await post(app, "/api/imap/accounts", YAHOO, h)
     expect(r.status).toBe(400)
     expect(((await r.json()) as { error: string }).error).toContain("sign-in refused")
     expect(existsSync(join(data, "secrets", "imap", "yahoo.json"))).toBe(false)
-    expect(existsSync(join(data, "imap.toml"))).toBe(false)
+    expect(readFileSync(join(data, "imap.toml"), "utf8")).toBe(before)
   })
 
   it("rejects hosts that are not public names, and unknown folders", async () => {
