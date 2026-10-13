@@ -19,7 +19,8 @@ as read, moved or deleted. Messages are saved like scripts/gmail.py saves them
 (archive/email/<date>-<subject>-<id6>/message.md and attachments), and new ones from the last
 INBOX_DAYS days get an item in data/inbox/ for the server's agent. IMAP has no Gmail labels: a
 flagged (starred) message counts as Important, a message with List-Unsubscribe as marketing.
-The last UID seen per folder is kept in archive/email/.imap.json; a sync downloads at most
+The last UID seen per folder is kept in archive/email/.imap.json, after each message: a dropped
+connection (Yahoo logs out long sessions) is opened again and goes on. A sync downloads at most
 PER_RUN messages per account, oldest first, and the next run goes on.
 """
 
@@ -264,63 +265,92 @@ def _size(raw: bytes) -> int:
     return int(m.group(1)) if m else 0
 
 
-def sync(account: str, settings: dict, per_run: int = PER_RUN) -> None:
+def _heads(imap: imaplib.IMAP4_SSL, uids: list[int]) -> dict[int, bytes]:
+    """FLAGS and size of many messages in a few commands (100 UIDs each): uid -> the server's line."""
+    found: dict[int, bytes] = {}
+    for i in range(0, len(uids), 100):
+        typ, data = imap.uid("FETCH", ",".join(str(u) for u in uids[i : i + 100]), "(UID FLAGS RFC822.SIZE)")
+        for line in data if typ == "OK" else []:
+            raw = line[0] if isinstance(line, tuple) else line
+            m = re.search(rb"UID (\d+)", raw or b"")
+            if m:
+                found[int(m.group(1))] = raw
+    return found
+
+
+def _folder(imap: imaplib.IMAP4_SSL, account: str, user: str, folder: str, days: int, budget: int) -> int:
+    """Downloads up to `budget` new messages of one folder, remembering each UID as it goes; returns how many it took."""
+    typ, data = imap.select(_quote(folder), readonly=True)  # EXAMINE: nothing is changed
+    if typ != "OK":
+        print(f"  {folder}: cannot open ({_text(data[0] if data else '')[:120]})", file=sys.stderr)
+        return 0
+    validity = _text((imap.response("UIDVALIDITY")[1] or [b""])[0])
+    known = _state().get(account, {}).get(folder, {})
+    if known.get("uidvalidity") == validity and known.get("last_uid"):
+        last = int(known["last_uid"])
+        uids = [u for u in _uids(imap, f"UID {last + 1}:*") if u > last]
+    else:
+        # First sync, or the server renumbered the folder: by date, Message-IDs skip what is saved.
+        last = 0
+        since = (datetime.now() - timedelta(days=days)).strftime("%d-%b-%Y")
+        uids = _uids(imap, f"SINCE {since}")
+    todo, left = uids[:budget], max(0, len(uids) - budget)
+    print(f"  {folder}: {len(uids)} new messages, downloading {len(todo)}" + (f", {left} left for the next runs." if left else "."), flush=True)
+    if not uids:
+        _remember(account, folder, validity, last)
+    heads = _heads(imap, todo)
+    index = _index()
+    for uid in todo:
+        meta = heads.get(uid, b"")
+        if _size(meta) > MAX_BYTES:
+            print(f"  {folder} {uid}: skipped, larger than {MAX_BYTES // 2**20} MB", file=sys.stderr)
+        else:
+            typ, data = imap.uid("FETCH", str(uid), "(BODY.PEEK[])")
+            raw = next((d[1] for d in data if isinstance(d, tuple)), None) if typ == "OK" else None
+            if raw is None:
+                print(f"  {folder} {uid}: could not be read", file=sys.stderr)
+            else:
+                msg = email.message_from_bytes(raw, policy=email.policy.default)
+                ident = _message_id(account, msg, validity, folder, uid)
+                if ident not in index:
+                    flags = _flags(meta)
+                    path, attachments, when = _save(msg, ident, account, user, flags + [f"folder:{folder}"])
+                    if (datetime.now() - when).days <= INBOX_DAYS:
+                        headers = {k.lower(): str(v) for k, v in msg.items()}
+                        labels = ["IMPORTANT"] if "\\Flagged" in flags else []
+                        _inbox_item(account, path.name, headers, when, attachments, labels)
+                    _record(ident, path.name)
+                    index[ident] = path.name
+                    print(f"  {path.relative_to(DATA_DIR)}  ({len(attachments)} attachments)", flush=True)
+        last = max(uid, last)
+        _remember(account, folder, validity, last)
+    return len(todo)
+
+
+def sync(account: str, settings: dict, per_run: int = PER_RUN, retries: int = 3) -> None:
+    """Every folder in turn. Servers drop long sessions (Yahoo logs out after a few minutes): the
+    position is saved after each message, so a dropped connection is opened again and goes on."""
     conn = _load(account)
     DESTINATION.mkdir(parents=True, exist_ok=True)
-    imap = _open(conn)
-    try:
-        budget = per_run
-        for folder in settings["folders"]:
-            typ, data = imap.select(_quote(folder), readonly=True)  # EXAMINE: nothing is changed
-            if typ != "OK":
-                print(f"  {folder}: cannot open ({_text(data[0] if data else '')[:120]})", file=sys.stderr)
-                continue
-            validity = _text((imap.response("UIDVALIDITY")[1] or [b""])[0])
-            known = _state().get(account, {}).get(folder, {})
-            if known.get("uidvalidity") == validity and known.get("last_uid"):
-                last = int(known["last_uid"])
-                uids = [u for u in _uids(imap, f"UID {last + 1}:*") if u > last]
-            else:
-                # First sync, or the server renumbered the folder: by date, Message-IDs skip what is saved.
-                last = 0
-                since = (datetime.now() - timedelta(days=settings["days"])).strftime("%d-%b-%Y")
-                uids = _uids(imap, f"SINCE {since}")
-            todo, left = uids[:budget], max(0, len(uids) - budget)
-            print(f"  {folder}: {len(uids)} new messages, downloading {len(todo)}" + (f", {left} left for the next runs." if left else "."))
-            index = _index()
-            for uid in todo:
-                typ, head = imap.uid("FETCH", str(uid), "(FLAGS RFC822.SIZE)")
-                meta = head[0] if head and isinstance(head[0], bytes) else b""
-                if _size(meta) > MAX_BYTES:
-                    print(f"  {folder} {uid}: skipped, larger than {MAX_BYTES // 2**20} MB", file=sys.stderr)
-                else:
-                    typ, data = imap.uid("FETCH", str(uid), "(BODY.PEEK[])")
-                    raw = next((d[1] for d in data if isinstance(d, tuple)), None) if typ == "OK" else None
-                    if raw is None:
-                        print(f"  {folder} {uid}: could not be read", file=sys.stderr)
-                    else:
-                        msg = email.message_from_bytes(raw, policy=email.policy.default)
-                        ident = _message_id(account, msg, validity, folder, uid)
-                        if ident not in index:
-                            flags = _flags(meta)
-                            path, attachments, when = _save(msg, ident, account, conn["user"], flags + [f"folder:{folder}"])
-                            if (datetime.now() - when).days <= INBOX_DAYS:
-                                headers = {k.lower(): str(v) for k, v in msg.items()}
-                                labels = ["IMPORTANT"] if "\\Flagged" in flags else []
-                                _inbox_item(account, path.name, headers, when, attachments, labels)
-                            _record(ident, path.name)
-                            index[ident] = path.name
-                            print(f"  {path.relative_to(DATA_DIR)}  ({len(attachments)} attachments)")
-                _remember(account, folder, validity, max(uid, last))
-                last = max(uid, last)
-            budget -= len(todo)
-            if not uids:
-                _remember(account, folder, validity, last)
-    finally:
+    budget, attempt = per_run, 0
+    pending = list(settings["folders"])
+    while pending and budget > 0:
+        imap = _open(conn)
         try:
-            imap.logout()
-        except (OSError, imaplib.IMAP4.error):
-            pass
+            while pending and budget > 0:
+                budget -= _folder(imap, account, conn["user"], pending[0], settings["days"], budget)
+                pending.pop(0)
+        except (imaplib.IMAP4.abort, OSError) as e:
+            attempt += 1
+            if attempt > retries:
+                raise ImapError(f"connection dropped {attempt} times, giving up for this run: {_text(e)[:120]}") from None
+            print(f"  connection dropped ({_text(e)[:80]}), reconnecting…", file=sys.stderr, flush=True)
+            continue
+        finally:
+            try:
+                imap.logout()
+            except (OSError, imaplib.IMAP4.error):
+                pass
 
 
 # ---------- command line ----------
