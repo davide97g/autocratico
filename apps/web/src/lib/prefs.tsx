@@ -14,9 +14,22 @@ export type Prefs = {
   compact: boolean
   /** Color palette over light and dark (lib/palettes.ts). */
   palette: Palette
+  /** How the Overview calendar lays out deadlines (views/calendar.tsx). */
+  calendar: CalendarLayout
 }
 
-const DEFAULTS: Prefs = { reduceMotion: false, splash: true, liveNotices: true, compact: false, palette: DEFAULT_PALETTE }
+export const CALENDAR_LAYOUTS = ["months", "horizons", "axis", "grid", "areas"] as const
+export type CalendarLayout = (typeof CALENDAR_LAYOUTS)[number]
+const isCalendarLayout = (v: unknown): v is CalendarLayout => CALENDAR_LAYOUTS.includes(v as CalendarLayout)
+
+const DEFAULTS: Prefs = {
+  reduceMotion: false,
+  splash: true,
+  liveNotices: true,
+  compact: false,
+  palette: DEFAULT_PALETTE,
+  calendar: "months",
+}
 const STORAGE_KEY = "autocratico.prefs"
 // Before the preferences had their own key the sidebar remembered itself here.
 const LEGACY_COMPACT = "autocratico.sidebar-compact"
@@ -24,7 +37,13 @@ const LEGACY_COMPACT = "autocratico.sidebar-compact"
 function read(): Prefs {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Partial<Prefs> | null
-    if (saved) return { ...DEFAULTS, ...saved, palette: isPalette(saved.palette) ? saved.palette : DEFAULT_PALETTE }
+    if (saved)
+      return {
+        ...DEFAULTS,
+        ...saved,
+        palette: isPalette(saved.palette) ? saved.palette : DEFAULT_PALETTE,
+        calendar: isCalendarLayout(saved.calendar) ? saved.calendar : DEFAULTS.calendar,
+      }
     return { ...DEFAULTS, compact: localStorage.getItem(LEGACY_COMPACT) === "1" }
   } catch {
     return DEFAULTS

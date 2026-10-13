@@ -21,14 +21,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useI18n } from "@/i18n"
 import type { Data, Occurrence } from "@/lib/api"
 import { FreshContext } from "@/lib/fresh"
+import { CALENDAR_LAYOUTS, usePrefs } from "@/lib/prefs"
 import { areaIcon, areaName, capitalize, parseDate } from "@/lib/format"
 import { level, ORDER, SEVERITIES, severity, STYLE } from "@/lib/status"
 import { PaymentsCard } from "@/views/payments"
-import { Timeline } from "@/views/timeline"
+import { Calendar } from "@/views/calendar"
 
 function perMonth(items: Occurrence[], today: string, months: number, format: Intl.DateTimeFormat) {
   const base = parseDate(today)
@@ -85,6 +87,7 @@ export const Overview = React.memo(function Overview({
   const { t, fmt } = useI18n()
   const fresh = React.useContext(FreshContext)
   const [months, setMonths] = React.useState("6")
+  const { prefs, set: setPref } = usePrefs()
   const { agenda, today, incomplete, cases, profile } = data
   const open = agenda.filter((o) => !o.done_on)
   const upcoming = open
@@ -138,7 +141,23 @@ export const Overview = React.memo(function Overview({
         <CardHeader>
           <CardTitle className="text-lg font-medium tracking-tight">{t.overview.calendar}</CardTitle>
           <CardDescription className="col-start-1">{t.overview.calendarDescription(Number(months))}</CardDescription>
-          <CardAction className="@max-md:col-start-1 @max-md:row-span-1 @max-md:row-start-3 @max-md:mt-3 @max-md:justify-self-start">
+          <CardAction className="flex flex-wrap items-center gap-2 @max-md:col-start-1 @max-md:row-span-1 @max-md:row-start-3 @max-md:mt-3 @max-md:justify-self-start">
+            <Select
+              value={prefs.calendar}
+              onValueChange={(v) => v && setPref("calendar", v)}
+              items={CALENDAR_LAYOUTS.map((l) => ({ value: l, label: t.overview.layouts[l] }))}
+            >
+              <SelectTrigger aria-label={t.overview.layout}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CALENDAR_LAYOUTS.map((l) => (
+                  <SelectItem key={l} value={l}>
+                    {t.overview.layouts[l]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <ToggleGroup
               value={[months]}
               onValueChange={(v) => v[0] && setMonths(v[0])}
@@ -154,7 +173,7 @@ export const Overview = React.memo(function Overview({
           </CardAction>
         </CardHeader>
         <CardContent className="flex-1">
-          <Timeline agenda={compactAgenda} today={today} months={Number(months)} onOpen={onOpenDeadlines} />
+          <Calendar layout={prefs.calendar} agenda={compactAgenda} today={today} months={Number(months)} onOpen={(o) => onOpenDeadline(o.key)} />
         </CardContent>
         <CardFooter className="bg-transparent">
           <StatusLegend />
