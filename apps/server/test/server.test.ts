@@ -562,6 +562,17 @@ q = imap_query(sys.argv[1]); print(json.dumps({"all": q["all"], "since": bool(q[
       skipped: ["has:attachment"],
     })
   })
+
+  it("combines IMAP matches itself, leaving -words out without sending NOT", () => {
+    const code = `import json, sys; sys.path.insert(0, "scripts"); import mail
+index = {"caldaia": {1, 2, 3}, "libretto": {4}, "enel": {2, 3, 4}, "spam": {3}}
+sent = []
+mail._uid_search = lambda box, key, value, since, before: sent.append(value) or index.get(value, set())
+print(json.dumps({"uids": sorted(mail._imap_match(None, mail.imap_query(sys.argv[1]))), "sent": sent}))`
+    const match = (q: string) => JSON.parse(execFileSync("python3", ["-c", code, q], { cwd: ROOT, encoding: "utf8" }))
+    expect(match("-spam caldaia OR libretto enel")).toEqual({ uids: [2, 4], sent: ["caldaia", "libretto", "enel", "spam"] })
+    expect(() => match("-spam")).toThrow()
+  })
 })
 
 describe("changes from the chat", () => {

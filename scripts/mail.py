@@ -169,11 +169,11 @@ def _imap_names(account: str | None) -> list[str]:
     return [n for n in listed if account in (None, n) and imapbox._secret(n).exists()]
 
 
-def _uid_search(box: imaplib.IMAP4_SSL, key: str, value: str, negated: bool, since: datetime | None, before: datetime | None) -> set[int]:
+def _uid_search(box: imaplib.IMAP4_SSL, key: str, value: str, since: datetime | None, before: datetime | None) -> set[int]:
     """One criterion. The value goes as a literal, so quotes and accents in it need no escaping."""
     data = value.encode("utf-8")
     args = (["CHARSET", "UTF-8"] if not value.isascii() else []) + (["SINCE", since.strftime("%d-%b-%Y")] if since else [])
-    args += (["BEFORE", before.strftime("%d-%b-%Y")] if before else []) + (["NOT"] if negated else []) + [key]
+    args += (["BEFORE", before.strftime("%d-%b-%Y")] if before else []) + [key]
     box.literal = data
     typ, found = box.uid("SEARCH", *args)
     if typ != "OK":
@@ -182,12 +182,22 @@ def _uid_search(box: imaplib.IMAP4_SSL, key: str, value: str, negated: bool, sin
 
 
 def _imap_match(box: imaplib.IMAP4_SSL, q: dict) -> set[int]:
+    """Sets of UIDs combined here: -word is taken away from the matches rather than sent as NOT,
+    which Yahoo answers with a server error."""
+    search = lambda key, value: _uid_search(box, key, value, q["since"], q["before"])  # noqa: E731
     result: set[int] | None = None
-    for group in q["all"]:
-        alternatives: set[int] = set()
-        for key, value, negated in group:
-            alternatives |= _uid_search(box, key, value, negated, q["since"], q["before"])
-        result = alternatives if result is None else result & alternatives
+    for group in sorted(q["all"], key=lambda g: all(t[2] for t in g)):  # the left-out words last
+        if all(negated for _, _, negated in group):
+            if result is None:
+                raise imapbox.ImapError("over IMAP a -word needs other words to search for")
+            for key, value, _ in group:
+                result -= search(key, value)
+        else:
+            alternatives: set[int] = set()
+            for key, value, negated in group:
+                if not negated:
+                    alternatives |= search(key, value)
+            result = alternatives if result is None else result & alternatives
         if not result:
             break
     return result or set()
