@@ -525,6 +525,45 @@ describe("date and time tool", () => {
   })
 })
 
+describe("mail search tool", () => {
+  const mail = (args: string[]) => {
+    try {
+      return { out: execFileSync("python3", [join(ROOT, "scripts/mail.py"), ...args], { env: { ...process.env, AUTOCRATICO_DATA: setup().data }, stdio: "pipe" }).toString(), code: 0 }
+    } catch (e) {
+      const err = e as { stdout: Buffer; stderr: Buffer; status: number }
+      return { out: err.stdout.toString() + err.stderr.toString(), code: err.status }
+    }
+  }
+
+  it("is allowed to the chat and the background agent, not to the research job", () => {
+    expect(tools("read", "/data").allowed).toContain("Bash(python3 scripts/mail.py:*)")
+    expect(tools("triage", "/data").allowed).toContain("Bash(python3 scripts/mail.py:*)")
+    expect(tools("research", "/data").allowed.some((t) => t.includes("mail.py"))).toBe(false)
+  })
+
+  it("says when no mailbox is connected and refuses made-up refs", () => {
+    expect(mail(["search", "caldaia"])).toMatchObject({ code: 1, out: expect.stringContaining("no mailbox is connected") })
+    expect(mail(["read", "imap:yahoo:1:2"])).toMatchObject({ code: 1, out: expect.stringContaining("not a REF") })
+    expect(mail(["save", "gmail:../x:18c0ffee18c0ffee"])).toMatchObject({ code: 1, out: expect.stringContaining("not a REF") })
+  })
+
+  it("translates Gmail's syntax for IMAP", () => {
+    const code = `import json, sys; sys.path.insert(0, "scripts"); from mail import imap_query
+q = imap_query(sys.argv[1]); print(json.dumps({"all": q["all"], "since": bool(q["since"]), "skipped": q["skipped"]}))`
+    const parse = (q: string) => JSON.parse(execFileSync("python3", ["-c", code, q], { cwd: ROOT, encoding: "utf8" }))
+    expect(parse('caldaia OR "libretto impianto" from:enel -pubblicità has:attachment newer_than:2y 10:30')).toEqual({
+      all: [
+        [["TEXT", "caldaia", false], ["TEXT", "libretto impianto", false]],
+        [["FROM", "enel", false]],
+        [["TEXT", "pubblicità", true]],
+        [["TEXT", "10:30", false]],
+      ],
+      since: true,
+      skipped: ["has:attachment"],
+    })
+  })
+})
+
 describe("changes from the chat", () => {
   async function env() {
     const e = setup()

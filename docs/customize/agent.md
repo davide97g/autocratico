@@ -26,13 +26,13 @@ Prefer the first row. A preference in `INSTRUCTIONS.md` survives updates from up
 **`read`** (chat, digest):
 - Allowed: Read, Glob, Grep, WebSearch.
 - WebFetch only to `DOMAINS` (official sites, so the agent can check a rule).
-- Only `scripts/upcoming.py` and `scripts/when.py` may be run.
+- Only `scripts/upcoming.py`, `scripts/when.py` and `scripts/mail.py` (search the connected mailboxes, read a message, save it to `archive/email/`) may be run.
 - No Edit or Write: changes go through action blocks that the server validates and the user confirms.
 
 **`triage`** (background agent):
 - Edit and Write only inside the data folder.
 - No web access.
-- Only `upcoming.py`, `ics.py` and `when.py`.
+- Only `upcoming.py`, `ics.py`, `when.py` and `mail.py`.
 - Never `secrets/**`, and never the server-owned files in the `owned` list: `state.json`, `reminders.json`, `chats/`, `jobs/`, `inbox/*/item.json`, `finance.toml` and the finance mirror.
 - Every change it makes is a git commit you can undo from Activity.
 

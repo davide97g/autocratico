@@ -145,16 +145,21 @@ def _quote(folder: str) -> str:
     return '"' + folder.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def folders(imap: imaplib.IMAP4_SSL) -> list[str]:
+def listing(imap: imaplib.IMAP4_SSL) -> list[tuple[str, set[str]]]:
+    """Every folder that can be opened, with its flags (special-use ones like \\Trash among them)."""
     typ, data = imap.list()
     if typ != "OK":
         return []
-    names = []
+    found = []
     for line in data:
         m = re.match(rb'\((?P<flags>[^)]*)\) (?:"[^"]*"|NIL) (?P<name>.+)$', line or b"")
         if m and b"\\Noselect" not in m.group("flags"):
-            names.append(_text(m.group("name")).strip().strip('"'))
-    return names
+            found.append((_text(m.group("name")).strip().strip('"'), set(_text(m.group("flags")).split())))
+    return found
+
+
+def folders(imap: imaplib.IMAP4_SSL) -> list[str]:
+    return [name for name, _ in listing(imap)]
 
 
 def check(conn: dict) -> dict:
@@ -201,6 +206,18 @@ def _received(msg: EmailMessage) -> datetime:
         return datetime.now()
 
 
+def body_text(msg: EmailMessage) -> str:
+    """The text of a message: its plain part, else its HTML as text."""
+    body = msg.get_body(preferencelist=("plain", "html"))
+    if body is None:
+        return ""
+    try:
+        content = body.get_content()
+    except (LookupError, UnicodeError, AssertionError):
+        content = _text(body.get_payload(decode=True) or b"")
+    return _from_html(content) if body.get_content_type() == "text/html" else content
+
+
 def _save(msg: EmailMessage, ident: str, account: str, mailbox: str, flags: list[str]) -> tuple[Path, list[str], datetime]:
     """Writes one message to archive/email/<date>-<subject>-<id6>/, the same layout as scripts/gmail.py."""
     when = _received(msg)
@@ -220,15 +237,7 @@ def _save(msg: EmailMessage, ident: str, account: str, mailbox: str, flags: list
         (folder / name).write_bytes(data)
         attachments.append(name)
 
-    body = msg.get_body(preferencelist=("plain", "html"))
-    text = ""
-    if body is not None:
-        try:
-            content = body.get_content()
-        except (LookupError, UnicodeError, AssertionError):
-            content = _text(body.get_payload(decode=True) or b"")
-        text = _from_html(content) if body.get_content_type() == "text/html" else content
-
+    text = body_text(msg)
     try:
         sent = parsedate_to_datetime(str(msg["date"])).isoformat()
     except (TypeError, ValueError, IndexError):

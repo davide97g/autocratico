@@ -68,6 +68,22 @@ turns them into the id the API wants. Links to drafts and to some messages you s
 kind of id that the API cannot open: forward those, or paste their text. From the command line:
 `python3 scripts/gmail.py preview "LINK"` (nothing saved) and `python3 scripts/gmail.py fetch "LINK"`.
 
+## Searching the mailboxes
+
+The sync downloads only what each account's query selects. To find anything else ("the boiler
+technician's number", "last year's condominium statement"), the chat and the background agent run
+`scripts/mail.py`, which searches every connected mailbox at once, Gmail and IMAP:
+
+```sh
+python3 scripts/mail.py search 'caldaia OR manutenzione OR "libretto impianto"'   # results with a REF each
+python3 scripts/mail.py read REF    # the whole message, nothing saved
+python3 scripts/mail.py save REF    # into archive/email/ (Gmail: the whole conversation), no inbox item
+```
+
+The query uses Gmail's syntax; for IMAP mailboxes words, phrases, `OR`, `-word`, `from:`, `to:`,
+`subject:`, `newer_than:`, `after:` and `before:` are translated. Nothing changes in the mailboxes,
+and the tokens never leave the script.
+
 In "testing" mode Google expires refresh tokens after 7 days, which breaks unattended sync
 every week (the server tells you on Telegram when a sync fails). For the always-on server,
 set the audience to **In production** (https://console.cloud.google.com/auth/audience →

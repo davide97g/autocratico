@@ -455,6 +455,26 @@ def _sent(m: dict, h: dict) -> str:
         return _date(m).isoformat()
 
 
+def body_text(payload: dict) -> str:
+    """The text of a message (format full): its first text/plain part, else its HTML as text."""
+    text, html_text = None, None
+    for p in _parts(payload):
+        body = p.get("body", {})
+        if p.get("filename") and body.get("attachmentId"):
+            continue
+        if p.get("mimeType") == "text/plain" and body.get("data") and text is None:
+            text = _b64(body["data"]).decode("utf-8", errors="replace")
+        elif p.get("mimeType") == "text/html" and body.get("data") and html_text is None:
+            html_text = _b64(body["data"]).decode("utf-8", errors="replace")
+    if text is None:
+        text = _from_html(html_text) if html_text else ""
+    return text
+
+
+def attachment_names(payload: dict) -> list[str]:
+    return [p["filename"] for p in _parts(payload) if p.get("filename") and p.get("body", {}).get("attachmentId")]
+
+
 def _save(m: dict, account: str, mailbox: str) -> tuple[Path, list[str]]:
     """Writes one message (format full) to archive/email/<date>-<subject>-<id6>/: message.md and its attachments."""
     i = m["id"]
@@ -462,7 +482,7 @@ def _save(m: dict, account: str, mailbox: str) -> tuple[Path, list[str]]:
     folder = DESTINATION / f"{_date(m):%Y-%m-%d}-{_slug(h.get('subject', ''))}-{i[-6:]}"
     folder.mkdir(parents=True, exist_ok=True)
 
-    text, html_text, attachments = None, None, []
+    attachments: list[str] = []
     for p in _parts(m["payload"]):
         body = p.get("body", {})
         if p.get("filename") and body.get("attachmentId"):
@@ -470,12 +490,7 @@ def _save(m: dict, account: str, mailbox: str) -> tuple[Path, list[str]]:
             name = _file_name(p["filename"], attachments)
             (folder / name).write_bytes(_b64(data))
             attachments.append(name)
-        elif p.get("mimeType") == "text/plain" and body.get("data") and text is None:
-            text = _b64(body["data"]).decode("utf-8", errors="replace")
-        elif p.get("mimeType") == "text/html" and body.get("data") and html_text is None:
-            html_text = _b64(body["data"]).decode("utf-8", errors="replace")
-    if text is None:
-        text = _from_html(html_text) if html_text else ""
+    text = body_text(m["payload"])
 
     lines = [
         "---",
@@ -688,7 +703,7 @@ def _from_gmail(account: str, mailbox: str, thread: dict, folders: list[str]) ->
         "date": _sent(messages[-1], last),
         "snippet": _snippet(html.unescape(messages[-1].get("snippet", ""))),
         "messages": len(messages),
-        "attachments": [p["filename"] for m in messages for p in _parts(m["payload"]) if p.get("filename") and p.get("body", {}).get("attachmentId")],
+        "attachments": [a for m in messages for a in attachment_names(m["payload"])],
         "folders": folders,
     }
 
