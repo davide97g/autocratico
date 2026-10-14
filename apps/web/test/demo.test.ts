@@ -2,7 +2,9 @@
 // (the zod schemas in @autocratico/core), and its changes, undo and storage behave like the real ones.
 import {
   Activity,
+  answerWidgets,
   ArchiveEntry,
+  Board,
   ChatEvent,
   Data,
   Device,
@@ -80,6 +82,7 @@ describe("demo server", () => {
     Device.array().parse(await get("/api/devices"))
     Reminder.array().parse(await get("/api/reminders"))
     Usage.parse(await get("/api/usage"))
+    expect(Board.parse(await get("/api/board")).widgets.length).toBeGreaterThan(0)
     GmailSetup.parse(await get("/api/gmail"))
     ImapSetup.parse(await get("/api/imap"))
     FinanceSetup.parse(await get("/api/finance"))
@@ -137,6 +140,23 @@ describe("demo server", () => {
     expect(data.agenda.filter((o) => /^tari-\d{4}-[12]$/.test(o.id))).toHaveLength(2)
     expect(data.incomplete.map((i) => i.id)).toEqual(["passaporto"])
     expect(Reminder.array().parse(await get("/api/reminders")).some((r) => r.text.startsWith("TARI"))).toBe(true)
+  })
+
+  it("proposes a widget in the chat, adds it to the Board as a commit, and Activity undoes it", async () => {
+    const events = await ask("Fammi un widget con i pagamenti per area", null)
+    const said = events.flatMap((e) => (e.type === "text" ? [e.text] : [])).join("")
+    const [proposed] = answerWidgets(said)
+    expect(proposed.id).toBe("pagamenti-per-area")
+    const before = Board.parse(await get("/api/board")).widgets.length
+    const put = await call("PUT", `/api/board/widgets/${proposed.id}`, proposed)
+    expect(put.status).toBe(200)
+    expect(Board.parse(await get("/api/board")).widgets.map((w) => w.id)).toContain(proposed.id)
+    expect((await call("PUT", "/api/board/widgets/x", { ...proposed, id: "x", spec: { root: "a", elements: { a: { type: "Html" } } } })).status).toBe(400)
+    const { commits } = Activity.parse(await get("/api/activity"))
+    expect(commits[0].subject).toBe(`Board: add ${proposed.id}`)
+    expect(commits[0].files).toEqual(["board.json"])
+    await call("POST", `/api/activity/${commits[0].hash}/revert`)
+    expect(Board.parse(await get("/api/board")).widgets).toHaveLength(before)
   })
 
   it("keeps the register for the tab, and forgets it on reset", () => {

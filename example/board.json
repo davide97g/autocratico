@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "widgets": [
+    {
+      "id": "payments-6-months",
+      "title": "Payments, next 6 months",
+      "size": "large",
+      "spec": {
+        "root": "main",
+        "elements": {
+          "main": { "type": "Grid", "props": { "columns": 2 }, "children": ["total", "chart"] },
+          "total": {
+            "type": "Metric",
+            "props": { "label": "To pay", "value": { "sum": { "from": "deadlines", "days": 183, "payments": true, "done": false } }, "format": "money", "hint": "Overdue included, estimates too" },
+            "children": []
+          },
+          "chart": { "type": "Chart", "props": { "kind": "bar", "series": { "from": "deadlines", "days": 183, "payments": true, "done": false, "by": "month" } }, "children": [] }
+        }
+      },
+      "created": "2026-10-01T09:00:00.000Z",
+      "updated": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "car",
+      "title": "Car",
+      "size": "small",
+      "spec": {
+        "root": "main",
+        "elements": {
+          "main": { "type": "Stack", "props": {}, "children": ["insurance", "list"] },
+          "insurance": { "type": "Countdown", "props": { "deadline": "car-insurance" }, "children": [] },
+          "list": { "type": "Deadlines", "props": { "query": { "from": "deadlines", "areas": ["vehicles"], "days": 400, "done": false }, "limit": 4 }, "children": [] }
+        }
+      },
+      "created": "2026-10-01T09:00:00.000Z",
+      "updated": "2026-10-01T09:00:00.000Z"
+    }
+  ]
+}

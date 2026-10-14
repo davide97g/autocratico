@@ -2,6 +2,9 @@ import type {
   AccountSession,
   Activity,
   ArchiveEntry,
+  Board,
+  Widget,
+  WidgetInput,
   Chat,
   ChatSummary,
   Data,
@@ -66,6 +69,9 @@ export type {
   UsageRun,
   UsageSource,
   Value,
+  Board,
+  Widget,
+  WidgetInput,
 } from "@autocratico/core"
 
 export type Area =
@@ -170,6 +176,12 @@ export function ingest(n: { files: File[]; text: string; title?: string }): Prom
 export const activity = () => request<Activity>("/api/activity")
 export const commitPatch = (hash: string) => request<{ patch: string }>(`/api/activity/${hash}`)
 export const revertCommit = (hash: string) => post<{ hash: string }>(`/api/activity/${hash}/revert`)
+
+export const board = () => request<Board>("/api/board")
+export const saveWidget = (w: WidgetInput) =>
+  post<{ widget: Widget; added: boolean; hash: string | null }>(`/api/board/widgets/${encodeURIComponent(w.id)}`, w, "PUT")
+export const removeWidget = (id: string) => post<{ hash: string | null }>(`/api/board/widgets/${encodeURIComponent(id)}`, undefined, "DELETE")
+export const moveWidget = (id: string, index: number) => post<{ hash: string | null }>(`/api/board/widgets/${encodeURIComponent(id)}/move`, { index })
 export const runJob = (name: string) => post<JobRun>(`/api/jobs/${name}`)
 export const liveJobs = () => request<LiveJobs>("/api/jobs/live")
 

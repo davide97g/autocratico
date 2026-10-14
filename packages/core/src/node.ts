@@ -12,6 +12,7 @@ export function dataPaths(dir: string) {
     deadlines: join(dir, "deadlines.toml"),
     profile: join(dir, "profile.toml"),
     state: join(dir, "state.json"),
+    board: join(dir, "board.json"),
     cases: join(dir, "cases"),
     catalog: join(dir, "catalog"),
     inbox: join(dir, "inbox"),

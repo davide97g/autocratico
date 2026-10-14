@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, extname, join, resolve, sep } from "node:path"
 
-import { type ChatEvent, FinanceConnectInput, FinanceExpenseInput, GmailAccountInput, ImapAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
+import { type ChatEvent, FinanceConnectInput, WidgetId, WidgetInput, FinanceExpenseInput, GmailAccountInput, ImapAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
 import { type Context, Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
 import { secureHeaders } from "hono/secure-headers"
@@ -11,6 +11,7 @@ import { z } from "zod"
 
 import { type Account, AccountError, MAX_PASSWORD } from "./account.ts"
 import { authMiddleware, type Caller, type Devices } from "./auth.ts"
+import { type Board, BoardError } from "./board.ts"
 import type { Changes } from "./changes.ts"
 import { type Claude, friendlyError } from "./claude.ts"
 import type { Config } from "./config.ts"
@@ -44,6 +45,8 @@ export type Services = {
   devices: Devices
   account: Account
   changes: Changes
+  /** Widgets the chat agent designed and the user added (data/board.json). */
+  board: Board
   claude: Claude
   repo: DataRepo
   jobs: Jobs | null
@@ -90,10 +93,11 @@ const ChatBody = z.object({
   chat: z.string().regex(/^[\w-]{1,64}$/).nullable().optional(),
   view: z.string().max(80).optional(),
   locale: z.string().max(8).optional(),
-  /** Occurrence key (`<id>@<date>`) the conversation is about, from "Ask Claude" on a deadline. */
-  about: DoneBody.shape.key.max(200).optional(),
+  /** What the conversation is about: an occurrence key (`<id>@<date>`, "Ask Claude" on a deadline) or `widget:<id>` (a widget of the Board). */
+  about: z.union([DoneBody.shape.key.max(200), z.string().regex(/^widget:[a-z0-9][a-z0-9-]{0,59}$/)]).optional(),
 })
 const MatchAnswer = z.object({ answer: z.enum(["paid", "dismiss"]) })
+const MoveBody = z.object({ index: z.number().int().min(0).max(1000) })
 type Env = { Variables: { caller: Caller } }
 
 const Name = z.string().trim().min(1).max(60)
@@ -144,6 +148,7 @@ export function createApp(s: Services) {
     if (e instanceof ImapError) return c.json({ error: e.message }, e.status)
     if (e instanceof GmailLinkError) return c.json({ error: e.message, code: e.code }, e.status)
     if (e instanceof FinanceError) return c.json({ error: e.message }, e.status)
+    if (e instanceof BoardError) return c.json({ error: e.message }, 409)
     if (e instanceof AccountError) {
       if (e.retryAfter) c.header("Retry-After", String(e.retryAfter))
       return c.json({ error: e.message, ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}) }, e.status)
@@ -343,13 +348,45 @@ export function createApp(s: Services) {
     })
   })
 
-  /** Points the agent at the deadline a chat was opened from; unknown keys add nothing. */
+  /** Points the agent at the deadline or widget a chat was opened from; unknown keys add nothing. */
   function aboutDeadline(key: string | undefined) {
+    if (key?.startsWith("widget:")) {
+      const w = s.board.load().widgets.find((x) => x.id === key.slice(7))
+      return w
+        ? `This conversation is about the widget \`${w.id}\` («${w.title}») of the Board, in board.json. Read it before answering; "it" or "this" means that widget. To change it, answer with a widget block with the same id.`
+        : null
+    }
     const o = key ? store.data().agenda.find((x) => x.key === key) : undefined
     if (!o) return null
     const where = [o.source && `its source is \`${o.source}\``, o.case && `its case is \`cases/${o.case}/\``].filter(Boolean).join(", ")
     return `This conversation is about the deadline \`${o.id}\` in deadlines.toml, occurrence of ${o.date}${o.done_on ? ` (done on ${o.done_on})` : ""}${where ? `; ${where}` : ""}. Read ${where ? "it and those files" : "it"} before answering; "it" or "this" means that deadline.`
   }
+
+  // ---------- board ----------
+
+  app.get("/api/board", (c) => c.json(s.board.load()))
+  // A widget from a proposal in the chat: checked against the catalog again, whatever the client sends.
+  app.put("/api/board/widgets/:id", async (c) => {
+    userOf(c)
+    const body = WidgetInput.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: body.error.issues[0]?.message ?? "invalid widget" }, 400)
+    if (body.data.id !== c.req.param("id")) return c.json({ error: "the id does not match" }, 400)
+    const { widget, added, hash } = await s.board.save(body.data)
+    return c.json({ widget, added, hash })
+  })
+  app.delete("/api/board/widgets/:id", async (c) => {
+    userOf(c)
+    const id = WidgetId.safeParse(c.req.param("id"))
+    if (!id.success) return c.json({ error: "not found" }, 404)
+    return c.json({ hash: await s.board.remove(id.data) })
+  })
+  app.post("/api/board/widgets/:id/move", async (c) => {
+    userOf(c)
+    const id = WidgetId.safeParse(c.req.param("id"))
+    const body = MoveBody.safeParse(await c.req.json().catch(() => null))
+    if (!id.success || !body.success) return c.json({ error: "invalid request" }, 400)
+    return c.json({ hash: await s.board.move(id.data, body.data.index) })
+  })
 
   // ---------- inbox ----------
 

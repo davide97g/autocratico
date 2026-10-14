@@ -3,6 +3,7 @@ import {
   AccountSession,
   Activity,
   ArchiveEntry,
+  Board,
   Chat,
   ChatSummary,
   Data,
@@ -24,6 +25,8 @@ import {
   Session,
   SourceInfo,
   Status,
+  Widget,
+  WidgetInput,
 } from "@autocratico/core"
 import { z } from "zod"
 
@@ -58,6 +61,10 @@ export const ROUTES: Route[] = [
   { method: "get", path: "/api/chats", summary: "Conversation history, newest first (?channel=web|telegram)", response: z.array(ChatSummary) },
   { method: "get", path: "/api/chats/{id}", summary: "One conversation with its messages", response: Chat },
   { method: "delete", path: "/api/chats/{id}", summary: "Delete a conversation", response: Ok },
+  { method: "get", path: "/api/board", summary: "The Board: widgets designed by the chat agent and added by the user (data/board.json)", response: Board },
+  { method: "put", path: "/api/board/widgets/{id}", summary: "Add a widget, or replace the one with this id; checked against the catalog (core/widgets.ts), one commit", body: WidgetInput, response: z.object({ widget: Widget, added: z.boolean(), hash: z.string().nullable() }) },
+  { method: "delete", path: "/api/board/widgets/{id}", summary: "Remove a widget from the Board, one commit", response: z.object({ hash: z.string().nullable() }) },
+  { method: "post", path: "/api/board/widgets/{id}/move", summary: "Move a widget to a position on the Board, one commit", body: z.object({ index: z.number().int() }), response: z.object({ hash: z.string().nullable() }) },
   { method: "post", path: "/api/ingest", summary: "Add documents to the inbox: multipart (file fields, text, title) or JSON {text, title}", scope: "ingest", response: InboxItem },
   { method: "get", path: "/api/inbox", summary: "Inbox items, newest first", response: z.array(InboxItem) },
   { method: "get", path: "/api/inbox/{id}", summary: "One item with its text", response: InboxDetail },
@@ -92,7 +99,7 @@ export const ROUTES: Route[] = [
   { method: "delete", path: "/api/finance/transactions/{key}", summary: "Delete the expense recorded for an occurrence", response: Ok },
   { method: "get", path: "/api/finance/matches", summary: "Transactions of the finance source that look like the payment of an open occurrence, waiting for an answer", response: z.array(PaymentMatch) },
   { method: "post", path: "/api/finance/matches/{id}", summary: "Answer a proposal: paid (marks the occurrence done, paid by that transaction) or dismiss (never proposed again)", body: z.object({ answer: z.enum(["paid", "dismiss"]) }), response: Ok },
-  { method: "get", path: "/api/events", summary: "Server-sent events: `finance` {rev} when the synced data changes; `data`, `inbox`, `archive`, `activity`, `jobs`, `chats`, `reminders`, `usage` when that part changed; `ping` every 25 s" },
+  { method: "get", path: "/api/events", summary: "Server-sent events: `finance` {rev} when the synced data changes; `data`, `board`, `inbox`, `archive`, `activity`, `jobs`, `chats`, `reminders`, `usage` when that part changed; `ping` every 25 s" },
   { method: "get", path: "/api/devices", summary: "Ingest tokens for shortcuts", response: z.array(Device) },
   { method: "post", path: "/api/devices", summary: "Create an ingest token for a shortcut (shown once)", body: z.object({ name: z.string() }), response: z.object({ token: z.string() }) },
   { method: "delete", path: "/api/devices/{id}", summary: "Revoke an ingest token", response: Ok },

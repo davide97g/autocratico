@@ -60,7 +60,7 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
     // Read tools are allowed anywhere by default: what holds personal data is denied explicitly.
     const hidden = [
       ...["inbox", "archive", "cases", "chats", "jobs", "finance", "out", ".git", ".backup"].map((d) => `${d}/**`),
-      ...["profile.toml", "state.json", "investments.toml", "gmail.toml", "imap.toml", "finance.toml", "reminders.json", "usage.json", "notes/SITUATION.md"],
+      ...["profile.toml", "state.json", "board.json", "investments.toml", "gmail.toml", "imap.toml", "finance.toml", "reminders.json", "usage.json", "notes/SITUATION.md"],
     ].flatMap((p) => [`Read(${abs(data)}/${p})`, `Grep(${abs(data)}/${p})`, `Glob(${abs(data)}/${p})`])
     return {
       allowed: [
@@ -82,7 +82,7 @@ export function tools(profile: Profile, data: string): { allowed: string[]; deni
     }
   }
   // Server-owned files stay out of the agent's reach.
-  const owned = ["state.json", "reminders.json", "usage.json", "chats/**", "jobs/**", "inbox/*/item.json", "finance.toml", "finance/mirror.json", "finance/links.json", "finance/matches.json", "finance/summary.md", "energy/**", ".git/**"].flatMap((p) => [
+  const owned = ["state.json", "board.json", "reminders.json", "usage.json", "chats/**", "jobs/**", "inbox/*/item.json", "finance.toml", "finance/mirror.json", "finance/links.json", "finance/matches.json", "finance/summary.md", "energy/**", ".git/**"].flatMap((p) => [
     `Edit(${abs(data)}/${p})`,
     `Write(${abs(data)}/${p})`,
   ])

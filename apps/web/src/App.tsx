@@ -50,6 +50,9 @@ import { Login } from "@/views/login"
 import { Onboarding } from "@/views/onboarding"
 import { Profile } from "@/views/profile"
 import { Settings } from "@/views/settings"
+import { Board } from "@/views/board"
+import { BoardProvider } from "@/lib/board"
+import { nextOccurrence, type WidgetAction } from "@autocratico/core"
 
 function usePreference(key: string, initial: boolean) {
   const [value, setValue] = React.useState(() => {
@@ -325,6 +328,12 @@ function Main({
     financeWanted.current = true
     reloadFinance()
   }, [view, reloadFinance])
+  // A widget on the Board or in the chat reads transactions or investments.
+  const wantFinance = React.useCallback(() => {
+    if (financeWanted.current) return
+    financeWanted.current = true
+    reloadFinance()
+  }, [reloadFinance])
   const [expense, setExpense] = React.useState<ExpenseAsk | null>(null)
 
   React.useEffect(() => {
@@ -494,6 +503,32 @@ function Main({
     [go]
   )
 
+  // What a widget's button does, and its "Ask for a change".
+  const onWidgetAction = React.useCallback(
+    (a: WidgetAction) => {
+      if (a.type === "view") go(a.view)
+      else if (a.type === "case") onOpenCase(a.slug)
+      else if (a.type === "ask") ask(a.question)
+      else {
+        const next = current.current && nextOccurrence(a.id, { data: current.current, finance: null })
+        if (next) openDeadline(next.key)
+        else go("deadlines")
+      }
+    },
+    [go, onOpenCase, ask, openDeadline]
+  )
+  const askAboutWidget = React.useCallback(
+    (w: { id: string; title: string }) => {
+      chatAbout({ key: `widget:${w.id}`, title: w.title })
+      setChatOpen(true)
+    },
+    [setChatOpen]
+  )
+  const openChat = React.useCallback(() => {
+    chatNew()
+    setChatOpen(true)
+  }, [setChatOpen])
+
   const name = session.user?.name || null
   const upcoming = data?.agenda.filter((o) => !o.done_on && o.days >= 0 && o.days <= 30).length ?? 0
   const title = t.views[view]
@@ -520,6 +555,7 @@ function Main({
   )
 
   return (
+    <BoardProvider data={data} finance={finance} onWantFinance={wantFinance} onAction={onWidgetAction} onAskAbout={askAboutWidget} onSignedOut={onSignedOut}>
     <div className="min-h-svh pt-safe pb-tabbar lg:p-6">
       {/* Behind the translucent iOS status bar (zero height elsewhere). */}
       <div aria-hidden className="fixed inset-x-0 top-0 z-50 h-safe-top bg-status-bar" />
@@ -592,6 +628,7 @@ function Main({
           {data && view === "finance" && (
             <Finance data={data} finance={finance} onReload={reloadFinance} onOpenDeadline={openDeadline} onOpenSettings={() => go("settings")} />
           )}
+          {view === "board" && <Board onAsk={ask} onChat={openChat} />}
           {view === "inbox" && <Inbox />}
           {view === "archive" && <Archive />}
           {view === "activity" && <Activity live={live} focus={commit} />}
@@ -643,6 +680,7 @@ function Main({
         }}
       />
     </div>
+    </BoardProvider>
   )
 }
 

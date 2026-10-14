@@ -13,6 +13,8 @@
  * ```
  * A change block is validated and applied by the server (apps/server/src/changes.ts) as one commit.
  * An empty ```confirm``` block marks an answer that asks to confirm a change: the clients show yes/no buttons.
+ * A ```widget``` block proposes a widget for the Board (core/widgets.ts): it stays in the saved answer for the
+ * web chat to preview, and is hidden from the text like the others.
  */
 
 export type ReminderAction = { at: string; text: string }
@@ -24,8 +26,9 @@ export type Actions = { reminders: ReminderAction[]; inbox: InboxAction[]; chang
 const BLOCK = /```(reminder|inbox|change)[ \t]*\n([\s\S]*?)```/g
 const CONFIRM = /```confirm[^\n`]*\n?[^`]*```/g
 const CONFIRM_BLOCK = "```confirm\n```"
+const WIDGET = /```widget[ \t]*\n[\s\S]*?```/g
 // While streaming: a block that has started but not ended yet.
-const OPEN = /```(reminder|inbox|change|confirm)[\s\S]*$/
+const OPEN = /```(reminder|inbox|change|confirm|widget)[\s\S]*$/
 // A fence still being typed ("```conf"): could be one of the blocks. A closing fence (no name) stays.
 const FENCE_START = /```[a-z]+$/
 
@@ -67,7 +70,7 @@ export function extractActions(answer: string): { text: string; actions: Actions
 
 /** The answer without action blocks, also mid-stream (an unfinished block is hidden too). */
 export function stripActions(answer: string): string {
-  return answer.replace(BLOCK, "").replace(CONFIRM, "").replace(OPEN, "").replace(FENCE_START, "").trimEnd()
+  return answer.replace(BLOCK, "").replace(CONFIRM, "").replace(WIDGET, "").replace(OPEN, "").replace(FENCE_START, "").trimEnd()
 }
 
 /** True when the answer asks the user to confirm a change (it ends with a confirm block). */
@@ -76,10 +79,10 @@ export function asksToConfirm(answer: string): boolean {
 }
 
 /** What the server did after an answer: one line each, appended by `finishAnswer` (apps/server/src/chat-actions.ts). */
-export type Confirmation = { kind: "change" | "reminder" | "inbox" | "warning"; text: string; hash: string | null }
+export type Confirmation = { kind: "change" | "reminder" | "inbox" | "widget" | "warning"; text: string; hash: string | null }
 
-const CONFIRMATION = /^(✏️|⏰|📥|⚠️) (.+)$/u
-const KINDS: Record<string, Confirmation["kind"]> = { "✏️": "change", "⏰": "reminder", "📥": "inbox", "⚠️": "warning" }
+const CONFIRMATION = /^(✏️|⏰|📥|🧩|⚠️) (.+)$/u
+const KINDS: Record<string, Confirmation["kind"]> = { "✏️": "change", "⏰": "reminder", "📥": "inbox", "🧩": "widget", "⚠️": "warning" }
 // "(change 55cb507, undo it from Activity)", "(modifica 55cb507, annullabile da Attività)"
 const CHANGE_REF = /\s*\((?:change|modifica) ([0-9a-f]{7,40})\b[^)]*\)$/
 

@@ -10,6 +10,8 @@ import {
   ProfileInput,
   type SourceInfo,
   type Status,
+  type Widget,
+  WidgetInput,
 } from "@autocratico/core"
 
 import { track } from "../analytics"
@@ -143,6 +145,52 @@ on("POST", "/api/done", (r) => {
   if (done_on === undefined) return fail("unknown occurrence", 404)
   changed("data")
   return json({ done_on })
+})
+
+// ---------- board ----------
+
+const widgetId = (id: string) => /^[a-z0-9][a-z0-9-]{0,59}$/.test(id)
+
+on("GET", "/api/board", () => json({ version: 1, widgets: state().board ?? [] }))
+on("PUT", "/api/board/widgets/:id", (r, [id]) => {
+  const body = WidgetInput.safeParse(r.body)
+  if (!body.success) return fail(body.error.issues[0]?.message ?? "invalid widget", 400)
+  const w = body.data
+  if (w.id !== id) return fail("the id does not match", 400)
+  const s = state()
+  const before = (s.board ?? []).find((x) => x.id === id) ?? null
+  const now = nowIso()
+  const widget: Widget = { ...w, created: before?.created ?? now, updated: now }
+  const c = commit(`Board: ${before ? "update" : "add"} ${id}`, () => {
+    const board = [...(s.board ?? [])]
+    const at = board.findIndex((x) => x.id === id)
+    if (at >= 0) board[at] = widget
+    else board.push(widget)
+    s.board = board
+  }, { body: w.title })
+  track("widget_saved")
+  return json({ widget, added: !before, hash: c?.hash ?? null })
+})
+on("DELETE", "/api/board/widgets/:id", (_, [id]) => {
+  const s = state()
+  if (!widgetId(id) || !(s.board ?? []).some((x) => x.id === id)) return fail(`no widget with id "${id}"`, 409)
+  const c = commit(`Board: remove ${id}`, () => {
+    s.board = (s.board ?? []).filter((x) => x.id !== id)
+  })
+  return json({ hash: c?.hash ?? null })
+})
+on("POST", "/api/board/widgets/:id/move", (r, [id]) => {
+  const index = (r.body as { index?: unknown })?.index
+  const s = state()
+  const board = [...(s.board ?? [])]
+  const from = board.findIndex((x) => x.id === id)
+  if (from < 0 || typeof index !== "number" || !Number.isInteger(index) || index < 0) return fail("invalid request", 400)
+  const [w] = board.splice(from, 1)
+  board.splice(Math.min(index, board.length), 0, w)
+  const c = commit(`Board: move ${id}`, () => {
+    s.board = board
+  })
+  return json({ hash: c?.hash ?? null })
 })
 
 // ---------- chat ----------

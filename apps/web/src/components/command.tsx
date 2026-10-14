@@ -42,6 +42,7 @@ export const GO_KEYS: Record<View, string> = {
   cases: "c",
   inbox: "i",
   finance: "f",
+  board: "b",
   profile: "p",
   archive: "a",
   catalog: "r",

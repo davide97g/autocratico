@@ -2,6 +2,7 @@
 import { Account } from "./account.ts"
 import { createApp, type Services } from "./app.ts"
 import { Devices } from "./auth.ts"
+import { Board } from "./board.ts"
 import { Changes } from "./changes.ts"
 import { Claude } from "./claude.ts"
 import type { Config } from "./config.ts"
@@ -38,6 +39,7 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     devices: new Devices(config.data),
     account: overrides.account ?? new Account(config),
     changes: new Changes(store, repo),
+    board: new Board(config.data, repo),
     claude,
     repo,
     jobs: null,

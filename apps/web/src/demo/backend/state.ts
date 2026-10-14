@@ -15,6 +15,7 @@ import type {
   Profile,
   Reminder,
   Usage,
+  Widget,
 } from "@autocratico/core"
 
 import { emit, type Topic } from "./bus"
@@ -58,6 +59,8 @@ export type Touched = {
   done: Record<string, [string | null, string | null]>
   cases: Record<string, [string | null, string | null]>
   profile: [Profile, Profile] | null
+  /** The Board's widgets, before and after (board.json). */
+  board?: [Widget[], Widget[]] | null
 }
 export type DemoCommit = Commit & { touched: Touched; patch: string }
 
@@ -89,6 +92,8 @@ export type DemoState = {
   sessions: AccountSession[]
   /** Scripted arrivals already played (jobs.ts). */
   arrived: string[]
+  /** The Board (board.json); missing in demos started before it existed. */
+  board?: Widget[]
 }
 
 const KEY = "autocratico.demo"
@@ -162,6 +167,7 @@ type Snapshot = {
   done: Record<string, string>
   cases: Map<string, string>
   profile: string
+  board: string
 }
 
 function snapshot(s: DemoState): Snapshot {
@@ -170,11 +176,12 @@ function snapshot(s: DemoState): Snapshot {
     done: { ...s.done },
     cases: new Map(s.cases.map((c) => [c.slug, c.md])),
     profile: JSON.stringify(s.profile),
+    board: JSON.stringify(s.board ?? []),
   }
 }
 
 function compare(before: Snapshot, s: DemoState): Touched {
-  const t: Touched = { deadlines: {}, done: {}, cases: {}, profile: null }
+  const t: Touched = { deadlines: {}, done: {}, cases: {}, profile: null, board: null }
   const after = snapshot(s)
   for (const id of new Set([
     ...before.deadlines.keys(),
@@ -199,6 +206,8 @@ function compare(before: Snapshot, s: DemoState): Touched {
   }
   if (before.profile !== after.profile)
     t.profile = [JSON.parse(before.profile), clone(s.profile)]
+  if (before.board !== after.board)
+    t.board = [JSON.parse(before.board), clone(s.board ?? [])]
   return t
 }
 
@@ -207,6 +216,7 @@ function filesOf(t: Touched, extra: string[]): string[] {
   if (Object.keys(t.deadlines).length) files.push("deadlines.toml")
   if (Object.keys(t.done).length) files.push("state.json")
   if (t.profile) files.push("profile.toml")
+  if (t.board) files.push("board.json")
   for (const slug of Object.keys(t.cases)) files.push(`cases/${slug}/README.md`)
   return [...files, ...extra.filter((f) => !files.includes(f))]
 }
@@ -257,6 +267,8 @@ function patchOf(
   }
   if (t.profile)
     add("profile.toml", profileToml(t.profile[0]), profileToml(t.profile[1]))
+  if (t.board)
+    add("board.json", JSON.stringify(t.board[0], null, 2), JSON.stringify(t.board[1], null, 2))
   for (const [slug, [a, b]] of Object.entries(t.cases))
     add(`cases/${slug}/README.md`, a ?? "", b ?? "", a === null)
   // Filed emails and documents: added as they are, their contents are in the Archive.
@@ -290,6 +302,7 @@ export function commit(
     !Object.keys(touched.done).length &&
     !Object.keys(touched.cases).length &&
     !touched.profile &&
+    !touched.board &&
     !extra.length
   )
     return null
@@ -305,7 +318,7 @@ export function commit(
     patch: patchOf(hash, date, message, touched, extra),
   }
   s.commits.unshift(c)
-  if (!opts.s) changed("activity", "data")
+  if (!opts.s) changed("activity", "data", ...(touched.board ? (["board"] as const) : []))
   return c
 }
 
@@ -334,6 +347,7 @@ export function revert(hash: string): DemoCommit | null {
         else if (i >= 0) s.cases.splice(i, 1)
       }
       if (c.touched.profile) s.profile = clone(c.touched.profile[0])
+      if (c.touched.board) s.board = clone(c.touched.board[0])
     },
     { body: `This reverts commit ${c.hash}.` }
   )

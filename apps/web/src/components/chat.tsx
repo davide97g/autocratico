@@ -11,6 +11,7 @@ import {
   FileTextIcon,
   GlobeIcon,
   InboxIcon,
+  LayoutGridIcon,
   type LucideIcon,
   MailIcon,
   MessagesSquareIcon,
@@ -31,8 +32,9 @@ import { ShinyText, stagger } from "@/components/motion"
 import { Sensitive } from "@/components/privacy"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { WidgetProposal } from "@/components/widget-proposal"
 import { useI18n } from "@/i18n"
-import { asksToConfirm, type Confirmation, gmailLinks, splitConfirmations, stripActions, withoutGmailLinks } from "@autocratico/core"
+import { answerWidgets, asksToConfirm, type Confirmation, gmailLinks, splitConfirmations, stripActions, withoutGmailLinks } from "@autocratico/core"
 
 import { chat as loadChat, chats, deleteChat, type ChatSummary, type Chat as SavedChat } from "@/lib/api"
 import { ask, type ChatEvent } from "@/lib/chat"
@@ -49,8 +51,12 @@ type ClaudeMessage = {
   duration_ms?: number | null
 }
 type Message = { role: "user"; text: string } | ClaudeMessage
-/** A deadline occurrence the conversation is about: its key goes to the server with every question. */
+/**
+ * What the conversation is about: a deadline occurrence (`<id>@<date>`) or a widget of the Board
+ * (`widget:<id>`). Its key goes to the server with every question.
+ */
 export type Topic = { key: string; title: string }
+const isWidgetTopic = (t: Topic | undefined) => Boolean(t?.key.startsWith("widget:"))
 /** `chat` is the conversation saved on the server, shared by every device. */
 type Conversation = { chat: string | null; messages: Message[]; about?: Topic }
 
@@ -183,6 +189,7 @@ const CONFIRMATION_ICONS: Record<Confirmation["kind"], LucideIcon> = {
   change: FilePenIcon,
   reminder: BellIcon,
   inbox: InboxIcon,
+  widget: LayoutGridIcon,
   warning: TriangleAlertIcon,
 }
 
@@ -191,6 +198,7 @@ function confirmationLink(c: Confirmation): string | null {
   if (c.kind === "change") return c.hash ? `#activity/${c.hash}` : "#activity"
   if (c.kind === "inbox") return "#inbox"
   if (c.kind === "reminder") return "#settings"
+  if (c.kind === "widget") return "#board"
   return null
 }
 
@@ -246,6 +254,10 @@ function Answer({ m }: { m: ClaudeMessage }) {
   const { t } = useI18n()
   const running = m.status === "running"
   const { text, confirmations } = splitConfirmations(stripActions(m.text))
+  const widgets = React.useMemo(() => answerWidgets(m.text), [m.text])
+  // A widget block the agent is still writing.
+  const open = m.text.lastIndexOf("```widget")
+  const designing = running && open >= 0 && !m.text.slice(open + 9).includes("```")
   return (
     <div className="flex flex-col gap-3">
       <Steps steps={m.steps} running={running} />
@@ -256,6 +268,17 @@ function Answer({ m }: { m: ClaudeMessage }) {
               text={headings(text)}
               className={cn("max-w-none [&_ol]:gap-1 [&_p]:my-1.5 [&_ul]:gap-1 [&>:first-child]:mt-0", running && "streaming")}
             />
+          )}
+          {widgets.map((w) => (
+            <div key={w.id} className="rise-in">
+              <WidgetProposal widget={w} />
+            </div>
+          ))}
+          {designing && (
+            <span className="flex items-center gap-2.5 text-sm text-muted-foreground">
+              <LayoutGridIcon className="size-4" />
+              <ShinyText>{t.chat.widget.designing}</ShinyText>
+            </span>
           )}
           {confirmations.length > 0 && (
             <div className="flex flex-col gap-2">
@@ -610,11 +633,15 @@ export const Chat = React.memo(function Chat({
         ) : conversation.messages.length === 0 ? (
           <div className="flex h-full flex-col justify-end gap-5">
             <div className="rise-in flex flex-col gap-2">
-              <p className="text-lg font-medium tracking-tight">{conversation.about ? t.chat.aboutTitle : t.chat.emptyTitle}</p>
-              <p className="text-sm text-muted-foreground">{conversation.about ? t.chat.aboutBody : t.chat.emptyBody}</p>
+              <p className="text-lg font-medium tracking-tight">
+                {isWidgetTopic(conversation.about) ? t.chat.aboutWidgetTitle : conversation.about ? t.chat.aboutTitle : t.chat.emptyTitle}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {isWidgetTopic(conversation.about) ? t.chat.aboutWidgetBody : conversation.about ? t.chat.aboutBody : t.chat.emptyBody}
+              </p>
             </div>
             <div className="flex flex-col gap-2">
-              {(conversation.about ? t.chat.aboutSuggestions : t.chat.suggestions).map((s, i) => (
+              {(isWidgetTopic(conversation.about) ? t.chat.aboutWidgetSuggestions : conversation.about ? t.chat.aboutSuggestions : t.chat.suggestions).map((s, i) => (
                 <Button
                   key={s}
                   variant="secondary"
@@ -669,7 +696,11 @@ export const Chat = React.memo(function Chat({
       >
         {conversation.about && (
           <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 py-1 pr-1 pl-2.5 text-xs">
-            <CalendarClockIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            {isWidgetTopic(conversation.about) ? (
+              <LayoutGridIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            ) : (
+              <CalendarClockIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            )}
             <span className="shrink-0 text-muted-foreground">{t.chat.about}</span>
             <span className="min-w-0 flex-1 truncate font-medium">{conversation.about.title}</span>
             <Button
@@ -677,7 +708,7 @@ export const Chat = React.memo(function Chat({
               variant="ghost"
               size="icon-xs"
               onClick={() => setConversation((c) => ({ ...c, about: undefined }))}
-              aria-label={t.chat.aboutRemove}
+              aria-label={isWidgetTopic(conversation.about) ? t.chat.aboutWidgetRemove : t.chat.aboutRemove}
             >
               <XIcon />
             </Button>

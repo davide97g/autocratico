@@ -16,6 +16,7 @@ import {
   InboxIcon,
   EllipsisIcon,
   LayoutDashboardIcon,
+  LayoutGridIcon,
   type LucideIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
@@ -45,7 +46,7 @@ import { type Connection, useConnection } from "@/lib/events"
 import { capitalize, duration, parseDate, useNow } from "@/lib/format"
 import { STYLE } from "@/lib/status"
 
-export type View = "overview" | "deadlines" | "cases" | "inbox" | "finance" | "profile" | "archive" | "catalog" | "activity" | "settings"
+export type View = "overview" | "deadlines" | "cases" | "inbox" | "finance" | "board" | "profile" | "archive" | "catalog" | "activity" | "settings"
 
 export const VIEWS: { id: View; icon: LucideIcon; group: "agenda" | "archive" | "system" }[] = [
   { id: "overview", icon: LayoutDashboardIcon, group: "agenda" },
@@ -53,6 +54,7 @@ export const VIEWS: { id: View; icon: LucideIcon; group: "agenda" | "archive" | 
   { id: "cases", icon: FolderOpenIcon, group: "agenda" },
   { id: "inbox", icon: InboxIcon, group: "agenda" },
   { id: "finance", icon: ChartLineIcon, group: "agenda" },
+  { id: "board", icon: LayoutGridIcon, group: "agenda" },
   { id: "profile", icon: UserRoundIcon, group: "archive" },
   { id: "archive", icon: ArchiveIcon, group: "archive" },
   { id: "catalog", icon: BookOpenIcon, group: "archive" },

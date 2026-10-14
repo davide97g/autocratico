@@ -1,6 +1,7 @@
 // What changed, for the open views: the same topics the server's /api/events stream sends (pulse.ts).
 export type Topic =
   | "data"
+  | "board"
   | "inbox"
   | "archive"
   | "activity"

@@ -10,6 +10,8 @@ import { promisify } from "node:util"
 
 import type { Commit } from "@autocratico/core"
 
+import { locks } from "./files.ts"
+
 const run = promisify(execFile)
 
 const IGNORE = `# Managed by autocratico: only the register is versioned.
@@ -23,6 +25,7 @@ const IGNORE = `# Managed by autocratico: only the register is versioned.
 !/finance.toml
 !/investments.toml
 !/energy.toml
+!/board.json
 !/cases/
 !/catalog/
 !/notes/
@@ -65,24 +68,33 @@ export class DataRepo {
     }
   }
 
+  /** One write to the repository at a time: two commits at once would collide on git's index lock. */
+  #writing<T>(fn: () => Promise<T>): Promise<T> {
+    return locks.run(`git:${this.dir}`, fn)
+  }
+
   /** Commit everything tracked that changed; returns the hash, or null when nothing changed. */
-  async commit(message: string): Promise<string | null> {
-    if (!existsSync(join(this.dir, ".git"))) return null
-    await this.#git("add", "-A")
-    const status = await this.#git("status", "--porcelain")
-    if (!status.trim()) return null
-    await this.#git("commit", "-q", "-m", message)
-    return (await this.#git("rev-parse", "--short", "HEAD")).trim()
+  commit(message: string): Promise<string | null> {
+    return this.#writing(async () => {
+      if (!existsSync(join(this.dir, ".git"))) return null
+      await this.#git("add", "-A")
+      const status = await this.#git("status", "--porcelain")
+      if (!status.trim()) return null
+      await this.#git("commit", "-q", "-m", message)
+      return (await this.#git("rev-parse", "--short", "HEAD")).trim()
+    })
   }
 
   /** Commit only `paths` (relative to the data folder), so unrelated edits stay out of an undoable change. */
-  async commitPaths(message: string, paths: string[]): Promise<string | null> {
-    if (!existsSync(join(this.dir, ".git")) || !paths.length) return null
-    await this.#git("add", "--", ...paths)
-    const status = await this.#git("status", "--porcelain", "--", ...paths)
-    if (!status.trim()) return null
-    await this.#git("commit", "-q", "-m", message, "--", ...paths)
-    return (await this.#git("rev-parse", "--short", "HEAD")).trim()
+  commitPaths(message: string, paths: string[]): Promise<string | null> {
+    return this.#writing(async () => {
+      if (!existsSync(join(this.dir, ".git")) || !paths.length) return null
+      await this.#git("add", "--", ...paths)
+      const status = await this.#git("status", "--porcelain", "--", ...paths)
+      if (!status.trim()) return null
+      await this.#git("commit", "-q", "-m", message, "--", ...paths)
+      return (await this.#git("rev-parse", "--short", "HEAD")).trim()
+    })
   }
 
   async log(limit = 30): Promise<Commit[]> {
@@ -110,7 +122,9 @@ export class DataRepo {
   /** Undo one commit with a new commit (history stays). */
   async revert(hash: string): Promise<string | null> {
     if (!/^[0-9a-f]{4,40}$/.test(hash)) return null
-    await this.#git("revert", "--no-edit", hash)
-    return (await this.#git("rev-parse", "--short", "HEAD")).trim()
+    return this.#writing(async () => {
+      await this.#git("revert", "--no-edit", hash)
+      return (await this.#git("rev-parse", "--short", "HEAD")).trim()
+    })
   }
 }

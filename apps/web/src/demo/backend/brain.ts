@@ -8,7 +8,11 @@ import {
   extractActions,
   gmailLinks,
   type Occurrence,
+  parseWidget,
   reminderTime,
+  widgetBlock,
+  widgetBlocks,
+  type WidgetInput,
 } from "@autocratico/core"
 
 import { track } from "../analytics"
@@ -852,6 +856,66 @@ function fallback(lang: Lang): Answer {
   }
 }
 
+/** A widget for the Board, as the real agent writes it: queries on the register, no numbers. */
+function widget(text: string, lang: Lang, about: WidgetInput | null): Answer {
+  const t = text.toLowerCase()
+  const block = (w: unknown) => {
+    const r = parseWidget(w)
+    return "widget" in r ? widgetBlock(r.widget) : ""
+  }
+  if (about) {
+    // A new version of a widget on the Board: charts switch kind, the size changes.
+    const spec = JSON.parse(JSON.stringify(about.spec)) as WidgetInput["spec"]
+    for (const el of Object.values(spec.elements))
+      if (el.type === "Chart") el.props.kind = el.props.kind === "donut" ? "bar" : "donut"
+    const compact = /compatt|compact|piccol|small/.test(t)
+    return {
+      tools: [["Read", "board.json"], ["Read", "deadlines.toml"]],
+      text: `${L(lang, "Ecco la nuova versione: confrontala con quella attuale prima di aggiornarla.", "Here is the new version: compare it with the current one before updating it.")}
+
+${block({ id: about.id, title: about.title, size: compact ? "small" : about.size === "large" ? "medium" : "large", spec })}`,
+    }
+  }
+  if (/auto|macchina|car\b|bollo/.test(t))
+    return {
+      tools: [["Read", "board.json"], ["Grep", "area = \"vehicles\""]],
+      text: `${L(lang, "Un widget con il bollo in evidenza e le altre scadenze dell'auto.", "A widget with the car tax up front and the car's other deadlines.")}
+
+${block({
+        id: "auto-scadenze",
+        title: L(lang, "Scadenze dell'auto", "Car deadlines"),
+        size: "medium",
+        spec: {
+          root: "main",
+          elements: {
+            main: { type: "Grid", props: { columns: 2 }, children: ["bollo", "rc"] , },
+            bollo: { type: "Countdown", props: { deadline: "bollo-auto" } },
+            rc: { type: "Countdown", props: { deadline: "rc-auto" } },
+          },
+        },
+      })}`,
+    }
+  return {
+    tools: [["Read", "board.json"], ["Read", "deadlines.toml"]],
+    text: `${L(lang, "Ecco i pagamenti dei prossimi 6 mesi per area, con il totale: i numeri arrivano dal registro, quindi restano aggiornati.", "Here are the payments of the next 6 months by area, with the total: the numbers come from the register, so they stay up to date.")}
+
+${block({
+      id: "pagamenti-per-area",
+      title: L(lang, "Pagamenti per area, 6 mesi", "Payments by area, 6 months"),
+      size: "medium",
+      spec: {
+        root: "main",
+        elements: {
+          main: { type: "Stack", children: ["total", "chart", "note"] },
+          total: { type: "Metric", props: { label: L(lang, "Totale da pagare", "Total to pay"), value: { sum: { from: "deadlines", days: 183, payments: true, done: false } }, format: "money" } },
+          chart: { type: "Chart", props: { kind: "donut", series: { from: "deadlines", days: 183, payments: true, done: false, by: "area" } } },
+          note: { type: "Text", props: { text: L(lang, "Le stime vengono dagli importi degli anni scorsi.", "Estimates come from past years' amounts."), muted: true } },
+        },
+      },
+    })}`,
+  }
+}
+
 /** The answer for a question, and its kind (analytics only ever see the kind). */
 export function route(
   text: string,
@@ -886,6 +950,9 @@ export function route(
     ]
   const links = gmailLinks(text)
   if (links.length) return ["gmail", gmail(links[0], lang)]
+  const aboutWidget = aboutKey?.startsWith("widget:") ? ((state().board ?? []).find((w) => `widget:${w.id}` === aboutKey) ?? null) : null
+  if (aboutWidget || /widget|grafico|bacheca|dashboard|chart|board|conto alla rovescia|countdown/.test(t))
+    return ["widget", widget(text, lang, aboutWidget)]
   if (
     /phish|rimborso|truffa|refund|scam|\bvera\b|\bfalsa\b|\breal\b|\bfake\b/.test(
       t
@@ -1021,7 +1088,12 @@ function finish(raw: string, lang: Lang): { text: string; lines: string[] } {
       lines.push(t.notChanged(e instanceof ChangeError ? e.message : String(e)))
     }
   }
-  return { text, lines }
+  // Widget proposals stay in the answer for the chat's preview, as the server keeps them.
+  const kept = widgetBlocks(raw).flatMap((v) => {
+    const r = parseWidget(v)
+    return "widget" in r ? [widgetBlock(r.widget)] : []
+  })
+  return { text: [text, ...kept].filter(Boolean).join("\n\n"), lines }
 }
 
 /** Words come out a few at a time, as the model streams them. */

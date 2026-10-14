@@ -13,7 +13,9 @@ import type {
   InvestmentSnapshot,
   JobRun,
   UsageRun,
+  Widget,
 } from "@autocratico/core"
+import { WidgetInput } from "@autocratico/core"
 
 import {
   commit,
@@ -701,6 +703,57 @@ function usage() {
   }
 }
 
+// ---------- the Board: widgets "designed" by the agent earlier ----------
+
+function board(): Widget[] {
+  const at = new Date(Date.now() - 3 * 86_400_000).toISOString()
+  const widget = (w: unknown): Widget => ({ ...WidgetInput.parse(w), created: at, updated: at })
+  return [
+    widget({
+      id: "pagamenti-6-mesi",
+      title: "Pagamenti, prossimi 6 mesi",
+      size: "large",
+      spec: {
+        root: "main",
+        elements: {
+          main: { type: "Grid", props: { columns: 2 }, children: ["left", "chart"] },
+          left: { type: "Stack", children: ["total", "count", "open"] },
+          total: { type: "Metric", props: { label: "Da pagare", value: { sum: { from: "deadlines", days: 183, payments: true, done: false } }, format: "money", hint: "Scadute comprese, stime incluse" } },
+          count: { type: "Metric", props: { label: "Pagamenti", value: { count: { from: "deadlines", days: 183, payments: true, done: false } } } },
+          open: { type: "Button", props: { label: "Tutte le scadenze", action: { type: "view", view: "deadlines" } } },
+          chart: { type: "Chart", props: { kind: "bar", series: { from: "deadlines", days: 183, payments: true, done: false, by: "month" }, height: "lg" } },
+        },
+      },
+    }),
+    widget({
+      id: "auto",
+      title: "Auto",
+      size: "small",
+      spec: {
+        root: "main",
+        elements: {
+          main: { type: "Stack", children: ["bollo", "list"] },
+          bollo: { type: "Countdown", props: { deadline: "bollo-auto", label: "Bollo auto" } },
+          list: { type: "Deadlines", props: { query: { from: "deadlines", areas: ["vehicles"], days: 400, done: false }, limit: 4 } },
+        },
+      },
+    }),
+    widget({
+      id: "spesa",
+      title: "Spesa al supermercato",
+      size: "medium",
+      spec: {
+        root: "main",
+        elements: {
+          main: { type: "Stack", children: ["month", "chart"] },
+          month: { type: "Metric", props: { label: "Questo mese", value: { sum: { from: "transactions", type: "expense", categories: ["cat-spesa"] } }, format: "money" } },
+          chart: { type: "Chart", props: { kind: "area", series: { from: "transactions", type: "expense", categories: ["cat-spesa"], months: 6, by: "month" } } },
+        },
+      },
+    }),
+  ]
+}
+
 // ---------- the whole register ----------
 
 export function seed(rawName: string): DemoState {
@@ -1045,6 +1098,7 @@ export function seed(rawName: string): DemoState {
       },
     ],
     arrived: [],
+    board: board(),
   }
   const caseList = cases(name, Y, T, { foto, cieFront, verbale, ricevuta730 })
   const caseBy = (prefix: string) =>
