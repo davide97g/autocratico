@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, extname, join, resolve, sep } from "node:path"
 
-import { type ChatEvent, FinanceConnectInput, WidgetId, WidgetInput, FinanceExpenseInput, GmailAccountInput, ImapAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
+import { type ChatEvent, FinanceConnectInput, parseWidget, SANDBOX_CSP, WidgetId, FinanceExpenseInput, GmailAccountInput, ImapAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
 import { type Context, Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
 import { secureHeaders } from "hono/secure-headers"
@@ -28,6 +28,7 @@ import { describeSource, listArchive } from "./sources.ts"
 import { setPersonName, writeProfile } from "./profile.ts"
 import type { Store } from "./store.ts"
 import { finishAnswer } from "./chat-actions.ts"
+import { chatFile, filesNote, MAX_CHAT_FILES, saveChatFiles } from "./chat-files.ts"
 import type { PaymentMatches } from "./matches.ts"
 import type { Pulse } from "./pulse.ts"
 import type { Usage } from "./usage.ts"
@@ -37,6 +38,8 @@ import type { Telegram } from "./telegram.ts"
 import type { Transcriber } from "./transcribe.ts"
 
 export const VERSION = "0.1.0"
+
+export const SANDBOX_PATH = "/sandbox/widget.html"
 
 export type Services = {
   config: Config
@@ -89,7 +92,9 @@ const TYPES: Record<string, string> = {
 
 const DoneBody = z.object({ key: z.string().regex(/^.+@\d{4}-\d{2}-\d{2}$/), done: z.boolean() })
 const ChatBody = z.object({
-  message: z.string().trim().min(1).max(20_000),
+  message: z.string().trim().max(20_000),
+  /** Attachments uploaded first with POST /api/chat/files. */
+  files: z.array(z.string().max(300)).max(MAX_CHAT_FILES).optional(),
   chat: z.string().regex(/^[\w-]{1,64}$/).nullable().optional(),
   view: z.string().max(80).optional(),
   locale: z.string().max(8).optional(),
@@ -114,8 +119,8 @@ export function createApp(s: Services) {
   const imap = s.imap ?? new Imap(config.data, imapChecker(config))
   const app = new Hono<Env>()
 
-  app.use(
-    secureHeaders({
+  // The sandbox for custom widgets has headers of its own (below): everything else gets these.
+  const headers = secureHeaders({
       contentSecurityPolicy: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
@@ -132,15 +137,17 @@ export function createApp(s: Services) {
       },
       crossOriginEmbedderPolicy: false,
     })
-  )
+  app.use((c, next) => (c.req.path === SANDBOX_PATH ? next() : headers(c, next)))
   app.use("/api/*", async (c, next) => {
     await next()
     c.header("Cache-Control", "no-store")
   })
   app.use("*", authMiddleware(config, devices, account, s.verifyAccess === undefined ? undefined : s.verifyAccess))
-  app.use("/api/ingest", bodyLimit({ maxSize: MAX_UPLOAD + 1024 * 1024, onError: (c) => c.json({ error: "too large (25 MB max)" }, 413) }))
+  for (const path of ["/api/ingest", "/api/chat/files"]) {
+    app.use(path, bodyLimit({ maxSize: MAX_UPLOAD + 1024 * 1024, onError: (c) => c.json({ error: "too large (25 MB max)" }, 413) }))
+  }
   app.use("/api/*", async (c, next) => {
-    if (c.req.path === "/api/ingest") return next()
+    if (c.req.path === "/api/ingest" || c.req.path === "/api/chat/files") return next()
     return bodyLimit({ maxSize: 1024 * 1024, onError: (x) => x.json({ error: "too large" }, 413) })(c, next)
   })
   app.onError((e, c) => {
@@ -290,14 +297,53 @@ export function createApp(s: Services) {
 
   app.delete("/api/chats/:id", (c) => c.json({ ok: store.deleteChat(c.req.param("id")) }))
 
+  // Files attached to a chat message: saved first, then named in POST /api/chat.
+  app.post("/api/chat/files", async (c) => {
+    userOf(c)
+    if (c.req.header("content-type")?.split(";")[0] !== "multipart/form-data") return c.json({ error: "expected multipart/form-data" }, 415)
+    const form = await c.req.parseBody({ all: true })
+    const uploads: Upload[] = []
+    for (const value of Object.values(form)) {
+      for (const v of Array.isArray(value) ? value : [value]) {
+        if (v instanceof File && v.size > 0) uploads.push({ name: v.name || "file", data: new Uint8Array(await v.arrayBuffer()) })
+      }
+    }
+    if (!uploads.length) return c.json({ error: "empty" }, 400)
+    if (uploads.length > MAX_CHAT_FILES) return c.json({ error: `at most ${MAX_CHAT_FILES} files` }, 400)
+    if (uploads.reduce((n, f) => n + f.data.length, 0) > MAX_UPLOAD) return c.json({ error: "too large (25 MB max)" }, 413)
+    return c.json(await saveChatFiles(config.data, uploads, config.timeZone))
+  })
+  // An attachment, for the chat: images inline (exact type, nosniff), anything else a download.
+  app.get("/api/chat/files", async (c) => {
+    const file = chatFile(config.data, c.req.query("path") ?? "")
+    if (!file) return c.json({ error: "not found" }, 404)
+    const as = c.req.query("as")
+    const type = IMAGE_TYPES[extname(file).toLowerCase()]
+    c.header("X-Content-Type-Options", "nosniff")
+    c.header("Cache-Control", "private, max-age=3600")
+    if (type && (as === "view" || as === "thumb")) {
+      const shown = (as === "thumb" && (await thumbnail(config.data, file))) || file
+      c.header("Content-Type", shown === file ? type : "image/jpeg")
+      c.header("Content-Disposition", "inline")
+      return c.body(readFileSync(shown))
+    }
+    c.header("Content-Type", "application/octet-stream")
+    c.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(basename(file))}`)
+    return c.body(readFileSync(file))
+  })
+
   app.post("/api/chat", async (c) => {
     if (c.req.header("content-type")?.split(";")[0] !== "application/json") return c.json({ error: "expected application/json" }, 415)
     const body = ChatBody.safeParse(await c.req.json().catch(() => null))
     if (!body.success) return c.json({ error: "empty message" }, 400)
-    const { message, view, locale, about } = body.data
+    const { view, locale, about } = body.data
+    // Attachments: only files saved by POST /api/chat/files.
+    const files = [...new Set(body.data.files ?? [])].filter((f) => chatFile(config.data, f))
+    if (!body.data.message && !files.length) return c.json({ error: "empty message" }, 400)
+    const message = body.data.message || (locale === "en" ? "(attachments)" : "(allegati)")
     const caller = c.get("caller")
     const chat = (body.data.chat && store.chat(body.data.chat)) || store.newChat("web")
-    chat.messages.push({ role: "user", text: message, tools: [] })
+    chat.messages.push({ role: "user", text: message, tools: [], ...(files.length ? { files } : {}) })
     await store.saveChat(chat)
     const signal = c.req.raw.signal
 
@@ -311,10 +357,11 @@ export function createApp(s: Services) {
       const lang = locale === "en" ? "en" : "it"
       try {
         // Gmail links: the conversations are saved in the archive first, and the agent told where.
-        const prompt = await s.gmailLinks.prompt(message, async (step) => {
+        const linked = await s.gmailLinks.prompt(message, async (step) => {
           answer.tools.push(step)
           if (!out.aborted) await send({ type: "tool", ...step })
         })
+        const prompt = files.length ? `${linked}\n\n${filesNote(files)}` : linked
         if (signal.aborted) return
         for await (const e of claude.run({ prompt, profile: "read", session: chat.session, locale, instructions, signal, actions: true })) {
           if (e.type === "session") chat.session = e.id
@@ -335,6 +382,7 @@ export function createApp(s: Services) {
               notify: s.telegram !== null || s.ntfy !== null,
               locale: lang,
               changes: s.changes,
+              data: config.data,
             })
             const extra = answer.text.slice(stripLength(raw))
             if (extra.trim() && !out.aborted) await send({ type: "text", text: extra })
@@ -368,10 +416,10 @@ export function createApp(s: Services) {
   // A widget from a proposal in the chat: checked against the catalog again, whatever the client sends.
   app.put("/api/board/widgets/:id", async (c) => {
     userOf(c)
-    const body = WidgetInput.safeParse(await c.req.json().catch(() => null))
-    if (!body.success) return c.json({ error: body.error.issues[0]?.message ?? "invalid widget" }, 400)
-    if (body.data.id !== c.req.param("id")) return c.json({ error: "the id does not match" }, 400)
-    const { widget, added, hash } = await s.board.save(body.data)
+    const body = parseWidget(await c.req.json().catch(() => null))
+    if ("error" in body) return c.json({ error: body.error }, 400)
+    if (body.widget.id !== c.req.param("id")) return c.json({ error: "the id does not match" }, 400)
+    const { widget, added, hash } = await s.board.save(body.widget)
     return c.json({ widget, added, hash })
   })
   app.delete("/api/board/widgets/:id", async (c) => {
@@ -664,6 +712,23 @@ export function createApp(s: Services) {
   app.all("/api/*", (c) => c.json({ error: "not found" }, 404))
 
   // ---------- web app ----------
+
+  // The frame custom widgets run in (apps/web/public/sandbox/widget.html), embedded with
+  // sandbox="allow-scripts" and no allow-same-origin: an opaque origin, no cookies, no /api. Its CSP
+  // (core/widgets.ts) runs only its own script and lets nothing load or connect; only this app may frame it.
+  app.get(SANDBOX_PATH, (c) => {
+    const file = join(resolve(config.web), "sandbox", "widget.html")
+    if (!existsSync(file)) return c.text("UI not built: run `pnpm build`", 503)
+    c.header("Content-Type", "text/html; charset=utf-8")
+    c.header("Cache-Control", "no-cache")
+    c.header("Content-Security-Policy", SANDBOX_CSP)
+    c.header("X-Frame-Options", "SAMEORIGIN")
+    c.header("X-Content-Type-Options", "nosniff")
+    c.header("Referrer-Policy", "no-referrer")
+    c.header("X-DNS-Prefetch-Control", "off")
+    c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), clipboard-read=(), clipboard-write=(), display-capture=()")
+    return c.body(readFileSync(file))
+  })
 
   app.get("*", (c) => {
     if (!existsSync(config.web)) return c.text("UI not built: run `pnpm build`", 503)

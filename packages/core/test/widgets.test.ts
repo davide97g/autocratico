@@ -10,6 +10,9 @@ import {
   WIDGET_INSTRUCTIONS,
   WIDGET_TYPES,
   widgetBlock,
+  customCodeProblem,
+  customData,
+  type SpecWidgetInput,
   type WidgetContext,
   type WidgetInput,
   widgetSeries,
@@ -67,7 +70,8 @@ describe("widget specs", () => {
   it("accepts a spec from the catalog and drops unreachable elements", () => {
     const r = parseWidget({ id: "money", title: "Money", spec })
     expect("widget" in r).toBe(true)
-    const w = (r as { widget: WidgetInput }).widget
+    const w = (r as { widget: SpecWidgetInput }).widget
+    expect(w.kind).toBe("spec")
     expect(w.size).toBe("medium")
     expect(Object.keys(w.spec.elements).sort()).toEqual(["chart", "left", "main"])
     expect(w.spec.elements.main.children).toEqual(["left", "chart"])
@@ -90,6 +94,47 @@ describe("widget specs", () => {
 
   it("documents every component for the agent", () => {
     for (const type of WIDGET_TYPES) expect(WIDGET_INSTRUCTIONS).toContain(`${type} {`)
+  })
+})
+
+describe("custom widgets", () => {
+  const code = `var sel = null
+ac.on("pick", (e) => { sel = e.data.id; draw() })
+function draw() { const rows = ac.data.due ?? []; ac.render('<style>.c{top:0}</style><a href="#x">x</a><svg><rect x="0" y="0" width="10" height="10"/></svg>' + rows.map((r) => ac.escape(r.title)).join("")) }
+ac.onUpdate(draw)`
+
+  it("accepts worker code with named queries", () => {
+    const r = parseWidget({ id: "heat", title: "Heat", kind: "custom", data: { due: { from: "deadlines", days: 365 } }, code })
+    expect("widget" in r && r.widget.kind).toBe("custom")
+  })
+
+  it("refuses network, storage, eval and hard-coded addresses", () => {
+    const bad = [
+      'fetch("/api/data")',
+      "new WebSocket(x)",
+      "navigator.sendBeacon(x, y)",
+      "importScripts(x)",
+      "new Worker(u)",
+      "indexedDB.open(x)",
+      'eval("1")',
+      'new Function("x")',
+      'setTimeout("x()", 1)',
+      "import('x')",
+      "x = '//evil.example/'",
+      'x = "https:"',
+    ]
+    for (const c of bad) expect(customCodeProblem(c), c).not.toBeNull()
+    expect(customCodeProblem(code)).toBeNull()
+    const r = parseWidget({ id: "x", title: "X", kind: "custom", data: {}, code: 'fetch("x")' })
+    expect("error" in r && r.error).toMatch(/^code: no network/)
+  })
+
+  it("gives the sandbox rows, without amounts in privacy mode", () => {
+    const rows = customData({ due: { from: "deadlines", payments: true, done: false } }, ctx, false).due as { id: string; amount: number }[]
+    expect(rows.map((r) => [r.id, r.amount])).toEqual([["car-tax", 200], ["tari", 150]])
+    const hidden = customData({ due: { from: "deadlines", payments: true, done: false }, money: { from: "transactions" } }, ctx, true)
+    expect((hidden.due as { amount: number | null }[]).every((r) => r.amount === null)).toBe(true)
+    expect(hidden.money).toBeNull()
   })
 })
 

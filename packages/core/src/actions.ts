@@ -18,7 +18,8 @@
  */
 
 export type ReminderAction = { at: string; text: string }
-export type InboxAction = { title: string; text: string }
+/** `files`: attachments of the chat (chats/files/...) to copy into the inbox item. */
+export type InboxAction = { title: string; text: string; files: string[] }
 /** Operations are checked by the server: here they are only carried as objects. */
 export type ChangeAction = { summary: string; ops: Record<string, unknown>[] }
 export type Actions = { reminders: ReminderAction[]; inbox: InboxAction[]; changes: ChangeAction[] }
@@ -58,7 +59,8 @@ export function extractActions(answer: string): { text: string; actions: Actions
         if (at && what) actions.reminders.push({ at, text: what })
       } else {
         const what = str(o.text, 20_000)
-        if (what) actions.inbox.push({ title: str(o.title, 200), text: what })
+        const files = Array.isArray(o.files) ? o.files.filter((f): f is string => typeof f === "string").slice(0, 10) : []
+        if (what) actions.inbox.push({ title: str(o.title, 200), text: what, files })
       }
     }
     return ""

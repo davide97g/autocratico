@@ -12,7 +12,7 @@
     "build:demo": "tsc -b && vite build --mode demo",
     "dev:demo": "vite --mode demo",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b",
     "preview": "vite preview",
     "test": "vitest run"
   },

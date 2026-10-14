@@ -9,6 +9,7 @@ import {
   gmailLinks,
   type Occurrence,
   parseWidget,
+  widgetFields,
   reminderTime,
   widgetBlock,
   widgetBlocks,
@@ -856,6 +857,92 @@ function fallback(lang: Lang): Answer {
   }
 }
 
+/** A custom widget as the real agent writes it in custom mode: plain code for the sandbox, data from queries. */
+const HEATMAP = `var sel = null
+var CSS = "<style>" +
+  ".hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:12px}" +
+  ".big{font-size:26px;font-weight:500;letter-spacing:-.02em}.sub{font-size:12px;color:var(--muted-foreground)}" +
+  ".hm{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px}.m{display:flex;flex-direction:column;gap:4px}" +
+  ".cell{aspect-ratio:1;border-radius:calc(var(--radius) - 4px);background:var(--muted);border:0;padding:0;outline-offset:2px}" +
+  ".cell[data-l='1']{background:color-mix(in oklab,var(--money-out) 30%,var(--muted))}" +
+  ".cell[data-l='2']{background:color-mix(in oklab,var(--money-out) 55%,var(--muted))}" +
+  ".cell[data-l='3']{background:color-mix(in oklab,var(--money-out) 80%,var(--muted))}" +
+  ".cell[data-l='4']{background:var(--money-out)}.cell[aria-pressed='true']{outline:2px solid var(--foreground)}" +
+  ".lb{font-size:10px;color:var(--muted-foreground);text-align:center;text-transform:capitalize}" +
+  ".list{margin-top:12px;display:flex;flex-direction:column;gap:2px}" +
+  ".row{display:flex;justify-content:space-between;gap:8px;width:100%;font-size:12px;padding:5px 6px;border-radius:6px;border:0;background:none;text-align:left}" +
+  ".row:hover{background:var(--muted)}.dim{color:var(--muted-foreground)}" +
+  "</style>"
+
+function render() {
+  var rows = ac.data.due || []
+  var y = +ac.today.slice(0, 4), m = +ac.today.slice(5, 7)
+  var keys = []
+  for (var i = 0; i < 12; i++) keys.push((y + Math.floor((m - 1 + i) / 12)) + "-" + String(((m - 1 + i) % 12) + 1).padStart(2, "0"))
+  var by = {}
+  keys.forEach(function (k) { by[k] = { sum: 0, items: [] } })
+  rows.forEach(function (r) { var b = r.date && by[r.date.slice(0, 7)]; if (b) { b.sum += r.amount || 0; b.items.push(r) } })
+  var weight = function (k) { return ac.privacy ? by[k].items.length : by[k].sum }
+  var max = Math.max.apply(null, keys.map(weight).concat([1]))
+  var total = keys.reduce(function (s, k) { return s + by[k].sum }, 0)
+  if (sel === null || !by[sel]) sel = keys.find(function (k) { return by[k].items.length }) || keys[0]
+  var month = new Intl.DateTimeFormat(ac.locale === "en" ? "en-GB" : "it-IT", { month: "short" })
+  var label = function (k) { return month.format(new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, 1)) }
+  var cells = keys.map(function (k) {
+    var w = weight(k)
+    var level = w === 0 ? 0 : Math.min(4, Math.ceil((w / max) * 4))
+    return '<div class="m"><button class="cell" data-on="pick" data-month="' + k + '" data-l="' + level + '" aria-pressed="' + (k === sel) + '" title="' +
+      ac.escape(label(k) + " · " + ac.money(ac.privacy ? null : by[k].sum)) + '"></button><div class="lb">' + ac.escape(label(k)) + "</div></div>"
+  }).join("")
+  var items = by[sel].items.map(function (r) {
+    return '<button class="row" data-on="open" data-id="' + ac.escape(r.id) + '"><span>' + ac.escape(r.title) + '</span><span class="dim">' +
+      ac.escape(ac.date(r.date) + " · " + ac.money(r.amount)) + "</span></button>"
+  }).join("") || '<div class="sub">' + (ac.locale === "en" ? "Nothing to pay this month." : "Niente da pagare questo mese.") + "</div>"
+  ac.render(CSS + '<div class="hd"><div class="big">' + ac.money(ac.privacy ? null : total) + '</div><div class="sub">' +
+    (ac.locale === "en" ? "next 12 months" : "prossimi 12 mesi") + '</div></div><div class="hm">' + cells + '</div><div class="list">' + items + "</div>")
+}
+ac.on("pick", function (e) { sel = e.data.month; render() })
+ac.on("open", function (e) { ac.open({ type: "deadline", id: e.data.id }) })
+ac.onUpdate(render)`
+
+/** Attachments: the real agent reads them (it sees photos and PDFs); the demo says what it would do. */
+function attachments(files: string[], lang: Lang): Answer {
+  const names = files.map((f) => f.split("/").at(-1) ?? f)
+  return {
+    tools: files.map((f): Tool => ["Read", f]),
+    text: L(
+      lang,
+      `Ho ricevuto ${names.length === 1 ? "il file" : `${names.length} file`}: ${names.map((n) => `**${n}**`).join(", ")}.\n\nNell'app vera Claude li legge davvero (vede foto, screenshot e PDF): risponde su quello che c'è dentro, archivia un avviso o una bolletta nell'inbox, o disegna un widget sul modello di uno screenshot. Qui nella demo non c'è un modello: prova a chiedere "fammi un widget come questo" insieme a un'immagine.`,
+      `Got ${names.length === 1 ? "the file" : `${names.length} files`}: ${names.map((n) => `**${n}**`).join(", ")}.\n\nIn the real app Claude actually reads them (it sees photos, screenshots and PDFs): it answers about what is inside, files a notice or a bill in the inbox, or designs a widget after a screenshot. The demo has no model: try asking "make me a widget like this" together with a picture.`
+    ),
+  }
+}
+
+/** Custom mode, as the real agent does it: asks first, writes code only after the user's yes. */
+function customWidget(lang: Lang): Answer {
+  return {
+    tools: [["Read", "board.json"], ["Read", "deadlines.toml"]],
+    text: L(
+      lang,
+      "Con i componenti della Bacheca non riesco a fare una mappa di calore cliccabile: dovrei scrivere un widget con **codice libero**, che gira isolato in una sandbox e vede solo le tue scadenze da pagare. Passo alla modalità codice libero?\n\n```confirm\n```",
+      "The Board's components cannot draw a clickable heatmap: I would write a widget with **custom code**, running isolated in a sandbox and seeing only your payments. Switch to custom mode?\n\n```confirm\n```"
+    ),
+    confirm: {
+      yes: () => ({
+        tools: [["Read", "deadlines.toml"]],
+        text: `${L(lang, "Ecco la mappa di calore dei pagamenti: clicca un mese per vedere cosa scade. Prima di eseguirla puoi leggere il codice.", "Here is the payments heatmap: click a month to see what is due. You can read the code before running it.")}\n\n\`\`\`widget\n${JSON.stringify({
+          id: "mappa-pagamenti",
+          title: L(lang, "Mappa dei pagamenti", "Payments heatmap"),
+          size: "medium",
+          kind: "custom",
+          data: { due: { from: "deadlines", days: 366, payments: true, done: false, overdue: false } },
+          code: HEATMAP,
+        })}\n\`\`\``,
+      }),
+    },
+  }
+}
+
 /** A widget for the Board, as the real agent writes it: queries on the register, no numbers. */
 function widget(text: string, lang: Lang, about: WidgetInput | null): Answer {
   const t = text.toLowerCase()
@@ -863,9 +950,16 @@ function widget(text: string, lang: Lang, about: WidgetInput | null): Answer {
     const r = parseWidget(w)
     return "widget" in r ? widgetBlock(r.widget) : ""
   }
+  if (about?.kind === "custom") {
+    const compact = /compatt|compact|piccol|small/.test(t)
+    return {
+      tools: [["Read", "board.json"]],
+      text: `${L(lang, "Ecco la nuova versione: stesso codice, altra misura. La confronti prima di aggiornarla.", "Here is the new version: same code, another size. Compare it before updating it.")}\n\n${block({ ...widgetFields(about), size: compact ? "small" : about.size === "large" ? "medium" : "large" })}`,
+    }
+  }
   if (about) {
     // A new version of a widget on the Board: charts switch kind, the size changes.
-    const spec = JSON.parse(JSON.stringify(about.spec)) as WidgetInput["spec"]
+    const spec = JSON.parse(JSON.stringify(about.spec)) as typeof about.spec
     for (const el of Object.values(spec.elements))
       if (el.type === "Chart") el.props.kind = el.props.kind === "donut" ? "bar" : "donut"
     const compact = /compatt|compact|piccol|small/.test(t)
@@ -951,6 +1045,8 @@ export function route(
   const links = gmailLinks(text)
   if (links.length) return ["gmail", gmail(links[0], lang)]
   const aboutWidget = aboutKey?.startsWith("widget:") ? ((state().board ?? []).find((w) => `widget:${w.id}` === aboutKey) ?? null) : null
+  if (!aboutWidget && /heatmap|mappa di calore|codice libero|custom|personalizzat|simulat/.test(t))
+    return ["widget-custom", customWidget(lang)]
   if (aboutWidget || /widget|grafico|bacheca|dashboard|chart|board|conto alla rovescia|countdown/.test(t))
     return ["widget", widget(text, lang, aboutWidget)]
   if (
@@ -1100,8 +1196,10 @@ function finish(raw: string, lang: Lang): { text: string; lines: string[] } {
 function chunks(text: string): string[] {
   const parts = text.split(/(\s+)/)
   const out: string[] = []
-  for (let i = 0; i < parts.length; i += 6)
-    out.push(parts.slice(i, i + 6).join(""))
+  // Long answers (a widget's code) stream in bigger pieces, or they would take a minute.
+  const step = text.length > 2000 ? 80 : 6
+  for (let i = 0; i < parts.length; i += step)
+    out.push(parts.slice(i, i + step).join(""))
   return out
 }
 
@@ -1111,6 +1209,8 @@ export type ChatRequest = {
   view?: string
   locale?: string
   about?: string
+  /** Attachments uploaded with POST /api/chat/files (chats/files/...). */
+  files?: string[]
 }
 
 export async function* answer(
@@ -1132,14 +1232,17 @@ export async function* answer(
     }
     s.chats.unshift(chat)
   }
-  chat.messages.push({ role: "user", text: req.message, tools: [] })
+  const files = (req.files ?? []).filter((f) => typeof f === "string" && f.startsWith("chats/files/") && s.docs[f]).slice(0, 10)
+  const asked = req.message.trim() || (lang === "en" ? "(attachments)" : "(allegati)")
+  chat.messages.push({ role: "user", text: asked, tools: [], ...(files.length ? { files } : {}) })
   chat.updated = nowIso()
   changed("chats")
   yield { type: "chat", id: chat.id }
 
   const started = Date.now()
   const fast = reducedMotion()
-  const [kind, a] = route(req.message, lang, chat.id, req.about)
+  const [kind, a]: [string, Answer] =
+    files.length && !/widget|grafico|bacheca|dashboard|chart|board|heatmap|mappa/i.test(req.message) ? ["attachments", attachments(files, lang)] : route(req.message, lang, chat.id, req.about)
   track("app_demo_ask", { question: kind })
   const message = {
     role: "assistant" as const,

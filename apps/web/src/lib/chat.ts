@@ -6,7 +6,7 @@ export type { ChatEvent }
 
 /** Send a question to Claude Code through the server and read the NDJSON stream. */
 export async function ask(
-  request: { message: string; chat: string | null; view: string; locale: string; about?: string },
+  request: { message: string; chat: string | null; view: string; locale: string; about?: string; files?: string[] },
   onEvent: (e: ChatEvent) => void,
   signal: AbortSignal
 ): Promise<void> {

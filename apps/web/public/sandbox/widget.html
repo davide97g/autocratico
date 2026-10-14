@@ -1,0 +1,294 @@
+<!doctype html>
+<!--
+  The frame custom widgets run in (docs/generative-ui.md). Three walls:
+  1. The app embeds it with sandbox="allow-scripts" and no allow-same-origin: an opaque origin, so no
+     cookies, no storage of the app and no /api.
+  2. The widget's code never runs on this page: it runs in a Web Worker (no DOM, no way to navigate),
+     which inherits this page's CSP: no connection anywhere, no eval, no scripts loaded.
+  3. What the worker draws is an HTML string, sanitized below against a whitelist (no scripts, event
+     attributes, links, forms, frames, meta or external files) before it reaches the page; and the CSP
+     runs only this page's own script (by hash), so an event attribute that slipped through stays dead.
+  The CSP comes from the server (SANDBOX_CSP in apps/server/src/app.ts, deploy/demo.nginx.conf); the meta
+  below repeats it for the dev server. test/sandbox.test.ts keeps the script's hash in step.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'sha256-3U7ombQechywIXAQoG99HBICuCVC9nricV1biomzlQE='; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; connect-src 'none'; frame-src 'none'; child-src 'none'; manifest-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta http-equiv="x-dns-prefetch-control" content="off" />
+    <style>
+      :root {
+        color-scheme: light;
+        --radius: 0.625rem;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        color: var(--foreground, #111);
+        font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        overflow: hidden;
+      }
+      svg {
+        display: block;
+        max-width: 100%;
+      }
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+        color: inherit;
+      }
+      [data-on] {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ac-root"></div>
+    <script>
+(() => {
+  "use strict"
+  const root = document.getElementById("ac-root")
+  const post = (message) => window.parent.postMessage(message, "*")
+  const report = (e) => post({ type: "error", message: String((e && e.message) || e).slice(0, 500) })
+
+  // ---------- what may reach the page ----------
+  const HTML = "http://www.w3.org/1999/xhtml"
+  const SVG = "http://www.w3.org/2000/svg"
+  const HTML_TAGS = new Set(
+    ("div span p section article header footer main aside h1 h2 h3 h4 h5 h6 ul ol li dl dt dd table caption thead tbody tfoot tr th td col colgroup " +
+      "strong b em i u s small mark sub sup br hr code pre kbd blockquote figure figcaption details summary button label input select option optgroup " +
+      "textarea progress meter output time abbr data img style svg").split(" ")
+  )
+  const SVG_TAGS = new Set(
+    ("svg g path rect circle ellipse line polyline polygon text tspan defs linearGradient radialGradient stop clipPath mask pattern title desc marker " +
+      "filter feGaussianBlur feOffset feBlend feColorMatrix feMerge feMergeNode feFlood feComposite feDropShadow").split(" ")
+  )
+  // Removed with everything inside; any other unknown element is unwrapped (its content kept).
+  const DROP = new Set("script noscript template iframe frame frameset object embed applet portal meta link base form math foreignObject animate animateMotion animateTransform set use image a area audio video source track canvas".split(" "))
+  const GLOBAL = new Set("class id style title role tabindex lang dir hidden".split(" "))
+  const HTML_ATTRS = new Set(
+    "colspan rowspan scope headers span type value min max step checked disabled placeholder name for selected multiple rows cols readonly maxlength open datetime alt width height src low high optimum label".split(" ")
+  )
+  const SVG_ATTRS = new Set(
+    ("viewBox preserveAspectRatio xmlns width height x y x1 y1 x2 y2 cx cy r rx ry fx fy d points fill stroke stroke-width stroke-linecap stroke-linejoin " +
+      "stroke-dasharray stroke-dashoffset stroke-miterlimit opacity fill-opacity stroke-opacity fill-rule clip-rule transform text-anchor dominant-baseline " +
+      "alignment-baseline font-size font-weight font-family font-style letter-spacing offset stop-color stop-opacity gradientUnits gradientTransform spreadMethod " +
+      "clip-path clipPathUnits mask maskUnits maskContentUnits marker-start marker-mid marker-end markerWidth markerHeight markerUnits refX refY orient " +
+      "patternUnits patternContentUnits patternTransform filter filterUnits primitiveUnits stdDeviation dx dy in in2 mode result flood-color flood-opacity " +
+      "operator k1 k2 k3 k4 values type pathLength vector-effect shape-rendering visibility display rotate textLength lengthAdjust").split(" ")
+  )
+  const INPUT_TYPES = new Set("text number range checkbox radio date month search color hidden".split(" "))
+  const BAD_VALUE = /(?:java|vb)script\s*:|data\s*:(?!image\/(?:png|jpeg|gif|webp);base64,)|expression\s*\(|@import|-moz-binding|behavior\s*:/i
+  const URL_FUNCTION = /url\s*\(\s*(['"]?)\s*(?!#|data:image\/(?:png|jpeg|gif|webp);base64,)/i
+  const IMAGE = /^data:image\/(?:png|jpeg|gif|webp);base64,[a-z0-9+/=\s]+$/i
+
+  function keepAttribute(el, name, value) {
+    const n = name.toLowerCase()
+    if (n.startsWith("on") || n.includes(":")) return false
+    if (BAD_VALUE.test(value) || URL_FUNCTION.test(value)) return false
+    if (/^(?:data|aria)-[a-z0-9_.-]+$/.test(n) || GLOBAL.has(n)) return true
+    if (el.namespaceURI === SVG) return SVG_ATTRS.has(name)
+    if (n === "src") return el.localName === "img" && IMAGE.test(value)
+    if (n === "type" && el.localName === "input") return INPUT_TYPES.has(value.toLowerCase())
+    if (n === "type" && el.localName === "button") return value === "button"
+    return HTML_ATTRS.has(n)
+  }
+
+  function clean(parent) {
+    for (const node of [...parent.childNodes]) {
+      if (node.nodeType === Node.TEXT_NODE) continue
+      if (node.nodeType !== Node.ELEMENT_NODE) {
+        node.remove()
+        continue
+      }
+      const el = node
+      const name = el.localName
+      const allowed = (el.namespaceURI === HTML && HTML_TAGS.has(name)) || (el.namespaceURI === SVG && SVG_TAGS.has(name))
+      if (!allowed) {
+        if (DROP.has(name)) el.remove()
+        else {
+          clean(el)
+          el.replaceWith(...el.childNodes)
+        }
+        continue
+      }
+      for (const attr of [...el.attributes]) if (!keepAttribute(el, attr.name, attr.value)) el.removeAttribute(attr.name)
+      if (name === "button") el.setAttribute("type", "button")
+      if (name === "style") {
+        // Only text, and nothing it could load (the CSP would refuse it anyway).
+        const css = el.textContent
+        el.replaceChildren(BAD_VALUE.test(css) || URL_FUNCTION.test(css) ? "" : css)
+        continue
+      }
+      clean(el)
+    }
+  }
+
+  function render(html) {
+    const template = document.createElement("template")
+    template.innerHTML = String(html)
+    clean(template.content)
+    // Keep the focus (and the caret) on a re-render while the user types.
+    const active = document.activeElement
+    const focusId = active && root.contains(active) && active.id ? active.id : null
+    const caret = focusId && typeof active.selectionStart === "number" ? [active.selectionStart, active.selectionEnd] : null
+    root.replaceChildren(template.content)
+    if (focusId) {
+      const again = document.getElementById(focusId)
+      if (again) {
+        again.focus()
+        if (caret && typeof again.setSelectionRange === "function") try { again.setSelectionRange(caret[0], caret[1]) } catch {}
+      }
+    }
+  }
+
+  // ---------- the widget's code, in a worker ----------
+  const PRELUDE = `"use strict";
+(() => {
+  const state = { data: {}, today: "", locale: "it", theme: "light", privacy: false }
+  const updates = []
+  const handlers = new Map()
+  let ready = false
+  const send = (m) => postMessage(m)
+  const report = (e) => send({ type: "error", message: String((e && e.message) || e).slice(0, 500) })
+  const call = (fn, arg) => { try { fn(arg) } catch (e) { report(e) } }
+  const tag = () => (state.locale === "en" ? "en-GB" : "it-IT")
+  const hidden = "\\u2022\\u2022\\u2022"
+  const ac = Object.freeze({
+    get data() { return state.data },
+    get today() { return state.today },
+    get locale() { return state.locale },
+    get theme() { return state.theme },
+    get privacy() { return state.privacy },
+    onUpdate(fn) { if (typeof fn !== "function") return; updates.push(fn); if (ready) call(fn) },
+    on(name, fn) { if (typeof fn === "function") handlers.set(String(name), fn) },
+    render(html) { send({ type: "render", html: String(html).slice(0, 500000) }) },
+    escape(text) { return String(text == null ? "" : text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]) },
+    money(n) { return typeof n === "number" && !state.privacy ? new Intl.NumberFormat(tag(), { style: "currency", currency: "EUR" }).format(n) : hidden },
+    number(n) { return typeof n === "number" ? new Intl.NumberFormat(tag()).format(n) : hidden },
+    date(iso) {
+      if (typeof iso !== "string" || !/^\\d{4}-\\d{2}-\\d{2}/.test(iso)) return hidden
+      const [y, m, d] = iso.slice(0, 10).split("-").map(Number)
+      return new Intl.DateTimeFormat(tag(), { day: "numeric", month: "short", year: state.today.slice(0, 4) === String(y) ? undefined : "numeric" }).format(new Date(y, m - 1, d))
+    },
+    days(n) {
+      if (typeof n !== "number") return hidden
+      if (state.locale === "en") return Math.abs(n) === 1 ? n + " day" : n + " days"
+      return Math.abs(n) === 1 ? n + " giorno" : n + " giorni"
+    },
+    open(target) { send({ type: "open", target }) },
+    ask(question) { send({ type: "ask", question: String(question).slice(0, 500) }) },
+  })
+  Object.defineProperty(self, "ac", { value: ac, writable: false, configurable: false })
+  self.addEventListener("error", (e) => report(e.error || e.message))
+  self.addEventListener("unhandledrejection", (e) => report(e.reason))
+  self.addEventListener("message", (e) => {
+    const m = e.data
+    if (!m || typeof m !== "object") return
+    if (m.type === "update") {
+      Object.assign(state, m.state)
+      ready = true
+      for (const fn of updates) call(fn)
+    } else if (m.type === "event") {
+      const fn = handlers.get(m.name)
+      if (fn) call(fn, { value: m.value, checked: m.checked, data: m.data })
+    }
+  })
+})();
+`
+
+  let worker = null
+  const state = {}
+  const TOKEN = /^--[a-z0-9-]{1,40}$/
+  const VALUE = /^[^;{}<>\\]{1,120}$/
+  function apply(m) {
+    Object.assign(state, {
+      data: m.data && typeof m.data === "object" ? m.data : {},
+      today: typeof m.today === "string" ? m.today : "",
+      locale: m.locale === "en" ? "en" : "it",
+      theme: m.theme === "dark" ? "dark" : "light",
+      privacy: m.privacy === true,
+    })
+    const html = document.documentElement
+    html.dataset.theme = state.theme
+    html.lang = state.locale
+    for (const [k, v] of Object.entries(m.tokens || {})) if (TOKEN.test(k) && typeof v === "string" && VALUE.test(v)) html.style.setProperty(k, v)
+  }
+
+  function start(code) {
+    const url = URL.createObjectURL(new Blob([PRELUDE, "\n;(() => {\n", String(code), "\n})();\n"], { type: "text/javascript" }))
+    worker = new Worker(url)
+    URL.revokeObjectURL(url)
+    worker.addEventListener("error", (e) => {
+      e.preventDefault()
+      report(e.message || "error")
+    })
+    worker.addEventListener("message", (e) => {
+      const m = e.data
+      if (!m || typeof m !== "object") return
+      if (m.type === "render") render(m.html)
+      else if (m.type === "open") post({ type: "open", target: m.target })
+      else if (m.type === "ask") post({ type: "ask", question: String(m.question).slice(0, 500) })
+      else if (m.type === "error") report(m.message)
+    })
+    worker.postMessage({ type: "update", state })
+  }
+
+  // Interaction: elements with data-on="name" tell the worker.
+  function emit(el) {
+    const data = { ...el.dataset }
+    delete data.on
+    const value = "value" in el ? String(el.value) : null
+    worker && worker.postMessage({ type: "event", name: el.dataset.on, value, checked: Boolean(el.checked), data })
+  }
+  const control = (el) => el.localName === "input" || el.localName === "select" || el.localName === "textarea"
+  root.addEventListener("click", (e) => {
+    const el = e.target instanceof Element && e.target.closest("[data-on]")
+    if (el && root.contains(el) && !control(el)) emit(el)
+  })
+  root.addEventListener("input", (e) => {
+    const el = e.target instanceof Element && e.target.closest("[data-on]")
+    if (el && root.contains(el) && control(el)) emit(el)
+  })
+
+  window.addEventListener("message", (e) => {
+    if (e.source !== window.parent || !e.data || typeof e.data !== "object") return
+    const m = e.data
+    if (m.type === "init" && !worker) {
+      apply(m)
+      try {
+        start(m.code)
+      } catch (err) {
+        report(err)
+      }
+    } else if (m.type === "update" && worker) {
+      apply(m)
+      worker.postMessage({ type: "update", state })
+    }
+  })
+
+  let last = -1
+  new ResizeObserver(() => {
+    const h = Math.ceil(root.getBoundingClientRect().height)
+    if (h !== last) post({ type: "resize", height: (last = h) })
+  }).observe(root)
+  post({ type: "ready" })
+})()
+</script>
+  </body>
+</html>

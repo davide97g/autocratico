@@ -94,6 +94,8 @@ export default defineConfig(({ mode }) => {
       workbox: {
         // App shell only: personal data from /api is never cached.
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        // The custom widgets' sandbox comes from the server, with its own CSP (never from the cache).
+        globIgnores: ["sandbox/**"],
         // A new worker takes over at once; the page reloads onto it when idle (src/lib/update.ts).
         skipWaiting: true,
         clientsClaim: true,
@@ -102,7 +104,7 @@ export default defineConfig(({ mode }) => {
         navigateFallback: null,
         runtimeCaching: [
           {
-            urlPattern: ({ request, url }) => request.mode === "navigate" && !url.pathname.startsWith("/api/"),
+            urlPattern: ({ request, url }) => request.mode === "navigate" && !url.pathname.startsWith("/api/") && !url.pathname.startsWith("/sandbox/"),
             handler: "NetworkFirst",
             options: {
               cacheName: "pages",

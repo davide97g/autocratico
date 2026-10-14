@@ -29,10 +29,12 @@ export function DropToInbox({ onOpenInbox }: { onOpenInbox: () => void }) {
   React.useEffect(() => {
     // dragenter/dragleave fire for every element crossed: count them to know when the drag left the window.
     let depth = 0
+    // Over the chat, files are attached to the question instead (components/chat.tsx).
+    const inChat = (e: DragEvent) => e.target instanceof Element && e.target.closest("[data-chat-drop]") !== null
     const enter = (e: DragEvent) => {
       if (!hasFiles(e)) return
       depth++
-      setDragging(true)
+      setDragging(!inChat(e))
     }
     const leave = (e: DragEvent) => {
       if (!hasFiles(e)) return
@@ -42,6 +44,7 @@ export function DropToInbox({ onOpenInbox }: { onOpenInbox: () => void }) {
     // Without this the browser would open the dropped file in place of the app.
     const over = (e: DragEvent) => {
       if (!hasFiles(e)) return
+      setDragging(!inChat(e))
       e.preventDefault()
       if (e.dataTransfer) e.dataTransfer.dropEffect = "copy"
     }
@@ -50,6 +53,7 @@ export function DropToInbox({ onOpenInbox }: { onOpenInbox: () => void }) {
       e.preventDefault()
       depth = 0
       setDragging(false)
+      if (inChat(e)) return
       const list = Array.from(e.dataTransfer?.files ?? [])
       if (!list.length) return
       setFiles((f) => [...f, ...list])

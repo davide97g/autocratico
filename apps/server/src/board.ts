@@ -6,7 +6,7 @@
  */
 import { existsSync, readFileSync } from "node:fs"
 
-import { Board as BoardFile, EMPTY_BOARD, type Widget, type WidgetInput } from "@autocratico/core"
+import { Board as BoardFile, EMPTY_BOARD, Widget, type Widget as WidgetType, widgetFields, type WidgetInput } from "@autocratico/core"
 import { dataPaths } from "@autocratico/core/node"
 
 import { locks, writeJson } from "./files.ts"
@@ -26,13 +26,20 @@ export class Board {
     this.#file = dataPaths(dir).board
   }
 
-  /** The board on disk; a file that does not parse reads as empty (and is left alone until the next write). */
+  /**
+   * The board on disk. A widget that no longer passes the catalog is left out (and dropped at the next
+   * write) instead of hiding the others; a file that does not parse reads as empty.
+   */
   load(): BoardFile {
     if (!existsSync(this.#file)) return EMPTY_BOARD
     try {
-      const r = BoardFile.safeParse(JSON.parse(readFileSync(this.#file, "utf8")))
-      if (r.success) return r.data
-      console.error(`board.json: ${r.error.issues[0]?.message ?? "invalid"}`)
+      const raw = JSON.parse(readFileSync(this.#file, "utf8")) as { widgets?: unknown }
+      const widgets = (Array.isArray(raw?.widgets) ? raw.widgets : []).flatMap((w) => {
+        const r = Widget.safeParse(w)
+        if (!r.success) console.error(`board.json: widget ${(w as { id?: unknown })?.id ?? "?"}: ${r.error.issues[0]?.message ?? "invalid"}`)
+        return r.success ? [r.data as WidgetType] : []
+      })
+      return BoardFile.parse({ version: 1, widgets })
     } catch (e) {
       console.error(`board.json: ${(e as Error).message}`)
     }
@@ -40,14 +47,14 @@ export class Board {
   }
 
   /** Add a widget, or replace the one with the same id (keeping its place). */
-  async save(w: WidgetInput): Promise<{ widget: Widget; added: boolean; hash: string | null }> {
+  async save(w: WidgetInput): Promise<{ widget: WidgetType; added: boolean; hash: string | null }> {
     const now = new Date().toISOString()
     const result = await locks.run(this.#file, () => {
       const board = this.load()
       const at = board.widgets.findIndex((x) => x.id === w.id)
       const before = at >= 0 ? board.widgets[at] : null
       if (!before && board.widgets.length >= MAX_WIDGETS) throw new BoardError(`the board holds at most ${MAX_WIDGETS} widgets`)
-      const widget: Widget = { id: w.id, title: w.title, size: w.size, spec: w.spec, created: before?.created ?? now, updated: now }
+      const widget: WidgetType = { ...widgetFields(w), created: before?.created ?? now, updated: now }
       const widgets = [...board.widgets]
       if (before) widgets[at] = widget
       else widgets.push(widget)

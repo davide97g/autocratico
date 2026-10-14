@@ -1,4 +1,4 @@
-import { ArrowDownIcon, ArrowUpIcon, LayoutGridIcon, MessageSquareIcon, PlusIcon, SparklesIcon, Trash2Icon } from "lucide-react"
+import { ArrowDownIcon, ArrowUpIcon, CodeIcon, LayoutGridIcon, MessageSquareIcon, PlusIcon, SparklesIcon, Trash2Icon } from "lucide-react"
 import { cn } from "cn"
 import { toast } from "sonner"
 
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { WidgetView } from "@/components/widget"
+import { WidgetBody } from "@/components/widget-proposal"
 import { useI18n } from "@/i18n"
 import { revertCommit, type Widget } from "@/lib/api"
 import { useBoard } from "@/lib/board"
@@ -106,7 +106,17 @@ function WidgetCard({ widget, index, count }: { widget: Widget; index: number; c
   return (
     <Card className="group/widget h-full rounded-xl">
       <CardHeader>
-        <CardTitle className="truncate text-base font-medium tracking-tight">{widget.title}</CardTitle>
+        <CardTitle className="flex min-w-0 items-center gap-2 text-base font-medium tracking-tight">
+          <span className="truncate">{widget.title}</span>
+          {widget.kind === "custom" && (
+            <Tooltip>
+              <TooltipTrigger render={<span className="shrink-0 text-muted-foreground" aria-label={t.widgetCode.badge} />}>
+                <CodeIcon className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>{t.widgetCode.badgeHint}</TooltipContent>
+            </Tooltip>
+          )}
+        </CardTitle>
         <CardAction className="flex gap-0.5 opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within/widget:opacity-100 [@media(hover:hover)]:group-hover/widget:opacity-100">
           {tool(t.board.ask, MessageSquareIcon, () => askAbout(widget))}
           {tool(t.board.moveUp, ArrowUpIcon, () => void move(widget.id, index - 1).catch((e: Error) => toast.error(e.message)), index === 0)}
@@ -115,7 +125,7 @@ function WidgetCard({ widget, index, count }: { widget: Widget; index: number; c
         </CardAction>
       </CardHeader>
       <CardContent>
-        <WidgetView spec={widget.spec} />
+        <WidgetBody widget={widget} />
       </CardContent>
     </Card>
   )

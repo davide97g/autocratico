@@ -33,7 +33,7 @@ The specs behind them:
 
 We borrow the shape from A2UI and json-render (flat element map, catalog in Zod, a prompt written from the catalog) but not the libraries: json-render's shadcn set is Radix while the app is on base-ui, and its state bindings answer a need we do not have. Our "bindings" are register queries, which no library knows. The spec format stays close to json-render's, so moving to it later is a small step.
 
-**Not now:** open-ended HTML (could come later as a sandboxed `srcdoc` iframe with `sandbox="allow-scripts"`, `connect-src 'none'` and data passed by `postMessage`, for the rare widget the catalog cannot express); MCP Apps (third-party tools, not our case); AG-UI (our chat already streams NDJSON events).
+**Custom widgets** cover what the catalog cannot express (an interactive heatmap, a simulator, a drawing): free code in a sandbox, behind the user's explicit yes, see [Custom widgets](#custom-widgets-free-code-in-a-sandbox). **Not used:** MCP Apps (third-party tools, not our case); AG-UI (our chat already streams NDJSON events).
 
 ## How it works
 
@@ -56,8 +56,34 @@ user: "fammi un grafico di quanto devo pagare nei prossimi 6 mesi, per area"
 - **Telegram:** a widget cannot be shown there; the answer says one was proposed and to open the web app.
 - **Demo:** the demo backend answers the board routes and seeds two widgets.
 
+## Custom widgets: free code in a sandbox
+
+When the catalog is not enough, the agent may write code. Two confirmations, both in the chat sidebar:
+
+1. The agent first asks to switch to custom mode (what it would build, why the components are not enough) with yes/no buttons; it writes code only after the yes.
+2. The proposal does not run: it shows what data it reads, its size and the code itself, and runs only when the user presses **Run in sandbox**. Only code that ran can be added to the Board; code already on the Board runs there (the user added it).
+
+A custom widget is `{"kind": "custom", "data": {"<name>": <query>}, "code": "<JavaScript>"}`: the queries are the catalog's, so the code receives rows (in privacy mode without amounts), never reads the register itself.
+
+Where it runs (`apps/web/public/sandbox/widget.html`, `components/sandbox-frame.tsx`):
+
+- **An iframe with `sandbox="allow-scripts"` and no `allow-same-origin`:** an opaque origin, no cookies, no storage of the app, no `/api`.
+- **The code runs in a Web Worker** created by the page: no DOM, no way to navigate the frame. It inherits the page's CSP (`SANDBOX_CSP` in `core/widgets.ts`): `connect-src 'none'`, no `eval`, nothing loaded.
+- **It draws by sending HTML** (`ac.render(html)`), which the page sanitizes against a whitelist: no scripts, `on*` attributes, links, forms, frames, `meta`, `link`, `base`, `use`, `foreignObject`, external URLs; images only as `data:image/`. Interaction goes back to the worker through `data-on` attributes.
+- **The page's CSP allows only its own script, by hash** (`script-src 'sha256-…'`, kept in step by `apps/web/test/sandbox.test.ts`), so an event attribute that slipped past the sanitizer stays dead. Sent by the server, the demo's nginx and repeated in the page's meta; `frame-ancestors 'self'`.
+- **The server refuses obvious attempts before anything runs** (`customCodeProblem`: URLs, network APIs, workers, `eval`), with a message the agent can act on.
+- **The app accepts four messages from the frame:** ready, resize, open part of the app, offer a question. A question is offered in a notice and never sent on its own.
+
+Why a worker: the first version ran the code on the sandbox page and cancelled navigations with the Navigation API. A test with a local listener showed that Chrome does not fire `navigate` in an opaque-origin frame, so an obfuscated `location` assignment carried data out. In a worker there is no `location` to assign, and the page itself never runs foreign code. The same test against the worker version (fetch, WebSocket, importScripts, nested workers, eval, links, `<meta refresh>`, `<img>`/CSS/`@import` URLs, `srcdoc`, `onclick`, SVG `image`/`use`/`animate`, forms, `object`/`embed`) reached the listener zero times.
+
+Limits worth knowing: no canvas or direct DOM (SVG and CSS cover charts and drawings), timing and similar side channels are not addressed, and an old browser without blob workers simply shows nothing.
+
+## Attachments in the chat
+
+Photos, screenshots, PDFs and documents can be attached to any question (paperclip, paste, or drop on the chat), for ordinary questions and for widgets designed after a picture. They are uploaded first (`POST /api/chat/files`, 10 files and 25 MB at most, HEIC converted to JPEG) into `chats/files/<date>-<id>/`, server-owned, and the question names their paths; the server tells the agent to read them (it sees images and PDFs). When one is a document to keep, the agent lists it in an inbox block's `"files"` and the server copies it into the new inbox item. Deleting a chat deletes its attachments.
+
 ## Next steps
 
 - The background agent proposing widgets when a case opens (as drafts the user accepts).
 - More blocks when a real need shows up: a table, a calendar strip, energy offers.
-- A sandboxed HTML escape hatch, only if the catalog proves too narrow.
+- Telegram photos as chat attachments (today they go to the inbox).

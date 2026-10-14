@@ -228,7 +228,7 @@ on("DELETE", "/api/chats/:id", (_, [id]) => {
 })
 on("POST", "/api/chat", (r) => {
   const b = r.body as ChatRequest
-  if (typeof b?.message !== "string" || !b.message.trim())
+  if (typeof b?.message !== "string" || (!b.message.trim() && !b.files?.length))
     return fail("empty message", 400)
   const encoder = new TextEncoder()
   const events = answer({ ...b, message: b.message.slice(0, 20_000) }, r.signal)
@@ -299,6 +299,28 @@ function readAsDataUrl(file: File): Promise<string> {
     r.readAsDataURL(file)
   })
 }
+
+// Files attached in the chat: kept in the tab like uploads, drawn by files.ts when shown.
+on("POST", "/api/chat/files", async (r) => {
+  const files = (r.form?.getAll("file") ?? []).filter((f): f is File => f instanceof File)
+  if (!files.length) return fail("empty", 400)
+  if (files.length > 10) return fail("at most 10 files", 400)
+  if (files.some((f) => f.size > MAX_FILE))
+    return fail(lang() === "it" ? "Nella demo i file possono essere al massimo di 8 MB." : "In the demo files can be 8 MB at most.", 413)
+  const s = state()
+  const folder = `chats/files/${today()}-${hex(8)}`
+  const saved = []
+  for (const f of files) {
+    const name = f.name.replace(/[^\w.\- ]+/g, "_").slice(0, 100) || "file"
+    const path = `${folder}/${name}`
+    s.docs[path] = { kind: "upload", name, mime: f.type, data: f.size <= KEEP_DATA ? await readAsDataUrl(f).catch(() => null) : null }
+    remember(path, f)
+    saved.push({ path, name, image: /\.(png|jpe?g|gif|webp)$/i.test(name), size: f.size })
+  }
+  changed()
+  return json(saved)
+})
+on("GET", "/api/chat/files", () => fail("not found", 404))
 
 on("POST", "/api/ingest", async (r) => {
   const form = r.form

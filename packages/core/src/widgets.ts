@@ -194,21 +194,72 @@ export const WIDGET_SIZES = ["small", "medium", "large", "full"] as const
 export const WidgetSize = z.enum(WIDGET_SIZES)
 export type WidgetSize = z.infer<typeof WidgetSize>
 
-/** What the agent proposes, and what the web app sends to save it. */
-export const WidgetInput = z
-  .object({ id: WidgetId, title: Title, size: WidgetSize.default("medium"), spec: WidgetSpec })
-  .strict()
-export type WidgetInput = z.infer<typeof WidgetInput>
+// ---------- custom widgets: free code in a sandbox ----------
 
-export const Widget = z.object({
-  id: WidgetId,
-  title: z.string(),
-  size: WidgetSize,
-  spec: WidgetSpec,
-  created: z.string(),
-  updated: z.string(),
-})
-export type Widget = z.infer<typeof Widget>
+/** The most a custom widget's code may weigh. */
+export const MAX_CUSTOM_CODE = 60_000
+const DataName = z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/, "data names are letters, digits and _")
+
+/**
+ * What custom code must not contain. The code runs in a worker inside the sandbox
+ * (apps/web/public/sandbox/widget.html), where the CSP blocks every connection and the worker cannot
+ * navigate or touch the page; what it renders is sanitized. This refuses the obvious attempts before
+ * anything runs, and tells the agent what to fix. Not a parser: it reads the text as a whole.
+ */
+const FORBIDDEN: [RegExp, string][] = [
+  [/\b(?:https?|wss?|ftp|javascript|blob):/i, "no URLs or URL schemes"],
+  [/\/\/[a-z0-9-]+\.[a-z]{2,}\//i, "no addresses"],
+  [/\b(?:fetch|XMLHttpRequest|WebSocket|WebTransport|EventSource|sendBeacon|importScripts|SharedWorker|serviceWorker|indexedDB|caches)\b|\bnew\s+Worker\b/, "no network, storage or workers"],
+  [/\beval\s*\(|\bFunction\s*\(|\bimport\s*\(|\bset(?:Timeout|Interval)\s*\(\s*["'`]/, "no eval or dynamic code"],
+]
+
+/** The first rule custom code breaks, or null. */
+export function customCodeProblem(code: string): string | null {
+  for (const [re, why] of FORBIDDEN) {
+    const m = re.exec(code)
+    if (m) return `${why} (found "${m[0].slice(0, 30)}")`
+  }
+  return null
+}
+
+const CustomCode = z
+  .string()
+  .min(1)
+  .max(MAX_CUSTOM_CODE, `at most ${MAX_CUSTOM_CODE} characters`)
+  .superRefine((code, ctx) => {
+    const problem = customCodeProblem(code)
+    if (problem) ctx.addIssue({ code: "custom", message: problem })
+  })
+
+const SpecWidgetInput = z.object({ id: WidgetId, title: Title, size: WidgetSize.default("medium"), kind: z.literal("spec"), spec: WidgetSpec }).strict()
+/** JavaScript written by the agent, run in the sandbox's worker on the data its queries declare; it renders HTML/SVG. */
+const CustomWidgetInput = z
+  .object({
+    id: WidgetId,
+    title: Title,
+    size: WidgetSize.default("medium"),
+    kind: z.literal("custom"),
+    /** Named queries: the sandbox receives their rows as `ac.data.<name>`. */
+    data: z.record(DataName, WidgetQuery).refine((d) => Object.keys(d).length <= 12, "at most 12 data queries").default({}),
+    code: CustomCode,
+  })
+  .strict()
+
+/** Widgets written before custom ones existed have no `kind`: they are specs. */
+const withKind = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) && !("kind" in v) ? { ...v, kind: "spec" } : v)
+
+/** What the agent proposes, and what the web app sends to save it. */
+export const WidgetInput = z.preprocess(withKind, z.discriminatedUnion("kind", [SpecWidgetInput, CustomWidgetInput]))
+export type SpecWidgetInput = z.infer<typeof SpecWidgetInput>
+export type CustomWidgetInput = z.infer<typeof CustomWidgetInput>
+export type WidgetInput = SpecWidgetInput | CustomWidgetInput
+
+const Stamps = { created: z.string(), updated: z.string() }
+export const Widget = z.preprocess(
+  withKind,
+  z.discriminatedUnion("kind", [SpecWidgetInput.extend(Stamps).strip(), CustomWidgetInput.extend(Stamps).strip()])
+)
+export type Widget = WidgetInput & { created: string; updated: string }
 
 /** data/board.json: the widgets in the order shown. */
 export const Board = z.object({ version: z.literal(1), widgets: z.array(Widget) })
@@ -216,8 +267,14 @@ export type Board = z.infer<typeof Board>
 export const EMPTY_BOARD: Board = { version: 1, widgets: [] }
 
 /** A widget as written to the board file and in the agent's blocks (JSON, stable key order). */
+export function widgetFields(w: WidgetInput): WidgetInput {
+  return w.kind === "custom"
+    ? { id: w.id, title: w.title, size: w.size, kind: "custom", data: w.data, code: w.code }
+    : { id: w.id, title: w.title, size: w.size, kind: "spec", spec: w.spec }
+}
+
 export function widgetJson(w: WidgetInput): string {
-  return JSON.stringify({ id: w.id, title: w.title, size: w.size, spec: w.spec })
+  return JSON.stringify(widgetFields(w))
 }
 
 /** A widget proposal parsed, or the first problem found (shown to the user). */
@@ -279,9 +336,10 @@ export type DeadlinesQuery = z.infer<typeof DeadlinesQuery>
 export type TransactionsQuery = z.infer<typeof TransactionsQuery>
 export type CasesQuery = z.infer<typeof CasesQuery>
 
-/** True when the query needs the finance data (transactions, portfolio). */
-export function needsFinance(spec: WidgetSpec): boolean {
-  return JSON.stringify(spec).match(/"from":"(transactions|portfolio)"/) !== null
+/** True when the widget reads the finance data (transactions, portfolio). */
+export function needsFinance(w: WidgetSpec | WidgetInput): boolean {
+  const queries = "kind" in w ? (w.kind === "custom" ? w.data : w.spec) : w
+  return JSON.stringify(queries).match(/"from":"(transactions|portfolio)"/) !== null
 }
 
 const lower = (s: string) => s.toLowerCase()
@@ -414,6 +472,62 @@ export function nextOccurrence(id: string, ctx: WidgetContext): Occurrence | nul
   return open[0] ?? null
 }
 
+/**
+ * The rows a custom widget's queries return, as plain JSON for the sandbox. In privacy mode amounts are
+ * null (the code cannot show what it never receives); a query on finance data not loaded is null.
+ */
+export function customData(queries: Record<string, WidgetQuery>, ctx: WidgetContext, privacy: boolean): Record<string, unknown[] | null> {
+  const money = (n: number | null) => (privacy ? null : n)
+  const names = new Map((ctx.finance?.mirror?.categories ?? []).map((c) => [c.id, c.name]))
+  const out: Record<string, unknown[] | null> = {}
+  for (const [name, q] of Object.entries(queries)) {
+    if (q.from === "deadlines") {
+      out[name] = deadlineRows(q, ctx).map((o) => ({
+        key: o.key,
+        id: o.id,
+        title: o.title,
+        area: o.area,
+        date: privacy && o.sensitive ? null : o.date,
+        days: o.days,
+        status: level(o),
+        severity: o.severity,
+        amount: money(o.amount),
+        amount_basis: o.amount_basis,
+        done_on: o.done_on,
+        repeat: o.repeat,
+        case: o.case,
+      }))
+    } else if (q.from === "transactions") {
+      out[name] = ctx.finance?.mirror
+        ? transactionRows(q, ctx).map((t) => ({ date: t.date, amount: money(t.amount), type: t.type, category: names.get(t.category) ?? t.category, description: privacy ? null : t.description }))
+        : null
+    } else if (q.from === "portfolio") {
+      out[name] = ctx.finance ? portfolioPoints(ctx).history.map((h) => ({ date: h.date, total: money(h.total), brokers: privacy ? {} : h.brokers })) : null
+    } else {
+      out[name] = caseRows(q, ctx).map((c) => ({ slug: c.slug, title: c.title, status: c.status, done: c.done, total: c.total }))
+    }
+  }
+  return out
+}
+
+/**
+ * The sandbox page's CSP (apps/web/public/sandbox/widget.html): only its own script runs (by hash), the
+ * widget's code runs in a blob: worker that inherits it, nothing connects or loads. Sent by the server,
+ * by the demo's nginx (deploy/demo.nginx.conf) and repeated in the page's meta; apps/web/test/sandbox.test.ts
+ * keeps the hash and the copies in step. Only the app itself may frame it.
+ */
+export const SANDBOX_CSP = "default-src 'none'; script-src 'sha256-3U7ombQechywIXAQoG99HBICuCVC9nricV1biomzlQE='; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; connect-src 'none'; frame-src 'none'; child-src 'none'; manifest-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'"
+
+/** What the sandbox may ask the page (apps/web/public/sandbox/widget.html); anything else is ignored. */
+export const SandboxMessage = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("ready") }),
+  z.object({ type: z.literal("resize"), height: z.number().min(0).max(100_000) }),
+  z.object({ type: z.literal("open"), target: WidgetAction.refine((a) => a.type !== "ask") }),
+  z.object({ type: z.literal("ask"), question: z.string().trim().min(1).max(500) }),
+  z.object({ type: z.literal("error"), message: z.string().max(500) }),
+])
+export type SandboxMessage = z.infer<typeof SandboxMessage>
+
 // ---------- what the agent is told ----------
 
 export const WIDGET_INSTRUCTIONS = `Widgets: the user's Board page (data/board.json, read it to see what is there) holds small dashboards you design. When the user asks for a widget, a chart, a dashboard or a view of their data, or to change one on the Board, answer with one short sentence and a block
@@ -434,4 +548,14 @@ Queries ("from"):
 - {"from": "transactions", months?: back from today, this month included (default 1), type?: "expense"|"earning", categories?: [ids or names, see finance/mirror.json], text?: [words in the description]} the finance source. Chart "by": month, week, category.
 - {"from": "portfolio"} investments.toml. Chart "by": date (total value), broker. {"sum": {"from": "portfolio"}} is the current total.
 - {"from": "cases", open?: true|false, slugs?: [...]}. Chart "by": status.
-Use the real area names, deadline ids, case slugs and category ids from the data files. Prefer few, clear elements: a Metric or two above a Chart or a list. "small" fits one number, "medium" a chart or a list, "large" and "full" a few side by side.`
+Use the real area names, deadline ids, case slugs and category ids from the data files. Prefer few, clear elements: a Metric or two above a Chart or a list. "small" fits one number, "medium" a chart or a list, "large" and "full" a few side by side.
+
+Custom widgets (free code in a sandbox): only when the components above cannot do what the user asks (an interactive timeline, a heatmap, a simulator, a drawing). First ask the user to switch to custom mode: say in two lines what you would build and why the components are not enough, and end that answer with an empty confirm block (the app shows yes/no). Only when the user's latest message says yes, write
+\`\`\`widget
+{"id": "...", "title": "...", "size": "...", "kind": "custom", "data": {"<name>": <query as above>, ...}, "code": "<JavaScript>"}
+\`\`\`
+The user still presses "Run in sandbox" before your code runs, and can read it. The code is plain modern JavaScript (at most ${MAX_CUSTOM_CODE} characters) running in a Web Worker: no DOM, no network, no storage, no eval (code using them is refused). It draws by passing an HTML string to ac.render(html): HTML, inline SVG and a <style> element, sanitized (no scripts, on* attributes, links, forms, frames or external files; images only as data:image/ URLs). Interaction goes through attributes: an element with data-on="name" sends "name" to ac.on("name", fn) when clicked, or when its value changes for input, select and textarea; fn gets {value, checked, data} (data = the element's other data-* attributes). Keep your state in variables and call ac.render again. The \`ac\` object:
+  ac.data.<name>: rows of each query (null when that data is not available). deadlines: {key, id, title, area, date, days, status, severity, amount, amount_basis, done_on, repeat, case}; transactions: {date, amount, type, category, description}; portfolio: {date, total, brokers}; cases: {slug, title, status, done, total}.
+  ac.onUpdate(fn): call fn now and whenever the data, theme or privacy mode change; render inside it. ac.today, ac.locale ("it" or "en"), ac.theme ("light"/"dark"), ac.privacy (true: amounts and some dates are null, show "•••").
+  ac.money(n), ac.number(n), ac.date(iso), ac.days(n): formatted in the user's language ("•••" for null). ac.escape(text): text made safe for HTML (use it for titles). ac.open({"type": "view", "view": ...} | {"type": "deadline", "id": "<deadline id>"} | {"type": "case", "slug": ...}). ac.ask("question"): offers the question to the user for the chat.
+  Style with the app's CSS variables: var(--foreground), --muted-foreground, --background, --card, --muted, --border, --primary, --primary-foreground, --chart-1 ... --chart-5, --money-out, --money-in, --status-overdue, --status-urgent, --status-soon, --status-done, --radius; font sizes 12-14px, text in the user's language. The frame grows with the content; keep it under about 600px high. Never put amounts or personal data in the code itself: they come from ac.data.`

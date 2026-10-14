@@ -6,7 +6,11 @@
  */
 import { type Actions, DataError, extractActions, parseWidget, WIDGET_INSTRUCTIONS, widgetBlock, widgetBlocks } from "@autocratico/core"
 
+import { readFileSync } from "node:fs"
+import { basename } from "node:path"
+
 import { ChangeError, type Changes } from "./changes.ts"
+import { chatFile } from "./chat-files.ts"
 import type { Inbox } from "./inbox.ts"
 import type { Jobs } from "./jobs.ts"
 import type { Reminders } from "./reminders.ts"
@@ -19,9 +23,9 @@ export const ACTION_INSTRUCTIONS = `You cannot change files, but the server acts
 with the local time (the zone of the current time given below); compute it with \`python3 scripts/when.py\` (e.g. \`python3 scripts/when.py +90m\`) rather than in your head. Reminders arrive on Telegram.
 - When the user gives new information to file (a notice received, facts about a case, a document described in words): a block
 \`\`\`inbox
-{"title": "<short title>", "text": "<everything needed: what, dates, amounts, which deadline or case>"}
+{"title": "<short title>", "text": "<everything needed: what, dates, amounts, which deadline or case>", "files": ["<chats/files/... attached to the chat, optional>"]}
 \`\`\`
-The background agent files it within minutes: it updates deadlines.toml and cases.
+The background agent files it within minutes: it updates deadlines.toml and cases. Files listed come along into the inbox item.
 - When the user asks to correct the deadlines themselves (stop one that no longer applies, change a date, amount, repeat or notes, add one, mark an occurrence paid or not): first read deadlines.toml and state.json, then describe the exact change in plain words (which deadline, by title and id, and what becomes what) and ask the user to confirm. Only when the user's latest message confirms that exact change, put one block
 \`\`\`change
 {"summary": "<one line in the user's language, no amounts or personal data>", "ops": [<operations>]}
@@ -75,6 +79,8 @@ type Deps = {
   notify: boolean
   locale: "it" | "en"
   changes: Changes | null
+  /** The data folder: chat attachments named in inbox blocks are copied from there. */
+  data?: string
 }
 
 export async function applyActions(actions: Actions, source: string, from: string, d: Deps): Promise<string[]> {
@@ -89,7 +95,11 @@ export async function applyActions(actions: Actions, source: string, from: strin
     lines.push(saved ? t.reminder(d.reminders.format(saved.at, d.locale), saved.text) : t.badTime(r.at))
   }
   for (const n of actions.inbox) {
-    const item = await d.inbox.add({ source: "chat", title: n.title || n.text.slice(0, 60), text: n.text, from, account: source })
+    const files = n.files.flatMap((p) => {
+      const file = d.data ? chatFile(d.data, p) : null
+      return file ? [{ name: basename(file), data: new Uint8Array(readFileSync(file)) }] : []
+    })
+    const item = await d.inbox.add({ source: "chat", title: n.title || n.text.slice(0, 60), text: n.text, from, account: source, files })
     lines.push(t.inbox(item.title))
   }
   if (actions.inbox.length) d.jobs?.queueTriage()

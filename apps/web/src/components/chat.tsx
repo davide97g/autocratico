@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { cn } from "cn"
 
+import { AttachButton, AttachmentStrip, MAX_ATTACHMENTS, MessageFiles, useAttachments } from "@/components/chat-attachments"
 import { GmailLinkCard, refreshGmailPreviews } from "@/components/gmail-link"
 import { Markdown } from "@/components/markdown"
 import { ShinyText, stagger } from "@/components/motion"
@@ -50,7 +51,7 @@ type ClaudeMessage = {
   error?: string
   duration_ms?: number | null
 }
-type Message = { role: "user"; text: string } | ClaudeMessage
+type Message = { role: "user"; text: string; files?: string[] } | ClaudeMessage
 /**
  * What the conversation is about: a deadline occurrence (`<id>@<date>`) or a widget of the Board
  * (`widget:<id>`). Its key goes to the server with every question.
@@ -106,7 +107,7 @@ function fromServer(c: SavedChat): Conversation {
     chat: c.id,
     messages: c.messages.map((m) =>
       m.role === "user"
-        ? { role: "user", text: m.text }
+        ? { role: "user", text: m.text, files: m.files }
         : { role: "claude", text: m.text, steps: m.tools, status: m.error ? "error" : "done", error: m.error }
     ),
   }
@@ -313,12 +314,15 @@ function Answer({ m }: { m: ClaudeMessage }) {
   )
 }
 
-/** The user's question: its text in a bubble, each Gmail link in it as a card that opens the email. */
-function Question({ text }: { text: string }) {
+/** The user's question: its text in a bubble, its attachments, each Gmail link in it as a card that opens the email. */
+function Question({ text, files = [] }: { text: string; files?: string[] }) {
+  const { t } = useI18n()
   const links = gmailLinks(text)
-  const rest = links.length ? withoutGmailLinks(text) : text
+  const shown = files.length && (text === t.chat.attachOnly || text === "(allegati)" || text === "(attachments)") ? "" : text
+  const rest = links.length ? withoutGmailLinks(shown) : shown
   return (
     <div className="ml-8 flex origin-bottom-right flex-col gap-2 duration-300 animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2">
+      <MessageFiles files={files} />
       {rest && (
         <div className="max-w-full self-end rounded-lg bg-primary px-3.5 py-2.5 break-words text-primary-foreground">
           <Markdown text={rest} className="[&_p]:my-0" />
@@ -444,6 +448,7 @@ export const Chat = React.memo(function Chat({
   const { t, locale } = useI18n()
   const [conversation, setConversation] = React.useState<Conversation>(read)
   const [draft, setDraft] = React.useState("")
+  const attachments = useAttachments()
   const [abort, setAbort] = React.useState<AbortController | null>(null)
   const [history, setHistory] = React.useState(false)
   const draftLinks = useDraftLinks(draft)
@@ -518,23 +523,25 @@ export const Chat = React.memo(function Chat({
 
   async function send(text: string) {
     const message = text.trim()
-    if (!message || abort) return
+    const files = attachments.paths
+    if ((!message && !files.length) || abort || attachments.uploading) return
     const controller = new AbortController()
     const release = holdUpdates() // a new build must not reload the page mid-answer
     setAbort(controller)
     setDraft("")
+    attachments.clear()
     const chat = conversation.chat
     const about = conversation.about?.key
     setConversation((c) => ({
       ...c,
       messages: [
         ...c.messages,
-        { role: "user", text: message },
+        { role: "user", text: message || t.chat.attachOnly, files },
         { role: "claude", text: "", steps: [], status: "running" },
       ],
     }))
     try {
-      await ask({ message, chat, view, locale, about }, (e) => setConversation((c) => apply(c, e)), controller.signal)
+      await ask({ message, chat, view, locale, about, files }, (e) => setConversation((c) => apply(c, e)), controller.signal)
       setConversation((c) => apply(c, { type: "end", cost: null, duration_ms: null }))
     } catch (e) {
       const aborted = controller.signal.aborted
@@ -581,7 +588,24 @@ export const Chat = React.memo(function Chat({
   }
 
   return (
-    <aside className={cn("flex min-h-0 flex-col rounded-xl bg-card", className)} aria-label={t.chat.title}>
+    <aside
+      className={cn("flex min-h-0 flex-col rounded-xl bg-card", className)}
+      aria-label={t.chat.title}
+      // Files dropped on the chat are attached to the question (DropToInbox leaves this area alone).
+      data-chat-drop
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes("Files")) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = "copy"
+      }}
+      onDrop={(e) => {
+        if (!e.dataTransfer.files.length) return
+        e.preventDefault()
+        e.stopPropagation()
+        attachments.add(Array.from(e.dataTransfer.files))
+        input.current?.focus()
+      }}
+    >
       <header className="flex items-center gap-3 border-b p-4">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <SparklesIcon className="size-4" />
@@ -658,7 +682,7 @@ export const Chat = React.memo(function Chat({
           <div className="flex flex-col gap-4 sm:gap-6">
             {conversation.messages.map((m, i) =>
               m.role === "user" ? (
-                <Question key={i} text={m.text} />
+                <Question key={i} text={m.text} files={m.files} />
               ) : (
                 <div key={i} className="duration-300 animate-in fade-in-0 slide-in-from-bottom-1">
                   <Answer m={m} />
@@ -721,12 +745,21 @@ export const Chat = React.memo(function Chat({
             ))}
           </div>
         )}
-        <div className="flex items-end gap-2 rounded-lg bg-muted p-1.5 pl-3 focus-within:ring-3 focus-within:ring-ring/50">
+        <AttachmentStrip items={attachments.items} onRemove={attachments.remove} />
+        <div className="flex items-end gap-1 rounded-lg bg-muted p-1.5 focus-within:ring-3 focus-within:ring-ring/50">
+          <AttachButton onFiles={attachments.add} disabled={attachments.items.length >= MAX_ATTACHMENTS} />
           <textarea
             ref={input}
             rows={1}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onPaste={(e) => {
+              // A screenshot or a file pasted: attached, not pasted as text.
+              const files = Array.from(e.clipboardData.files)
+              if (!files.length) return
+              e.preventDefault()
+              attachments.add(files)
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault()
@@ -746,7 +779,7 @@ export const Chat = React.memo(function Chat({
             <Button
               type="submit"
               size="icon"
-              disabled={!draft.trim()}
+              disabled={(!draft.trim() && !attachments.paths.length) || attachments.uploading}
               aria-label={t.chat.send}
               className="transition-[opacity,transform,scale] disabled:scale-90 enabled:hover:-translate-y-0.5"
             >

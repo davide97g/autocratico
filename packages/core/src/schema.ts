@@ -322,6 +322,8 @@ export const ChatMessage = z.object({
   text: z.string(),
   tools: z.array(z.object({ name: z.string(), detail: z.string() })).default([]),
   error: z.string().optional(),
+  /** Files the user attached (chats/files/...). */
+  files: z.array(z.string()).optional(),
 })
 export type ChatMessage = z.infer<typeof ChatMessage>
 

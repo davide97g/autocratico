@@ -159,6 +159,33 @@ describe("demo server", () => {
     expect(Board.parse(await get("/api/board")).widgets).toHaveLength(before)
   })
 
+  it("asks before custom mode, then proposes sandboxed code that passes the checks", async () => {
+    const first = await ask("Fammi una mappa di calore dei pagamenti", null)
+    const chat = (first[0] as { id: string }).id
+    const asked = first.flatMap((e) => (e.type === "text" ? [e.text] : [])).join("")
+    expect(answerWidgets(asked)).toEqual([])
+    expect(asked).toContain("```confirm")
+    const yes = await ask("Sì, confermo", chat)
+    const [w] = answerWidgets(yes.flatMap((e) => (e.type === "text" ? [e.text] : [])).join(""))
+    expect(w.kind).toBe("custom")
+    expect((await call("PUT", `/api/board/widgets/${w.id}`, w)).status).toBe(200)
+  })
+
+  it("takes files attached in the chat and answers about them", async () => {
+    const form = new FormData()
+    form.append("file", new File([new Uint8Array([1, 2, 3])], "bolletta.png", { type: "image/png" }))
+    const r = await handle({ method: "POST", url: new URL("/api/chat/files", "https://demo.invalid"), body: null, form, signal: new AbortController().signal })
+    const [saved] = (await r.json()) as { path: string; image: boolean }[]
+    expect(saved.path).toMatch(/^chats\/files\/.+\/bolletta\.png$/)
+    expect(saved.image).toBe(true)
+    const res = await call("POST", "/api/chat", { message: "", files: [saved.path], chat: null, locale: "it" })
+    expect(res.status, JSON.stringify(res.body)).toBe(200)
+    const text = res.body as string
+    const events = text.trim().split("\n").map((l) => ChatEvent.parse(JSON.parse(l)))
+    expect(events.some((e) => e.type === "tool" && e.detail === saved.path)).toBe(true)
+    expect(state().chats[0].messages[0]).toMatchObject({ text: "(allegati)", files: [saved.path] })
+  })
+
   it("keeps the register for the tab, and forgets it on reset", () => {
     expect(JSON.parse(sessionStorage.getItem("autocratico.demo")!).name).toBe(state().name)
     reset()

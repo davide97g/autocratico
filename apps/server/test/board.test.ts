@@ -3,6 +3,7 @@ import { join } from "node:path"
 
 import { describe, expect, it } from "vitest"
 
+import { SANDBOX_CSP } from "@autocratico/core"
 import { finishAnswer } from "../src/chat-actions.ts"
 import { tools } from "../src/claude.ts"
 import { topicOf } from "../src/pulse.ts"
@@ -68,7 +69,7 @@ describe("board", () => {
     const deps = { reminders: e.s.reminders, inbox: e.s.inbox, jobs: null, notify: false, locale: "en" as const, changes: null }
     const answer = `Here it is.\n\n\`\`\`widget\n${JSON.stringify(widget)}\n\`\`\``
     const web = await finishAnswer(answer, "web", "Maria", deps)
-    expect(web).toMatch(/^Here it is\.\n\n```widget\n\{"id":"my-car","title":"Car","size":"small","spec":/)
+    expect(web).toMatch(/^Here it is\.\n\n```widget\n\{"id":"my-car","title":"Car","size":"small","kind":"spec","spec":/)
     expect(await finishAnswer(answer, "telegram", "Maria", deps)).toBe("Here it is.\n\n🧩 Widget proposed: Car. Open this chat in the web app to see it and add it to the Board.")
     const broken = await finishAnswer('Ok\n\n```widget\n{"id": "x", "title": "X", "spec": {"root": "a", "elements": {"a": {"type": "Iframe"}}}}\n```', "web", "Maria", deps)
     expect(broken).toMatch(/^Ok\n\n⚠️ Widget not valid: a: unknown type "Iframe"/)
@@ -80,5 +81,27 @@ describe("board", () => {
     expect(triage.denied).toContain("Edit(//data/board.json)")
     expect(tools("research", "/data").denied).toContain("Read(//data/board.json)")
     expect(topicOf("board.json")).toBe("board")
+  })
+
+  it("saves custom widgets after checking their code, and serves the sandbox with its own CSP", async () => {
+    const e = setup()
+    const headers = await owner(e.app)
+    const custom = { id: "heat", title: "Heat", size: "medium", kind: "custom", data: { due: { from: "deadlines", days: 365 } }, code: "ac.onUpdate(() => ac.render('<p>' + ac.data.due.length + '</p>'))" }
+    expect((await put(e.app, headers, custom, "heat")).status).toBe(200)
+    const saved = JSON.parse(readFileSync(join(e.data, "board.json"), "utf8")).widgets.at(-1)
+    expect(saved).toMatchObject({ id: "heat", kind: "custom", data: { due: { from: "deadlines", days: 365 } } })
+    const leaky = await put(e.app, headers, { ...custom, code: 'fetch("/api/data")' }, "heat")
+    expect(leaky.status).toBe(400)
+    expect(((await leaky.json()) as { error: string }).error).toMatch(/^code: no network/)
+
+    // The page itself is part of the web build: here only its headers matter.
+    const r = await e.app.request("/sandbox/widget.html", { headers })
+    if (r.status === 200) {
+      expect(r.headers.get("content-security-policy")).toBe(SANDBOX_CSP)
+      expect(r.headers.get("x-frame-options")).toBe("SAMEORIGIN")
+    }
+    // Everything else keeps the app's own CSP.
+    const page = await e.app.request("/", { headers })
+    expect(page.headers.get("content-security-policy")).toContain("frame-ancestors 'none'")
   })
 })

@@ -93,6 +93,11 @@ export class Store {
     if (!/^[\w-]{1,64}$/.test(id)) return false
     const file = join(this.paths.chats, `${id}.json`)
     if (!existsSync(file)) return false
+    // Its attachments go with it (chats/files/<folder>/, one folder per message).
+    const folders = new Set(
+      (this.chat(id)?.messages ?? []).flatMap((m) => m.files ?? []).flatMap((f) => (/^chats\/files\/[\w-]+\//.test(f) ? [f.split("/").slice(0, 3).join("/")] : []))
+    )
+    for (const folder of folders) rmSync(join(this.dir, folder), { recursive: true, force: true })
     rmSync(file)
     return true
   }

@@ -158,6 +158,9 @@ export function setFileUrl(f: (path: string) => string) {
   fileUrlOverride = f
 }
 export const isImage = (path: string) => /\.(jpe?g|png|webp|gif)$/i.test(path)
+/** A file attached in the chat (chats/files/...): `view` and `thumb` show images inline, otherwise a download. */
+export const chatFileUrl = (path: string, as?: "view" | "thumb") =>
+  fileUrlOverride?.(path) ?? `${API_BASE}/api/chat/files?path=${encodeURIComponent(path)}${as ? `&as=${as}` : ""}`
 /** What a source path is (email, inbox item, file) with its text and files. */
 export const source = (path: string) => request<SourceInfo>(`/api/source?path=${encodeURIComponent(path)}`)
 export const archive = () => request<ArchiveEntry[]>("/api/archive")
@@ -176,6 +179,13 @@ export function ingest(n: { files: File[]; text: string; title?: string }): Prom
 export const activity = () => request<Activity>("/api/activity")
 export const commitPatch = (hash: string) => request<{ patch: string }>(`/api/activity/${hash}`)
 export const revertCommit = (hash: string) => post<{ hash: string }>(`/api/activity/${hash}/revert`)
+
+/** Files for a chat message: saved on the server, then named in the question. */
+export function uploadChatFiles(files: File[]): Promise<{ path: string; name: string; image: boolean; size: number }[]> {
+  const form = new FormData()
+  for (const f of files) form.append("file", f, f.name)
+  return request("/api/chat/files", { method: "POST", body: form })
+}
 
 export const board = () => request<Board>("/api/board")
 export const saveWidget = (w: WidgetInput) =>
