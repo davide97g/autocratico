@@ -3,7 +3,7 @@
  * server-owned like the rest of chats/, and handed to the agent as paths it reads with Read (images and
  * PDFs are shown to it). Nothing is filed by this: when one is a document to keep, the agent files it
  * with an inbox block listing it in "files" (the server copies it into the new inbox item). HEIC photos
- * become JPEGs on arrival.
+ * become JPEGs and TIFF scans PDFs on arrival.
  */
 import { randomBytes } from "node:crypto"
 import { mkdirSync, realpathSync, statSync, writeFileSync } from "node:fs"
@@ -11,7 +11,7 @@ import { extname, join, sep } from "node:path"
 
 import { fileName, today } from "@autocratico/core"
 
-import { HEIC, IMAGE_TYPES, replaceHeic } from "./images.ts"
+import { IMAGE_TYPES, replaceUnreadable, UNREADABLE } from "./images.ts"
 import type { Upload } from "./inbox.ts"
 
 export const MAX_CHAT_FILES = 10
@@ -29,7 +29,7 @@ export async function saveChatFiles(data: string, uploads: Upload[], timeZone: s
     writeFileSync(join(dir, name), u.data)
     names.push(name)
   }
-  if (names.some((n) => HEIC.test(n))) names = await replaceHeic(dir, names)
+  if (names.some((n) => UNREADABLE.test(n))) names = await replaceUnreadable(dir, names)
   return names.map((name) => ({
     path: `chats/files/${folder}/${name}`,
     name,

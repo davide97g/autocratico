@@ -43,10 +43,52 @@ describe("HEIC photos", () => {
     writeFileSync(join(dir, "a.HEIC"), "old")
     const old = { ...item, files: ["a.HEIC", "a.jpg"] }
 
-    const updated = await inbox.convertPhotos(old)
+    const updated = await inbox.convertFiles(old)
 
     expect(updated.files).toEqual(["a.jpg"])
     expect(existsSync(join(dir, "a.HEIC"))).toBe(false)
+  })
+})
+
+const hasTiff2pdf = (() => {
+  try {
+    execFileSync("tiff2pdf", ["-h"], { stdio: "ignore" })
+    return true
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code !== "ENOENT"
+  }
+})()
+
+describe("TIFF scans", () => {
+  it("finds the PDF made from a scan", () => {
+    expect(copiesOf("Allegato_01.TIF", ["Allegato_01.TIF", "Allegato_01.pdf", "Allegato_01-1.jpg"])).toEqual(["Allegato_01.pdf"])
+  })
+
+  it.runIf(process.platform === "darwin" && hasTiff2pdf)("keeps a PDF with every page, in the item and in its email", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "autocratico-"))
+    writeFileSync(join(tmp, "w.png"), PNG)
+    execFileSync("sips", ["-s", "format", "tiff", join(tmp, "w.png"), "--out", join(tmp, "p.tif")], { stdio: "ignore" })
+    execFileSync("tiffcp", [join(tmp, "p.tif"), join(tmp, "p.tif"), join(tmp, "two.tif")])
+    const tiff = readFileSync(join(tmp, "two.tif"))
+    const data = mkdtempSync(join(tmpdir(), "autocratico-"))
+    const email = join(data, "archive", "email", "2026-10-17-customs-abc123")
+    mkdirSync(email, { recursive: true })
+    writeFileSync(join(email, "Allegato_01.tif"), tiff)
+    writeFileSync(join(email, "message.md"), '---\nattachments: ["Allegato_01.tif", "note.txt"]\n---\n\nHello\n')
+    writeFileSync(join(email, "note.txt"), "hi")
+    const inbox = new Inbox(data)
+
+    const item = await inbox.add({ source: "upload", files: [{ name: "scan.TIFF", data: tiff }] })
+    await inbox.convertAll()
+
+    expect(item.files).toEqual(["scan.pdf"])
+    expect(item.title).toBe("scan.pdf")
+    const pdf = readFileSync(join(inbox.dir, item.folder, "scan.pdf"), "latin1")
+    expect(pdf).toMatch(/^%PDF/)
+    expect(pdf).toContain("/Count 2")
+    expect(existsSync(join(email, "Allegato_01.tif"))).toBe(false)
+    expect(existsSync(join(email, "Allegato_01.pdf"))).toBe(true)
+    expect(readFileSync(join(email, "message.md"), "utf8")).toContain('attachments: ["Allegato_01.pdf","note.txt"]')
   })
 })
 

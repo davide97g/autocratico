@@ -21,7 +21,7 @@ import {
 import { unzipSync } from "fflate"
 
 import { locks, writeJson } from "./files.ts"
-import { HEIC, replaceHeic } from "./images.ts"
+import { copiesOf, copyName, replaceUnreadable, UNREADABLE } from "./images.ts"
 
 export const MAX_UPLOAD = 25 * 1024 * 1024
 const MAX_ZIP_ENTRIES = 2000
@@ -119,30 +119,51 @@ export class Inbox {
   }
 
   /**
-   * Replaces HEIC photos with JPEGs, in the item and in the email it points to (archive/email):
-   * one format only, one that the agent and every browser can show. Returns the item as updated.
+   * Replaces HEIC photos with JPEGs and TIFF scans with PDFs, in the item and in the email it points
+   * to (archive/email): formats that the agent can read and every browser can show. Returns the item
+   * as updated.
    */
-  async convertPhotos(item: InboxItem): Promise<InboxItem> {
-    if (/^archive\/email\/[^/.][^/]*$/.test(item.ref)) {
-      const email = join(this.dir, "..", item.ref)
-      if (existsSync(email)) await replaceHeic(email, readdirSync(email))
-    }
-    if (!item.files.some((f) => HEIC.test(f))) return item
-    const converted = await replaceHeic(join(this.dir, item.folder), item.files)
+  async convertFiles(item: InboxItem): Promise<InboxItem> {
+    if (/^archive\/email\/[^/.][^/]*$/.test(item.ref)) await this.#convertEmail(join(this.dir, "..", item.ref))
+    if (!item.files.some((f) => UNREADABLE.test(f))) return item
+    const converted = await replaceUnreadable(join(this.dir, item.folder), item.files)
     return locks.run(this.dir, () => {
       const current = this.list().find((i) => i.id === item.id) ?? item
       const { folder, ...rest } = current
       const files = converted.filter((f) => existsSync(join(this.dir, folder, f)))
-      // An item named after its photo keeps a name that matches what is there.
-      const title = HEIC.test(rest.title) && !files.includes(rest.title) ? rest.title.replace(HEIC, ".jpg") : rest.title
+      // An item named after its file keeps a name that matches what is there.
+      const title = UNREADABLE.test(rest.title) && !files.includes(rest.title) ? copyName(rest.title) : rest.title
       writeJson(join(this.dir, folder, "item.json"), { ...rest, title, files })
       return { ...current, title, files }
     })
   }
 
-  /** Converts the photos of items that arrived before conversion existed (runs once at start). */
+  /** Converts an email's attachments (saved before scripts/gmail.py did it) and lists the new names in its message.md. */
+  async #convertEmail(dir: string): Promise<void> {
+    if (!existsSync(dir)) return
+    const before = readdirSync(dir)
+    if (!before.some((f) => UNREADABLE.test(f))) return
+    const after = await replaceUnreadable(dir, before)
+    const message = join(dir, "message.md")
+    if (!existsSync(message)) return
+    const text = readFileSync(message, "utf8")
+    const fixed = text.replace(/^attachments: (.*)$/m, (line, list: string) => {
+      try {
+        const names = (JSON.parse(list) as string[]).flatMap((n) => (after.includes(n) ? [n] : copiesOf(n, after)))
+        return `attachments: ${JSON.stringify(names)}`
+      } catch {
+        return line
+      }
+    })
+    if (fixed !== text) writeFileSync(message, fixed)
+  }
+
+  /** Converts the files of items and emails that arrived before conversion existed (runs once at start). */
   async convertAll(): Promise<void> {
-    for (const item of this.list()) await this.convertPhotos(item)
+    for (const item of this.list()) await this.convertFiles(item)
+    const emails = join(this.dir, "..", "archive", "email")
+    if (!existsSync(emails)) return
+    for (const f of readdirSync(emails)) if (!f.startsWith(".")) await this.#convertEmail(join(emails, f))
   }
 
   /** Items left halfway by a restart go back to `new`. */
@@ -152,7 +173,7 @@ export class Inbox {
   }
 
   async add(n: NewItem): Promise<InboxItem> {
-    return this.convertPhotos(await this.#write(n))
+    return this.convertFiles(await this.#write(n))
   }
 
   #write(n: NewItem): Promise<InboxItem> {

@@ -43,7 +43,10 @@ import json
 import os
 import re
 import secrets
+import shutil
+import subprocess
 import sys
+import tempfile
 import time
 import tomllib
 import urllib.error
@@ -68,6 +71,8 @@ INBOX = DATA_DIR / "inbox"
 INBOX_DAYS = 14
 PER_RUN = 300  # messages per account per sync: a first sync of a busy mailbox spreads over several runs
 MARKETING_LABELS = {"CATEGORY_PROMOTIONS", "CATEGORY_SOCIAL", "CATEGORY_FORUMS"}
+# Attachments the agents cannot read, saved as a copy they can (as apps/server/src/images.ts does for uploads).
+READABLE_COPY = {".tif": "pdf", ".tiff": "pdf", ".heic": "jpg", ".heif": "jpg"}
 
 SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 API = "https://gmail.googleapis.com/gmail/v1/users/me"
@@ -358,6 +363,42 @@ def _file_name(name: str, taken: list[str]) -> str:
     return name
 
 
+
+def _decoders(src: str, out: str) -> list[list[str]]:
+    """The command that converts `src`, then the macOS fallback (none for TIFF: sips keeps only the first page)."""
+    if out.endswith(".pdf"):
+        return [["tiff2pdf", "-o", out, src]]
+    return [["heif-dec", "--quiet", "-q", "85", src, out], ["sips", "-s", "format", "jpeg", "-s", "formatOptions", "85", src, "--out", out]]
+
+
+def _readable(folder: Path, name: str, taken: list[str]) -> list[str]:
+    """Replaces a TIFF scan with a PDF of all its pages (tiff2pdf, lossless) and a HEIC photo with a
+    JPEG (one per image), so that the agents can read them; returns the names now in `folder`. A file
+    that cannot be converted stays as it is."""
+    ext = READABLE_COPY.get(Path(name).suffix.lower())
+    if not ext:
+        return [name]
+    with tempfile.TemporaryDirectory(dir=folder, prefix=".convert-") as tmp:
+        out = Path(tmp) / f"{Path(name).stem}.{ext}"
+        decoders = _decoders(str(folder / name), str(out))
+        cmd = next((c for c in decoders if shutil.which(c[0])), None)
+        try:
+            if not cmd:
+                raise OSError(f"{decoders[0][0]} not installed")
+            subprocess.run(cmd, check=True, capture_output=True, timeout=120)
+        except (OSError, subprocess.SubprocessError) as e:
+            print(f"  cannot convert {name}: {e}", file=sys.stderr)
+            return [name]
+        names: list[str] = []
+        for made in sorted(f.name for f in Path(tmp).iterdir() if f.suffix == f".{ext}"):
+            n = _file_name(made, taken + names)
+            os.replace(Path(tmp) / made, folder / n)
+            names.append(n)
+    if not names:
+        return [name]
+    (folder / name).unlink()
+    return names
+
 def search(query: str, limit: int = 50) -> None:
     ids = _list(query, limit)
     if not ids:
@@ -489,7 +530,7 @@ def _save(m: dict, account: str, mailbox: str) -> tuple[Path, list[str]]:
             data = _get(f"{API}/messages/{i}/attachments/{body['attachmentId']}")["data"]
             name = _file_name(p["filename"], attachments)
             (folder / name).write_bytes(_b64(data))
-            attachments.append(name)
+            attachments += _readable(folder, name, attachments)
     text = body_text(m["payload"])
 
     lines = [

@@ -526,7 +526,7 @@ export class Jobs {
     if (!batch.length) return fresh.length ? `${fresh.length} emails waiting for their turn` : "nothing new"
     if (!claude.available) return "skipped: claude not available"
     const items: InboxItem[] = []
-    for (const i of batch) items.push(await inbox.convertPhotos(i))
+    for (const i of batch) items.push(await inbox.convertFiles(i))
     if (items.some((i) => !urgent(i))) this.#pacedAt = Date.now()
     const ids = items.map((i) => i.id)
     run.items = items.map((i) => ({ id: i.id, title: i.title }))

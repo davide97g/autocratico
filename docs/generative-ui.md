@@ -80,7 +80,7 @@ Limits worth knowing: no canvas or direct DOM (SVG and CSS cover charts and draw
 
 ## Attachments in the chat
 
-Photos, screenshots, PDFs and documents can be attached to any question (paperclip, paste, or drop on the chat), for ordinary questions and for widgets designed after a picture. They are uploaded first (`POST /api/chat/files`, 10 files and 25 MB at most, HEIC converted to JPEG) into `chats/files/<date>-<id>/`, server-owned, and the question names their paths; the server tells the agent to read them (it sees images and PDFs). When one is a document to keep, the agent lists it in an inbox block's `"files"` and the server copies it into the new inbox item. Deleting a chat deletes its attachments.
+Photos, screenshots, PDFs and documents can be attached to any question (paperclip, paste, or drop on the chat), for ordinary questions and for widgets designed after a picture. They are uploaded first (`POST /api/chat/files`, 10 files and 25 MB at most, HEIC converted to JPEG and TIFF to PDF) into `chats/files/<date>-<id>/`, server-owned, and the question names their paths; the server tells the agent to read them (it sees images and PDFs). When one is a document to keep, the agent lists it in an inbox block's `"files"` and the server copies it into the new inbox item. Deleting a chat deletes its attachments.
 
 ## Next steps
 

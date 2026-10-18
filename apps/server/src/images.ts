@@ -4,7 +4,10 @@
  * iPhone photos arrive as HEIC, which neither Claude Code nor most browsers can show: each one is
  * replaced by a JPEG (libheif's `heif-dec`, or `sips` on macOS). Quality 85 at full resolution:
  * about the size of the HEIC, text stays sharp (PNG is ~6x larger, WebP is no smaller at the same
- * quality). The HEIC is deleted only once the JPEG is written.
+ * quality). Scans and faxes arrive as TIFF, which Claude Code cannot read either: each one becomes a
+ * PDF with all its pages (libtiff's `tiff2pdf`, lossless; `sips` would keep only the first page, so
+ * without tiff2pdf the TIFF stays as it is). The original is deleted only once its copy is written.
+ * scripts/gmail.py does the same for the emails it saves.
  *
  * Previews for the web app are small JPEGs made with ffmpeg, cached under out/thumbs/.
  */
@@ -24,7 +27,9 @@ const QUALITY = "85"
 const TIMEOUT_MS = 120_000
 const THUMB_WIDTH = 480
 
-export const HEIC = /\.(heic|heif)$/i
+const TIFF = /\.(tiff?)$/i
+/** Files the agent cannot read, replaced on arrival by a copy it can (HEIC: JPEG, TIFF: PDF). */
+export const UNREADABLE = /\.(heic|heif|tiff?)$/i
 /** Raster images a browser shows safely inline; anything else is served as a download. */
 export const IMAGE_TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -34,15 +39,20 @@ export const IMAGE_TYPES: Record<string, string> = {
   ".gif": "image/gif",
 }
 
-const stem = (name: string) => name.replace(HEIC, "")
+const stem = (name: string) => name.replace(UNREADABLE, "")
+const copyType = (name: string) => (TIFF.test(name) ? "pdf" : "jpg")
+/** The name of the copy that replaces `name` (`scan.tif` → `scan.pdf`, `IMG_1.HEIC` → `IMG_1.jpg`). */
+export const copyName = (name: string) => `${stem(name)}.${copyType(name)}`
 
-/** JPEGs already made from `heic` (`<stem>.jpg`, or `<stem>-N.jpg` for a file with several images). */
-export function copiesOf(heic: string, files: readonly string[]): string[] {
-  const s = stem(heic).toLowerCase()
-  return files.filter((g) => g.toLowerCase().startsWith(s) && /^(-\d+)?\.jpg$/.test(g.toLowerCase().slice(s.length)))
+/** Copies already made from `name` (`<stem>.jpg`, or `<stem>-N.jpg` for a HEIC with several images; `<stem>.pdf` for a TIFF). */
+export function copiesOf(name: string, files: readonly string[]): string[] {
+  const s = stem(name).toLowerCase()
+  const copy = TIFF.test(name) ? /^\.pdf$/ : /^(-\d+)?\.jpg$/
+  return files.filter((g) => g.toLowerCase().startsWith(s) && copy.test(g.toLowerCase().slice(s.length)))
 }
 
 async function decode(input: string, output: string) {
+  if (TIFF.test(input)) return void (await exec("tiff2pdf", ["-o", output, input], { timeout: TIMEOUT_MS }))
   try {
     await exec("heif-dec", ["--quiet", "-q", QUALITY, input, output], { timeout: TIMEOUT_MS })
   } catch (e) {
@@ -51,14 +61,15 @@ async function decode(input: string, output: string) {
   }
 }
 
-/** Decodes `dir/<name>.heic` into `<name>.jpg` (`-1`, `-2`... for several images) and returns the new names. */
-async function heicToJpeg(dir: string, name: string, taken: readonly string[]): Promise<string[]> {
+/** Decodes `dir/<name>` into `<stem>.jpg` (`-1`, `-2`... for several images) or `<stem>.pdf`, and returns the new names. */
+async function convert(dir: string, name: string, taken: readonly string[]): Promise<string[]> {
   // Inside the folder, so the result is a rename on the same filesystem.
   const tmp = await mkdtemp(join(dir, ".convert-"))
   try {
-    await decode(join(dir, name), join(tmp, `${stem(name)}.jpg`))
+    const ext = `.${copyType(name)}`
+    await decode(join(dir, name), join(tmp, copyName(name)))
     const names = [...taken]
-    for (const out of (await readdir(tmp)).filter((f) => f.endsWith(".jpg")).sort()) {
+    for (const out of (await readdir(tmp)).filter((f) => f.endsWith(ext)).sort()) {
       const n = fileName(out, names)
       await rename(join(tmp, out), join(dir, n))
       names.push(n)
@@ -70,19 +81,19 @@ async function heicToJpeg(dir: string, name: string, taken: readonly string[]): 
 }
 
 /**
- * Replaces every HEIC in `dir` (among `files`) with its JPEG and returns the new list, in the
- * same order. A HEIC that fails to decode stays as it is.
+ * Replaces every HEIC and TIFF in `dir` (among `files`) with its JPEG or PDF and returns the new
+ * list, in the same order. A file that fails to decode stays as it is.
  */
-export async function replaceHeic(dir: string, files: readonly string[]): Promise<string[]> {
+export async function replaceUnreadable(dir: string, files: readonly string[]): Promise<string[]> {
   let out = [...files]
-  for (const name of files.filter((f) => HEIC.test(f))) {
+  for (const name of files.filter((f) => UNREADABLE.test(f))) {
     try {
-      let jpegs = copiesOf(name, out)
-      if (!jpegs.length) jpegs = await heicToJpeg(dir, name, out)
-      if (!jpegs.length) throw new Error("no image decoded")
+      let copies = copiesOf(name, out)
+      if (!copies.length) copies = await convert(dir, name, out)
+      if (!copies.length) throw new Error("nothing decoded")
       await rm(join(dir, name), { force: true })
       const at = out.indexOf(name)
-      out = [...out.slice(0, at), ...jpegs, ...out.slice(at + 1).filter((f) => !jpegs.includes(f))]
+      out = [...out.slice(0, at), ...copies, ...out.slice(at + 1).filter((f) => !copies.includes(f))]
     } catch (e) {
       console.error(`images: cannot convert ${join(dir, name)}: ${e instanceof Error ? e.message : e}`)
     }

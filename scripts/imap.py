@@ -42,7 +42,7 @@ from email.message import EmailMessage
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-from gmail import DESTINATION, INBOX_DAYS, PER_RUN, _file_name, _from_html, _inbox_item, _index, _record, _slug
+from gmail import DESTINATION, INBOX_DAYS, PER_RUN, _file_name, _from_html, _inbox_item, _index, _readable, _record, _slug
 from store import DATA_DIR
 
 CONFIG = DATA_DIR / "imap.toml"
@@ -235,7 +235,7 @@ def _save(msg: EmailMessage, ident: str, account: str, mailbox: str, flags: list
             continue
         name = _file_name(part.get_filename() or fallback, attachments)
         (folder / name).write_bytes(data)
-        attachments.append(name)
+        attachments += _readable(folder, name, attachments)
 
     text = body_text(msg)
     try:
