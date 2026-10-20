@@ -31,7 +31,7 @@ ARG CLAUDE_CODE_VERSION=2.1.288
 ARG TZ=Europe/Rome
 # python3: the CLIs in scripts/ (Gmail and IMAP sync, upcoming, ics); git: history of the data folder;
 # ffmpeg + libgomp1: voice messages (Opus to WAV, and the runtime parakeet-cli links against);
-# libheif: iPhone HEIC photos to JPEG for the agent; libtiff-tools: TIFF scans and faxes to PDF (tiff2pdf); poppler-utils: Claude Code reads PDF page ranges with pdftoppm.
+# libheif: iPhone HEIC photos to JPEG for the agent; libtiff-tools: TIFF scans and faxes to PDF (tiff2pdf, tiffcp); poppler-utils: Claude Code reads PDF page ranges with pdftoppm, and scripts/scans.py checks each PDF it makes against the TIFF (with ffmpeg).
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 git tini ca-certificates tzdata ffmpeg libgomp1 \
      libheif-examples libheif-plugin-libde265 libtiff-tools poppler-utils \

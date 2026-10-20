@@ -22,6 +22,8 @@ jobs:
         with:
           python-version: "3.11"
       - run: pnpm install --frozen-lockfile
+      # TIFF scans to PDF (scripts/scans.py), as in the Docker image: the tests convert and check fax-style scans.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libtiff-tools poppler-utils ffmpeg
       - run: python3 -m py_compile scripts/*.py
       - run: pnpm lint
       - run: pnpm typecheck

@@ -19,7 +19,7 @@ const s = services(config)
 await s.account.ready
 await s.devices.prune()
 await s.inbox.recover()
-// HEIC photos and TIFF scans that arrived before the server converted them.
+// HEIC photos and TIFF scans that arrived before the server converted them (a TIFF with its PDF is left alone).
 void s.inbox.convertAll().catch((e: Error) => console.error(`inbox: ${e.message}`))
 await s.repo.init().catch((e: Error) => console.error(`git: ${e.message}`))
 

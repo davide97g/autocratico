@@ -4,10 +4,12 @@
  * iPhone photos arrive as HEIC, which neither Claude Code nor most browsers can show: each one is
  * replaced by a JPEG (libheif's `heif-dec`, or `sips` on macOS). Quality 85 at full resolution:
  * about the size of the HEIC, text stays sharp (PNG is ~6x larger, WebP is no smaller at the same
- * quality). Scans and faxes arrive as TIFF, which Claude Code cannot read either: each one becomes a
- * PDF with all its pages (libtiff's `tiff2pdf`, lossless; `sips` would keep only the first page, so
- * without tiff2pdf the TIFF stays as it is). The original is deleted only once its copy is written.
- * scripts/gmail.py does the same for the emails it saves.
+ * quality). The HEIC is deleted only once its JPEG is written.
+ *
+ * Scans and faxes arrive as TIFF, which Claude Code cannot read either: each one gets a PDF with all
+ * its pages next to it, and the TIFF stays. scripts/scans.py makes it (tiff2pdf, decoding every page)
+ * and keeps it only when every page, rendered, matches the scan; otherwise the TIFF stays alone.
+ * scripts/gmail.py and imap.py do the same for the emails they save.
  *
  * Previews for the web app are small JPEGs made with ffmpeg, cached under out/thumbs/.
  */
@@ -16,6 +18,7 @@ import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, statSync } from "node:fs"
 import { mkdtemp, readdir, rename, rm } from "node:fs/promises"
 import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
 
 import { fileName } from "@autocratico/core"
@@ -26,9 +29,10 @@ const exec = promisify(execFile)
 const QUALITY = "85"
 const TIMEOUT_MS = 120_000
 const THUMB_WIDTH = 480
+const SCANS = fileURLToPath(new URL("../../../scripts/scans.py", import.meta.url))
 
 const TIFF = /\.(tiff?)$/i
-/** Files the agent cannot read, replaced on arrival by a copy it can (HEIC: JPEG, TIFF: PDF). */
+/** Files the agent cannot read, given on arrival a copy it can (HEIC: JPEG, replacing it; TIFF: PDF, beside it). */
 export const UNREADABLE = /\.(heic|heif|tiff?)$/i
 /** Raster images a browser shows safely inline; anything else is served as a download. */
 export const IMAGE_TYPES: Record<string, string> = {
@@ -41,7 +45,7 @@ export const IMAGE_TYPES: Record<string, string> = {
 
 const stem = (name: string) => name.replace(UNREADABLE, "")
 const copyType = (name: string) => (TIFF.test(name) ? "pdf" : "jpg")
-/** The name of the copy that replaces `name` (`scan.tif` → `scan.pdf`, `IMG_1.HEIC` → `IMG_1.jpg`). */
+/** The name of the copy made from `name` (`scan.tif` → `scan.pdf`, `IMG_1.HEIC` → `IMG_1.jpg`). */
 export const copyName = (name: string) => `${stem(name)}.${copyType(name)}`
 
 /** Copies already made from `name` (`<stem>.jpg`, or `<stem>-N.jpg` for a HEIC with several images; `<stem>.pdf` for a TIFF). */
@@ -52,7 +56,8 @@ export function copiesOf(name: string, files: readonly string[]): string[] {
 }
 
 async function decode(input: string, output: string) {
-  if (TIFF.test(input)) return void (await exec("tiff2pdf", ["-o", output, input], { timeout: TIMEOUT_MS }))
+  // Every page is rendered and compared with the scan: a long fax takes a while.
+  if (TIFF.test(input)) return void (await exec(process.env.PYTHON ?? "python3", [SCANS, "convert", input, output], { timeout: 5 * TIMEOUT_MS }))
   try {
     await exec("heif-dec", ["--quiet", "-q", QUALITY, input, output], { timeout: TIMEOUT_MS })
   } catch (e) {
@@ -81,8 +86,8 @@ async function convert(dir: string, name: string, taken: readonly string[]): Pro
 }
 
 /**
- * Replaces every HEIC and TIFF in `dir` (among `files`) with its JPEG or PDF and returns the new
- * list, in the same order. A file that fails to decode stays as it is.
+ * Replaces every HEIC in `dir` (among `files`) with its JPEG, puts a PDF before every TIFF, and
+ * returns the new list, in the same order. A file that fails to convert stays as it is.
  */
 export async function replaceUnreadable(dir: string, files: readonly string[]): Promise<string[]> {
   let out = [...files]
@@ -91,9 +96,11 @@ export async function replaceUnreadable(dir: string, files: readonly string[]): 
       let copies = copiesOf(name, out)
       if (!copies.length) copies = await convert(dir, name, out)
       if (!copies.length) throw new Error("nothing decoded")
-      await rm(join(dir, name), { force: true })
+      const keep = TIFF.test(name)
+      if (!keep) await rm(join(dir, name), { force: true })
       const at = out.indexOf(name)
-      out = [...out.slice(0, at), ...copies, ...out.slice(at + 1).filter((f) => !copies.includes(f))]
+      const others = (list: string[]) => list.filter((f) => !copies.includes(f))
+      out = [...others(out.slice(0, at)), ...copies, ...(keep ? [name] : []), ...others(out.slice(at + 1))]
     } catch (e) {
       console.error(`images: cannot convert ${join(dir, name)}: ${e instanceof Error ? e.message : e}`)
     }

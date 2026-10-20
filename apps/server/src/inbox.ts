@@ -119,9 +119,9 @@ export class Inbox {
   }
 
   /**
-   * Replaces HEIC photos with JPEGs and TIFF scans with PDFs, in the item and in the email it points
-   * to (archive/email): formats that the agent can read and every browser can show. Returns the item
-   * as updated.
+   * Replaces HEIC photos with JPEGs and gives TIFF scans a PDF beside them, in the item and in the
+   * email it points to (archive/email): formats that the agent can read and every browser can show.
+   * Returns the item as updated.
    */
   async convertFiles(item: InboxItem): Promise<InboxItem> {
     if (/^archive\/email\/[^/.][^/]*$/.test(item.ref)) await this.#convertEmail(join(this.dir, "..", item.ref))
@@ -133,12 +133,14 @@ export class Inbox {
       const files = converted.filter((f) => existsSync(join(this.dir, folder, f)))
       // An item named after its file keeps a name that matches what is there.
       const title = UNREADABLE.test(rest.title) && !files.includes(rest.title) ? copyName(rest.title) : rest.title
+      // A TIFF stays with its PDF: an item converted before is left as it is.
+      if (title === rest.title && files.join("\0") === rest.files.join("\0")) return current
       writeJson(join(this.dir, folder, "item.json"), { ...rest, title, files })
       return { ...current, title, files }
     })
   }
 
-  /** Converts an email's attachments (saved before scripts/gmail.py did it) and lists the new names in its message.md. */
+  /** Converts an email's attachments (saved before scripts/gmail.py did it) and lists the new files in its message.md. */
   async #convertEmail(dir: string): Promise<void> {
     if (!existsSync(dir)) return
     const before = readdirSync(dir)
@@ -149,7 +151,13 @@ export class Inbox {
     const text = readFileSync(message, "utf8")
     const fixed = text.replace(/^attachments: (.*)$/m, (line, list: string) => {
       try {
-        const names = (JSON.parse(list) as string[]).flatMap((n) => (after.includes(n) ? [n] : copiesOf(n, after)))
+        const listed = JSON.parse(list) as string[]
+        // A HEIC's JPEGs take its place; a TIFF's PDF goes before it (once, however often this runs).
+        const names = listed.flatMap((n) => {
+          if (!UNREADABLE.test(n)) return after.includes(n) ? [n] : copiesOf(n, after)
+          const copies = copiesOf(n, after).filter((c) => !listed.includes(c))
+          return after.includes(n) ? [...copies, n] : copies
+        })
         return `attachments: ${JSON.stringify(names)}`
       } catch {
         return line

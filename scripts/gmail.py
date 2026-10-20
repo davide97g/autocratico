@@ -58,6 +58,7 @@ from email.utils import parsedate_to_datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
+from scans import ScanError, to_pdf
 from store import DATA_DIR
 
 SECRETS = DATA_DIR / "secrets"
@@ -363,21 +364,26 @@ def _file_name(name: str, taken: list[str]) -> str:
     return name
 
 
-
 def _decoders(src: str, out: str) -> list[list[str]]:
-    """The command that converts `src`, then the macOS fallback (none for TIFF: sips keeps only the first page)."""
-    if out.endswith(".pdf"):
-        return [["tiff2pdf", "-o", out, src]]
+    """The command that turns a HEIC into a JPEG, then the macOS fallback."""
     return [["heif-dec", "--quiet", "-q", "85", src, out], ["sips", "-s", "format", "jpeg", "-s", "formatOptions", "85", src, "--out", out]]
 
 
 def _readable(folder: Path, name: str, taken: list[str]) -> list[str]:
-    """Replaces a TIFF scan with a PDF of all its pages (tiff2pdf, lossless) and a HEIC photo with a
-    JPEG (one per image), so that the agents can read them; returns the names now in `folder`. A file
-    that cannot be converted stays as it is."""
+    """Gives a TIFF scan a PDF of all its pages, before it (scripts/scans.py: checked page by page; the
+    TIFF stays), and replaces a HEIC photo with a JPEG (one per image), so that the agents can read
+    them; returns the names now in `folder`. A file that cannot be converted stays as it is."""
     ext = READABLE_COPY.get(Path(name).suffix.lower())
     if not ext:
         return [name]
+    if ext == "pdf":
+        pdf = _file_name(f"{Path(name).stem}.pdf", [*taken, name])
+        try:
+            to_pdf(folder / name, folder / pdf)
+        except (ScanError, OSError) as e:
+            print(f"  cannot convert {name}: {e}", file=sys.stderr)
+            return [name]
+        return [pdf, name]
     with tempfile.TemporaryDirectory(dir=folder, prefix=".convert-") as tmp:
         out = Path(tmp) / f"{Path(name).stem}.{ext}"
         decoders = _decoders(str(folder / name), str(out))
@@ -398,6 +404,7 @@ def _readable(folder: Path, name: str, taken: list[str]) -> list[str]:
         return [name]
     (folder / name).unlink()
     return names
+
 
 def search(query: str, limit: int = 50) -> None:
     ids = _list(query, limit)
