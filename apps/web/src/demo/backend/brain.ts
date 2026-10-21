@@ -874,14 +874,18 @@ var CSS = "<style>" +
   ".row:hover{background:var(--muted)}.dim{color:var(--muted-foreground)}" +
   "</style>"
 
-function render() {
-  var rows = ac.data.due || []
+function months() {
   var y = +ac.today.slice(0, 4), m = +ac.today.slice(5, 7)
   var keys = []
   for (var i = 0; i < 12; i++) keys.push((y + Math.floor((m - 1 + i) / 12)) + "-" + String(((m - 1 + i) % 12) + 1).padStart(2, "0"))
   var by = {}
   keys.forEach(function (k) { by[k] = { sum: 0, items: [] } })
-  rows.forEach(function (r) { var b = r.date && by[r.date.slice(0, 7)]; if (b) { b.sum += r.amount || 0; b.items.push(r) } })
+  ;(ac.data.due || []).forEach(function (r) { var b = r.date && by[r.date.slice(0, 7)]; if (b) { b.sum += r.amount || 0; b.items.push(r) } })
+  return { keys: keys, by: by }
+}
+
+function render() {
+  var mm = months(), keys = mm.keys, by = mm.by
   var weight = function (k) { return ac.privacy ? by[k].items.length : by[k].sum }
   var max = Math.max.apply(null, keys.map(weight).concat([1]))
   var total = keys.reduce(function (s, k) { return s + by[k].sum }, 0)
@@ -903,6 +907,13 @@ function render() {
 }
 ac.on("pick", function (e) { sel = e.data.month; render() })
 ac.on("open", function (e) { ac.open({ type: "deadline", id: e.data.id }) })
+ac.onExport(function () {
+  var mm = months(), en = ac.locale === "en"
+  return { table: {
+    columns: [en ? "Month" : "Mese", en ? "Payments" : "Pagamenti", en ? "Total (EUR)" : "Totale (EUR)"],
+    rows: mm.keys.map(function (k) { return [k, mm.by[k].items.length, ac.privacy ? null : Math.round(mm.by[k].sum * 100) / 100] }),
+  } }
+})
 ac.onUpdate(render)`
 
 /** Attachments: the real agent reads them (it sees photos and PDFs); the demo says what it would do. */
@@ -918,19 +929,19 @@ function attachments(files: string[], lang: Lang): Answer {
   }
 }
 
-/** Custom mode, as the real agent does it: asks first, writes code only after the user's yes. */
+/** Creative mode, as the real agent does it: asks first, writes code only after the user's yes. */
 function customWidget(lang: Lang): Answer {
   return {
     tools: [["Read", "board.json"], ["Read", "deadlines.toml"]],
     text: L(
       lang,
-      "Con i componenti della Bacheca non riesco a fare una mappa di calore cliccabile: dovrei scrivere un widget con **codice libero**, che gira isolato in una sandbox e vede solo le tue scadenze da pagare. Passo alla modalità codice libero?\n\n```confirm\n```",
-      "The Board's components cannot draw a clickable heatmap: I would write a widget with **custom code**, running isolated in a sandbox and seeing only your payments. Switch to custom mode?\n\n```confirm\n```"
+      "Con i componenti della Bacheca non riesco a fare una mappa di calore cliccabile: serve la **creative mode**, dove scrivo io il codice del widget e lo eseguo isolato in una sandbox, con solo le tue scadenze da pagare. Passo alla creative mode?\n\n```confirm\n```",
+      "The Board's components cannot draw a clickable heatmap: this needs **creative mode**, where I write the widget's code and run it isolated in a sandbox, with only your payments. Switch to creative mode?\n\n```confirm\n```"
     ),
     confirm: {
       yes: () => ({
         tools: [["Read", "deadlines.toml"]],
-        text: `${L(lang, "Ecco la mappa di calore dei pagamenti: clicca un mese per vedere cosa scade. Prima di eseguirla puoi leggere il codice.", "Here is the payments heatmap: click a month to see what is due. You can read the code before running it.")}\n\n\`\`\`widget\n${JSON.stringify({
+        text: `${L(lang, "Ecco la mappa di calore dei pagamenti, in creative mode: clicca un mese per vedere cosa scade. Prima di eseguirla puoi leggere il codice.", "Here is the payments heatmap, in creative mode: click a month to see what is due. You can read the code before running it.")}\n\n\`\`\`widget\n${JSON.stringify({
           id: "mappa-pagamenti",
           title: L(lang, "Mappa dei pagamenti", "Payments heatmap"),
           size: "medium",
@@ -1045,7 +1056,7 @@ export function route(
   const links = gmailLinks(text)
   if (links.length) return ["gmail", gmail(links[0], lang)]
   const aboutWidget = aboutKey?.startsWith("widget:") ? ((state().board ?? []).find((w) => `widget:${w.id}` === aboutKey) ?? null) : null
-  if (!aboutWidget && /heatmap|mappa di calore|codice libero|custom|personalizzat|simulat/.test(t))
+  if (!aboutWidget && /heatmap|mappa di calore|codice libero|creative|creativ|originale|custom|personalizzat|simulat/.test(t))
     return ["widget-custom", customWidget(lang)]
   if (aboutWidget || /widget|grafico|bacheca|dashboard|chart|board|conto alla rovescia|countdown/.test(t))
     return ["widget", widget(text, lang, aboutWidget)]

@@ -3,7 +3,8 @@ import { CheckIcon, ChevronRightIcon, CodeIcon, LayoutGridIcon, PlayIcon, PlusIc
 import { type CustomWidgetInput, widgetJson, type WidgetInput } from "@autocratico/core"
 import { toast } from "sonner"
 
-import { SandboxFrame } from "@/components/sandbox-frame"
+import { CreativeBadge, CreativeMark } from "@/components/creative"
+import { SandboxFrame, type SandboxHandle } from "@/components/sandbox-frame"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -12,9 +13,9 @@ import { WidgetView } from "@/components/widget"
 import { useI18n } from "@/i18n"
 import { useBoard } from "@/lib/board"
 
-/** A widget's content: the catalog's renderer, or the sandbox for custom code. */
-export function WidgetBody({ widget }: { widget: WidgetInput }) {
-  return widget.kind === "custom" ? <SandboxFrame key={widgetJson(widget)} widget={widget} /> : <WidgetView spec={widget.spec} />
+/** A widget's content: the catalog's renderer, or the sandbox for custom code (`frame` reaches it for exports). */
+export function WidgetBody({ widget, frame }: { widget: WidgetInput; frame?: React.Ref<SandboxHandle> }) {
+  return widget.kind === "custom" ? <SandboxFrame key={widgetJson(widget)} widget={widget} ref={frame} /> : <WidgetView spec={widget.spec} />
 }
 
 /**
@@ -51,13 +52,15 @@ export function WidgetProposal({ widget }: { widget: WidgetInput }) {
   return (
     <div className="flex flex-col gap-3 rounded-lg bg-muted/60 p-2.5">
       <div className="flex items-center gap-2.5">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-card">{custom ? <CodeIcon className="size-4" /> : <LayoutGridIcon className="size-4" />}</span>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{widget.title}</span>
-        {custom && (
-          <Badge variant="secondary" title={t.widgetCode.badgeHint}>
-            {t.widgetCode.badge}
-          </Badge>
+        {custom ? (
+          <CreativeMark />
+        ) : (
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-card">
+            <LayoutGridIcon className="size-4" />
+          </span>
         )}
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{widget.title}</span>
+        {custom && <CreativeBadge label={t.widgetCode.badge} title={t.widgetCode.badgeHint} />}
         {!saved && <Badge variant="secondary">{current ? t.chat.widget.changed : t.chat.widget.new}</Badge>}
       </div>
       {current && !saved && runs && (

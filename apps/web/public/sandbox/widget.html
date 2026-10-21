@@ -8,6 +8,8 @@
   3. What the worker draws is an HTML string, sanitized below against a whitelist (no scripts, event
      attributes, links, forms, frames, meta or external files) before it reaches the page; and the CSP
      runs only this page's own script (by hash), so an event attribute that slipped through stays dead.
+  Exports: only when the app asks, the worker hands back a table (ac.onExport) and this page a picture of
+  what it drew (snapshot below); the app checks both and writes the file itself.
   The CSP comes from the server (SANDBOX_CSP in apps/server/src/app.ts, deploy/demo.nginx.conf); the meta
   below repeats it for the dev server. test/sandbox.test.ts keeps the script's hash in step.
 -->
@@ -16,7 +18,7 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'sha256-3U7ombQechywIXAQoG99HBICuCVC9nricV1biomzlQE='; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; connect-src 'none'; frame-src 'none'; child-src 'none'; manifest-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'"
+      content="default-src 'none'; script-src 'sha256-7t3ZMt5Ke5cyxZiEvBHBnsGSd3FLzilmuOoblG1p/L8='; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; connect-src 'none'; frame-src 'none'; child-src 'none'; manifest-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'"
     />
     <meta name="referrer" content="no-referrer" />
     <meta http-equiv="x-dns-prefetch-control" content="off" />
@@ -163,6 +165,7 @@
   const state = { data: {}, today: "", locale: "it", theme: "light", privacy: false }
   const updates = []
   const handlers = new Map()
+  let exporter = null
   let ready = false
   const send = (m) => postMessage(m)
   const report = (e) => send({ type: "error", message: String((e && e.message) || e).slice(0, 500) })
@@ -193,6 +196,7 @@
     },
     open(target) { send({ type: "open", target }) },
     ask(question) { send({ type: "ask", question: String(question).slice(0, 500) }) },
+    onExport(fn) { if (typeof fn === "function") exporter = fn },
   })
   Object.defineProperty(self, "ac", { value: ac, writable: false, configurable: false })
   self.addEventListener("error", (e) => report(e.error || e.message))
@@ -207,6 +211,11 @@
     } else if (m.type === "event") {
       const fn = handlers.get(m.name)
       if (fn) call(fn, { value: m.value, checked: m.checked, data: m.data })
+    } else if (m.type === "export") {
+      // Only a plain copy of the table goes back; the app checks it before writing anything.
+      let table = null
+      try { const out = exporter ? exporter(String(m.format)) : null; table = out && out.table ? JSON.parse(JSON.stringify(out.table)) : null } catch (e) { report(e) }
+      send({ type: "export", id: m.id, table })
     }
   })
 })();
@@ -214,6 +223,7 @@
 
   let worker = null
   const state = {}
+  const exports = new Map()
   const TOKEN = /^--[a-z0-9-]{1,40}$/
   const VALUE = /^[^;{}<>\\]{1,120}$/
   function apply(m) {
@@ -245,8 +255,87 @@
       else if (m.type === "open") post({ type: "open", target: m.target })
       else if (m.type === "ask") post({ type: "ask", question: String(m.question).slice(0, 500) })
       else if (m.type === "error") report(m.message)
+      else if (m.type === "export") answer(m.id, m.table)
     })
     worker.postMessage({ type: "update", state })
+  }
+
+  // ---------- exports: asked by the app, answered with the worker's table and, if wanted, a picture ----------
+  // The worker cannot start one, and the picture is taken here, never by the widget's code.
+  function answer(id, table) {
+    const wanted = exports.get(id)
+    if (!wanted) return
+    exports.delete(id)
+    clearTimeout(wanted.timer)
+    const done = (picture) => post({ type: "export", id, table: table === undefined ? null : table, picture })
+    if (!wanted.picture) return done(null)
+    snapshot().then(done, () => done(null))
+  }
+
+  const PICTURE_STYLE = ["fill", "fill-opacity", "stroke", "stroke-width", "stroke-opacity", "stroke-dasharray", "stroke-linecap", "stroke-linejoin", "opacity", "font-family", "font-size", "font-weight", "font-style", "text-anchor", "dominant-baseline", "letter-spacing", "stop-color", "stop-opacity", "visibility", "display"]
+
+  function svgImage(markup, width, height) {
+    return new Promise((resolve, reject) => {
+      const img = new Image(width, height)
+      img.onload = () => resolve(img)
+      img.onerror = () => reject(new Error("picture"))
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(markup)
+    })
+  }
+
+  async function rasterize(markup, width, height) {
+    const scale = Math.max(1, Math.min(2, Math.sqrt(16e6 / (width * height))))
+    const img = await svgImage(markup, width, height)
+    const canvas = document.createElement("canvas")
+    canvas.width = Math.round(width * scale)
+    canvas.height = Math.round(height * scale)
+    const g = canvas.getContext("2d")
+    g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--card").trim() || (state.theme === "dark" ? "#171717" : "#fff")
+    g.fillRect(0, 0, canvas.width, canvas.height)
+    g.scale(scale, scale)
+    g.drawImage(img, 0, 0, width, height)
+    return { png: canvas.toDataURL("image/png"), width, height }
+  }
+
+  // The whole widget through foreignObject (Chrome, Firefox); where that taints the canvas (Safari), its
+  // largest SVG alone, with the computed styles written on each element.
+  async function snapshot() {
+    const box = root.getBoundingClientRect()
+    const width = Math.ceil(box.width)
+    const height = Math.ceil(box.height)
+    if (!width || !height) return null
+    try {
+      const copy = root.cloneNode(true)
+      const live = root.querySelectorAll("input, textarea")
+      copy.querySelectorAll("input, textarea").forEach((el, i) => {
+        if (el.localName === "textarea") el.textContent = live[i].value
+        else el.setAttribute("value", live[i].value)
+        if (live[i].checked) el.setAttribute("checked", "")
+      })
+      const page = document.querySelector("head style").textContent.replace(/html,\s*body/, ".ac-shot")
+      // A margin, so outlines and shadows at the edges stay in the picture.
+      const w = width + 8
+      const h = height + 8
+      const wrap = '<div xmlns="' + HTML + '" class="ac-shot" style="' + document.documentElement.style.cssText.replace(/"/g, "'") + ';padding:4px;width:' + w + 'px">' +
+        "<style>" + page + "</style>" + new XMLSerializer().serializeToString(copy) + "</div>"
+      return await rasterize('<svg xmlns="' + SVG + '" width="' + w + '" height="' + h + '"><foreignObject width="100%" height="100%">' + wrap + "</foreignObject></svg>", w, h)
+    } catch {}
+    const svgs = [...root.querySelectorAll("svg")].filter((el) => !el.parentElement.closest("svg"))
+    const svg = svgs.sort((a, b) => b.getBoundingClientRect().width * b.getBoundingClientRect().height - a.getBoundingClientRect().width * a.getBoundingClientRect().height)[0]
+    if (!svg) return null
+    const r = svg.getBoundingClientRect()
+    if (!r.width || !r.height) return null
+    const copy = svg.cloneNode(true)
+    const from = [svg, ...svg.querySelectorAll("*")]
+    const to = [copy, ...copy.querySelectorAll("*")]
+    from.forEach((el, i) => {
+      const css = getComputedStyle(el)
+      to[i].setAttribute("style", PICTURE_STYLE.map((p) => p + ":" + css.getPropertyValue(p)).join(";"))
+    })
+    copy.setAttribute("xmlns", SVG)
+    copy.setAttribute("width", String(Math.ceil(r.width)))
+    copy.setAttribute("height", String(Math.ceil(r.height)))
+    return rasterize(new XMLSerializer().serializeToString(copy), Math.ceil(r.width), Math.ceil(r.height))
   }
 
   // Interaction: elements with data-on="name" tell the worker.
@@ -279,6 +368,10 @@
     } else if (m.type === "update" && worker) {
       apply(m)
       worker.postMessage({ type: "update", state })
+    } else if (m.type === "export" && worker && typeof m.id === "string" && /^[a-z0-9-]{1,40}$/.test(m.id) && !exports.has(m.id)) {
+      // A worker that does not answer in time gets an export without its table.
+      exports.set(m.id, { picture: m.picture === true, timer: setTimeout(() => answer(m.id, null), 3000) })
+      worker.postMessage({ type: "export", id: m.id, format: String(m.format) })
     }
   })
 

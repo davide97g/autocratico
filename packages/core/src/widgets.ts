@@ -16,6 +16,7 @@
 import { z } from "zod"
 
 import { addDays, addMonths } from "./dates.ts"
+import { ExportAnswer } from "./exports.ts"
 import { periodStart, portfolio } from "./finance.ts"
 import type { Case, Data, FinanceData, Occurrence } from "./schema.ts"
 import { type Level, level, ORDER } from "./status.ts"
@@ -516,7 +517,7 @@ export function customData(queries: Record<string, WidgetQuery>, ctx: WidgetCont
  * by the demo's nginx (deploy/demo.nginx.conf) and repeated in the page's meta; apps/web/test/sandbox.test.ts
  * keeps the hash and the copies in step. Only the app itself may frame it.
  */
-export const SANDBOX_CSP = "default-src 'none'; script-src 'sha256-3U7ombQechywIXAQoG99HBICuCVC9nricV1biomzlQE='; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; connect-src 'none'; frame-src 'none'; child-src 'none'; manifest-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'"
+export const SANDBOX_CSP = "default-src 'none'; script-src 'sha256-7t3ZMt5Ke5cyxZiEvBHBnsGSd3FLzilmuOoblG1p/L8='; worker-src blob:; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; connect-src 'none'; frame-src 'none'; child-src 'none'; manifest-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'"
 
 /** What the sandbox may ask the page (apps/web/public/sandbox/widget.html); anything else is ignored. */
 export const SandboxMessage = z.discriminatedUnion("type", [
@@ -525,6 +526,7 @@ export const SandboxMessage = z.discriminatedUnion("type", [
   z.object({ type: z.literal("open"), target: WidgetAction.refine((a) => a.type !== "ask") }),
   z.object({ type: z.literal("ask"), question: z.string().trim().min(1).max(500) }),
   z.object({ type: z.literal("error"), message: z.string().max(500) }),
+  ExportAnswer,
 ])
 export type SandboxMessage = z.infer<typeof SandboxMessage>
 
@@ -550,7 +552,7 @@ Queries ("from"):
 - {"from": "cases", open?: true|false, slugs?: [...]}. Chart "by": status.
 Use the real area names, deadline ids, case slugs and category ids from the data files. Prefer few, clear elements: a Metric or two above a Chart or a list. "small" fits one number, "medium" a chart or a list, "large" and "full" a few side by side.
 
-Custom widgets (free code in a sandbox): only when the components above cannot do what the user asks (an interactive timeline, a heatmap, a simulator, a drawing). First ask the user to switch to custom mode: say in two lines what you would build and why the components are not enough, and end that answer with an empty confirm block (the app shows yes/no). Only when the user's latest message says yes, write
+Creative mode (custom widgets: free code in a sandbox; call it "creative mode" in any language): only when the components above cannot do what the user asks, or the user wants something original (an interactive timeline, a heatmap, a simulator, a drawing). First ask the user to switch to creative mode: say in two lines what you would build and why the components are not enough, and end that answer with an empty confirm block (the app shows yes/no). Only when the user's latest message says yes, write
 \`\`\`widget
 {"id": "...", "title": "...", "size": "...", "kind": "custom", "data": {"<name>": <query as above>, ...}, "code": "<JavaScript>"}
 \`\`\`
@@ -558,4 +560,5 @@ The user still presses "Run in sandbox" before your code runs, and can read it. 
   ac.data.<name>: rows of each query (null when that data is not available). deadlines: {key, id, title, area, date, days, status, severity, amount, amount_basis, done_on, repeat, case}; transactions: {date, amount, type, category, description}; portfolio: {date, total, brokers}; cases: {slug, title, status, done, total}.
   ac.onUpdate(fn): call fn now and whenever the data, theme or privacy mode change; render inside it. ac.today, ac.locale ("it" or "en"), ac.theme ("light"/"dark"), ac.privacy (true: amounts and some dates are null, show "•••").
   ac.money(n), ac.number(n), ac.date(iso), ac.days(n): formatted in the user's language ("•••" for null). ac.escape(text): text made safe for HTML (use it for titles). ac.open({"type": "view", "view": ...} | {"type": "deadline", "id": "<deadline id>"} | {"type": "case", "slug": ...}). ac.ask("question"): offers the question to the user for the chat.
+  ac.onExport(fn): the Board's export menu (CSV, JSON, PDF, PNG) asks for fn(format) and expects {"table": {"columns": [...], "rows": [[...], ...]}}: what the widget shows (e.g. the totals it draws), plain values, numbers as numbers, at most 40 columns and 5000 rows; without it the file has the rows of its queries. PDF and PNG also carry a picture of the widget as drawn. The app writes the file: the code cannot download anything itself, so when the user asks for a download, point to the export menu (and add onExport if the table should be the widget's own).
   Style with the app's CSS variables: var(--foreground), --muted-foreground, --background, --card, --muted, --border, --primary, --primary-foreground, --chart-1 ... --chart-5, --money-out, --money-in, --status-overdue, --status-urgent, --status-soon, --status-done, --radius; font sizes 12-14px, text in the user's language. The frame grows with the content; keep it under about 600px high. Never put amounts or personal data in the code itself: they come from ac.data.`

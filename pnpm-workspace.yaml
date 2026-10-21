@@ -5,6 +5,7 @@ packages:
   - '!apps/video'
 
 allowBuilds:
+  core-js: false
   esbuild: true
   msw: false
 

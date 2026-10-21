@@ -5,10 +5,12 @@
  * sanitized before it reaches the page. The page receives only the
  * rows of the widget's own queries (amounts left out in privacy mode) and may ask back for three
  * things, each checked here: its height, opening part of the app, offering a question for the chat.
+ * An export goes the other way: the app asks (`SandboxHandle.export`, from the Board's menu), the frame
+ * answers once with a table and a picture, checked here too (core/exports.ts).
  */
 import * as React from "react"
 import { TriangleAlertIcon } from "lucide-react"
-import { customData, type CustomWidgetInput, needsFinance, SandboxMessage } from "@autocratico/core"
+import { customData, type CustomWidgetInput, type ExportFormat, type ExportPicture, type ExportTable, needsFinance, PICTURE_FORMATS, SandboxMessage } from "@autocratico/core"
 import { toast } from "sonner"
 
 import { usePrivacy } from "@/components/privacy"
@@ -41,6 +43,12 @@ const TOKENS = [
   "radius",
 ]
 const MAX_HEIGHT = 900
+/** How long an export waits for the frame (its worker gets 3 s, the picture the rest). */
+const EXPORT_WAIT = 10_000
+
+export type SandboxExport = { table: ExportTable | null; picture: ExportPicture | null }
+/** What the Board asks a running custom widget: null when the frame did not answer in time. */
+export type SandboxHandle = { export: (format: ExportFormat) => Promise<SandboxExport | null> }
 
 /** The app's colors as the sandbox should see them, and whether it is dark. */
 function readTheme(): { tokens: Record<string, string>; theme: "light" | "dark" } {
@@ -60,7 +68,7 @@ function useThemeVersion(): number {
   return version
 }
 
-export function SandboxFrame({ widget }: { widget: CustomWidgetInput }) {
+export function SandboxFrame({ widget, ref }: { widget: CustomWidgetInput; ref?: React.Ref<SandboxHandle> }) {
   const { t, locale } = useI18n()
   const { context, wantFinance, act } = useBoard()
   const { enabled: privacy } = usePrivacy()
@@ -72,6 +80,7 @@ export function SandboxFrame({ widget }: { widget: CustomWidgetInput }) {
   const started = React.useRef(false)
   const ready = React.useRef(false)
   const loads = React.useRef(0)
+  const exports = React.useRef(new Map<string, (answer: SandboxExport | null) => void>())
 
   const finance = React.useMemo(() => needsFinance(widget), [widget])
   React.useEffect(() => {
@@ -113,6 +122,11 @@ export function SandboxFrame({ widget }: { widget: CustomWidgetInput }) {
         if (started.current || !latest.current) return
         started.current = true
         send("init")
+      } else if (m.type === "export") {
+        // Only an answer to a request of ours, once.
+        const resolve = exports.current.get(m.id)
+        exports.current.delete(m.id)
+        resolve?.({ table: m.table, picture: m.picture })
       } else if (m.type === "resize") setHeight(Math.min(MAX_HEIGHT, Math.max(24, Math.ceil(m.height))))
       else if (m.type === "open") act(m.target)
       else if (m.type === "ask") {
@@ -131,6 +145,28 @@ export function SandboxFrame({ widget }: { widget: CustomWidgetInput }) {
       send("init")
     }
   }, [message, send])
+
+  React.useImperativeHandle(
+    ref,
+    () => ({
+      export: (format) =>
+        new Promise((resolve) => {
+          const win = frame.current?.contentWindow
+          if (!win || !started.current) return resolve(null)
+          const id = crypto.randomUUID()
+          const timer = setTimeout(() => {
+            exports.current.delete(id)
+            resolve(null)
+          }, EXPORT_WAIT)
+          exports.current.set(id, (answer) => {
+            clearTimeout(timer)
+            resolve(answer)
+          })
+          win.postMessage({ type: "export", id, format, picture: PICTURE_FORMATS.includes(format) }, "*")
+        }),
+    }),
+    []
+  )
 
   if (navigated) return <Problem text={t.widgetCode.navigated} />
   return (

@@ -119,6 +119,8 @@ export default defineConfig(({ mode }) => {
   resolve: {
     alias: {
       "@": resolve(import.meta.dirname, "./src"),
+      // jsPDF's optional helpers for .html() and SVG, which widget exports never use (src/lib/widget-export.ts).
+      ...Object.fromEntries(["html2canvas", "dompurify", "canvg"].map((m) => [m, resolve(import.meta.dirname, "./src/lib/unused.ts")])),
     },
   },
   server: {

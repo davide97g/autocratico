@@ -33,7 +33,7 @@ The specs behind them:
 
 We borrow the shape from A2UI and json-render (flat element map, catalog in Zod, a prompt written from the catalog) but not the libraries: json-render's shadcn set is Radix while the app is on base-ui, and its state bindings answer a need we do not have. Our "bindings" are register queries, which no library knows. The spec format stays close to json-render's, so moving to it later is a small step.
 
-**Custom widgets** cover what the catalog cannot express (an interactive heatmap, a simulator, a drawing): free code in a sandbox, behind the user's explicit yes, see [Custom widgets](#custom-widgets-free-code-in-a-sandbox). **Not used:** MCP Apps (third-party tools, not our case); AG-UI (our chat already streams NDJSON events).
+**Custom widgets** cover what the catalog cannot express (an interactive heatmap, a simulator, a drawing): free code in a sandbox, behind the user's explicit yes, see [Creative mode](#creative-mode-free-code-in-a-sandbox). **Not used:** MCP Apps (third-party tools, not our case); AG-UI (our chat already streams NDJSON events).
 
 ## How it works
 
@@ -56,11 +56,11 @@ user: "fammi un grafico di quanto devo pagare nei prossimi 6 mesi, per area"
 - **Telegram:** a widget cannot be shown there; the answer says one was proposed and to open the web app.
 - **Demo:** the demo backend answers the board routes and seeds two widgets.
 
-## Custom widgets: free code in a sandbox
+## Creative mode: free code in a sandbox
 
-When the catalog is not enough, the agent may write code. Two confirmations, both in the chat sidebar:
+When the catalog is not enough, or the user wants something original, the agent may write code: **creative mode**, marked in the app by a brush on a purple-to-lime gradient (`components/creative.tsx`, the `--creative-*` tokens). Two confirmations, both in the chat sidebar:
 
-1. The agent first asks to switch to custom mode (what it would build, why the components are not enough) with yes/no buttons; it writes code only after the yes.
+1. The agent first asks to switch to creative mode (what it would build, why the components are not enough) with yes/no buttons; it writes code only after the yes.
 2. The proposal does not run: it shows what data it reads, its size and the code itself, and runs only when the user presses **Run in sandbox**. Only code that ran can be added to the Board; code already on the Board runs there (the user added it).
 
 A custom widget is `{"kind": "custom", "data": {"<name>": <query>}, "code": "<JavaScript>"}`: the queries are the catalog's, so the code receives rows (in privacy mode without amounts), never reads the register itself.
@@ -72,7 +72,24 @@ Where it runs (`apps/web/public/sandbox/widget.html`, `components/sandbox-frame.
 - **It draws by sending HTML** (`ac.render(html)`), which the page sanitizes against a whitelist: no scripts, `on*` attributes, links, forms, frames, `meta`, `link`, `base`, `use`, `foreignObject`, external URLs; images only as `data:image/`. Interaction goes back to the worker through `data-on` attributes.
 - **The page's CSP allows only its own script, by hash** (`script-src 'sha256-…'`, kept in step by `apps/web/test/sandbox.test.ts`), so an event attribute that slipped past the sanitizer stays dead. Sent by the server, the demo's nginx and repeated in the page's meta; `frame-ancestors 'self'`.
 - **The server refuses obvious attempts before anything runs** (`customCodeProblem`: URLs, network APIs, workers, `eval`), with a message the agent can act on.
-- **The app accepts four messages from the frame:** ready, resize, open part of the app, offer a question. A question is offered in a notice and never sent on its own.
+- **The app accepts five messages from the frame:** ready, resize, open part of the app, offer a question, and the answer to an export it asked for. A question is offered in a notice and never sent on its own.
+
+### Exports
+
+A custom widget on the Board can be saved as **CSV, JSON, PDF or PNG** from the download button on its card. The app and the sandbox each do half, and neither half needs a wall lowered:
+
+```
+user picks a format in the card's menu (the app's own UI: the widget cannot start an export)
+  app → frame {export, id, format}; frame → worker; the worker answers with ac.onExport(format)'s table
+  frame: for PDF and PNG, a picture of the widget as drawn, taken by the page's own script (never the widget's code)
+  frame → app {export, id, table, picture}; the app checks both (core/exports.ts), drops what does not fit
+  the app writes the file (lib/widget-export.ts) and saves it with a download link
+```
+
+- **Table:** what `ac.onExport(fn)` returns, `{columns, rows}` of plain values (at most 40 columns and 5000 rows). A widget without it exports the rows of its queries, computed by the app itself (`queryTable`). Privacy mode applies as on screen: what it hides is not in the file.
+- **Picture:** the page clones what it drew into an SVG `foreignObject`, loads it as a `data:` image (the CSP already allows those) and draws it on a canvas. Where that taints the canvas (Safari), it takes the largest SVG alone with its computed styles; failing that, the PDF has the data only. The app accepts only a PNG data URL, checked by shape and signature.
+- **Files:** CSV for spreadsheets (";" and decimal comma in Italian, BOM, and any text cell starting with `=`, `+`, `-`, `@`, tab or CR written with a leading `'`, so it never runs as a formula), JSON (one object per row), PNG, and a PDF made by jsPDF (loaded only then): title, date, picture and the table. The name is the widget's id and the day.
+- The frame gets 10 seconds; its worker 3, after which the export goes on without the widget's table.
 
 Why a worker: the first version ran the code on the sandbox page and cancelled navigations with the Navigation API. A test with a local listener showed that Chrome does not fire `navigate` in an opaque-origin frame, so an obfuscated `location` assignment carried data out. In a worker there is no `location` to assign, and the page itself never runs foreign code. The same test against the worker version (fetch, WebSocket, importScripts, nested workers, eval, links, `<meta refresh>`, `<img>`/CSS/`@import` URLs, `srcdoc`, `onclick`, SVG `image`/`use`/`animate`, forms, `object`/`embed`) reached the listener zero times.
 

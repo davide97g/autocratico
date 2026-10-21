@@ -52,6 +52,9 @@
     --color-money-in: var(--money-in);
     --color-money-out: var(--money-out);
     --color-money-out-muted: var(--money-out-muted);
+    --color-creative-from: var(--creative-from);
+    --color-creative-via: var(--creative-via);
+    --color-creative-to: var(--creative-to);
     --color-status-done-foreground: var(--status-done-foreground);
     --color-glass-border: var(--glass-border);
     --color-status-bar: var(--status-bar);
@@ -109,6 +112,10 @@
     --money-in: oklch(0.66 0.1 155);
     --money-out: oklch(0.64 0.13 25);
     --money-out-muted: oklch(0.8 0.06 25);
+    /* Creative mode (custom widgets, docs/generative-ui.md): the one place with a gradient. */
+    --creative-from: oklch(0.58 0.22 295);
+    --creative-via: oklch(0.66 0.21 340);
+    --creative-to: oklch(0.86 0.2 128);
     --status-done-foreground: oklch(0.985 0 0);
     --glass-border: oklch(1 0 0 / 70%);
     /* Behind the iOS status bar, whose text is always white (black-translucent): dark in both themes. */
@@ -172,6 +179,9 @@
     --money-in: oklch(0.72 0.1 155);
     --money-out: oklch(0.7 0.13 25);
     --money-out-muted: oklch(0.5 0.07 25);
+    --creative-from: oklch(0.7 0.19 295);
+    --creative-via: oklch(0.74 0.18 340);
+    --creative-to: oklch(0.9 0.19 128);
     --status-done-foreground: oklch(0.18 0.03 152);
     --glass-border: oklch(1 0 0 / 8%);
 }
