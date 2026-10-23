@@ -16,6 +16,7 @@ import {
   inboxFolder,
   isDocumentPath,
   parseWhatsAppExport,
+  type PhishingAnalysis,
   whatsappToMarkdown,
 } from "@autocratico/core"
 import { unzipSync } from "fflate"
@@ -115,6 +116,31 @@ export class Inbox {
         const { folder, ...rest } = item
         writeJson(join(this.dir, folder, "item.json"), { ...rest, status, outcome: outcome ?? rest.outcome })
       }
+    })
+  }
+
+  /** Stores the phishing analysis of an item (after the agent flagged it). */
+  setPhishing(id: string, phishing: PhishingAnalysis): Promise<void> {
+    return this.#update(id, () => ({ phishing }))
+  }
+
+  /** The user says a flagged item is not phishing (or takes that back). False when it has no analysis. */
+  async dismissPhishing(id: string, dismissed: boolean, now: Date = new Date()): Promise<boolean> {
+    let found = false
+    await this.#update(id, (item) => {
+      if (!item.phishing) return {}
+      found = true
+      return { phishing: { ...item.phishing, dismissed: dismissed ? now.toISOString() : "" } }
+    })
+    return found
+  }
+
+  #update(id: string, change: (item: InboxItem) => Partial<InboxItem>): Promise<void> {
+    return locks.run(this.dir, () => {
+      const item = this.list().find((i) => i.id === id)
+      if (!item) return
+      const { folder, ...rest } = item
+      writeJson(join(this.dir, folder, "item.json"), { ...rest, ...change(item) })
     })
   }
 

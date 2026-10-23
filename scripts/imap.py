@@ -42,6 +42,7 @@ from email.message import EmailMessage
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
+import phishing
 from gmail import DESTINATION, INBOX_DAYS, PER_RUN, _file_name, _from_html, _inbox_item, _index, _readable, _record, _slug
 from store import DATA_DIR
 
@@ -206,15 +207,21 @@ def _received(msg: EmailMessage) -> datetime:
         return datetime.now()
 
 
+def _content(part: EmailMessage | None) -> str | None:
+    if part is None:
+        return None
+    try:
+        return part.get_content()
+    except (LookupError, UnicodeError, AssertionError):
+        return _text(part.get_payload(decode=True) or b"")
+
+
 def body_text(msg: EmailMessage) -> str:
     """The text of a message: its plain part, else its HTML as text."""
     body = msg.get_body(preferencelist=("plain", "html"))
-    if body is None:
+    content = _content(body)
+    if body is None or content is None:
         return ""
-    try:
-        content = body.get_content()
-    except (LookupError, UnicodeError, AssertionError):
-        content = _text(body.get_payload(decode=True) or b"")
     return _from_html(content) if body.get_content_type() == "text/html" else content
 
 
@@ -238,6 +245,8 @@ def _save(msg: EmailMessage, ident: str, account: str, mailbox: str, flags: list
         attachments += _readable(folder, name, attachments)
 
     text = body_text(msg)
+    # The headers and the links' real addresses, before the message becomes text (scripts/phishing.py).
+    phishing.write(folder, phishing.evidence([(k, str(v)) for k, v in msg.items()], _content(msg.get_body(preferencelist=("html",))), text, attachments))
     try:
         sent = parsedate_to_datetime(str(msg["date"])).isoformat()
     except (TypeError, ValueError, IndexError):

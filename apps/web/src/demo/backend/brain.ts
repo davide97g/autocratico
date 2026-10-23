@@ -517,7 +517,7 @@ function findDates(lang: Lang): Answer {
 }
 
 function phish(lang: Lang): Answer {
-  const flagged = state().inbox.filter((i) => i.outcome.includes("phishing"))
+  const flagged = state().inbox.filter((i) => i.phishing && !i.phishing.dismissed)
   if (!flagged.length)
     return {
       tools: [["Glob", "inbox/*/item.json"]],
@@ -532,7 +532,10 @@ function phish(lang: Lang): Answer {
       ["Glob", "inbox/*/item.json"],
       ...flagged
         .slice(0, 2)
-        .map((i): Tool => ["Read", `inbox/${i.folder}/content.md`]),
+        .flatMap((i): Tool[] => [
+          ["Read", `inbox/${i.folder}/item.json`],
+          ["Read", `${i.ref}/checks.json`],
+        ]),
     ],
     text: [
       L(
@@ -541,15 +544,17 @@ function phish(lang: Lang): Answer {
         `No. I flagged ${flagged.length === 1 ? "it" : "them"} as possible phishing:`
       ),
       "",
-      ...flagged.map(
-        (i) =>
-          `- **${i.title}**: \`${(/@([^>\s]+)/.exec(i.from)?.[1] ?? i.from).trim()}\``
-      ),
+      ...flagged.flatMap((i) => [
+        `- **${i.title}**: \`${(/@([^>\s]+)/.exec(i.from)?.[1] ?? i.from).trim()}\``,
+        ...i
+          .phishing!.signals.filter((g) => g.source === "agent")
+          .map((g) => `  - «${g.evidence}»: ${g.why}`),
+      ]),
       "",
       L(
         lang,
-        "I domini non sono quelli ufficiali (agenziaentrate.gov.it, poste.it) e chiedono dati o pagamenti con urgenza. Non aprire i link: i rimborsi veri si vedono nell'area riservata del sito dell'Agenzia.",
-        "The domains are not the official ones (agenziaentrate.gov.it, poste.it) and they ask for data or money in a hurry. Don't open the links: real refunds show up in your area on the Agency's website."
+        "Non aprire i link: il dettaglio, con dove portano davvero e i controlli SPF/DKIM/DMARC, è in Posta in arrivo. I rimborsi veri si vedono nell'area riservata del sito dell'Agenzia.",
+        "Don't open the links: the details, with where they really go and the SPF/DKIM/DMARC checks, are in the Inbox. Real refunds show up in your area on the Agency's website."
       ),
     ].join("\n"),
   }
@@ -1361,6 +1366,7 @@ function finish(raw: string, lang: Lang): { text: string; lines: string[] } {
       outcome: "",
       important: false,
       marketing: false,
+      phishing: null,
       content: n.text,
     }
     s.inbox.unshift(item)

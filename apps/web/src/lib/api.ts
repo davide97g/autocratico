@@ -65,6 +65,7 @@ export type {
   Device,
   InboxDetail,
   InboxItem,
+  PhishingAnalysis,
   Incomplete,
   JobRun,
   JobStep,
@@ -178,6 +179,8 @@ export const archive = () => request<ArchiveEntry[]>("/api/archive")
 /** What a Gmail link points to; an ApiError's status says why not (400, 404, 409, 422, 502). */
 export const gmailPreview = (link: string) => request<GmailPreview>(`/api/gmail/preview?link=${encodeURIComponent(link)}`)
 export const setInboxStatus = (id: string, status: "new" | "ignored") => post<{ ok: boolean }>(`/api/inbox/${id}/status`, { status })
+/** "Not phishing" on a flagged item (or take it back). */
+export const setPhishingDismissed = (id: string, dismissed: boolean) => post<{ ok: boolean }>(`/api/inbox/${id}/phishing`, { dismissed })
 
 export function ingest(n: { files: File[]; text: string; title?: string }): Promise<InboxItem> {
   const form = new FormData()

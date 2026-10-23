@@ -15,6 +15,7 @@ import { cn } from "cn"
 import { AddDocuments, INBOX_ADDED } from "@/components/add-documents"
 import { Documents } from "@/components/documents"
 import { Markdown } from "@/components/markdown"
+import { PhishingBadge, PhishingReport } from "@/components/phishing"
 import { ShinyText, stagger } from "@/components/motion"
 import { Sensitive, usePrivacy } from "@/components/privacy"
 import { Badge } from "@/components/ui/badge"
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { RowsSkeleton } from "@/components/skeletons"
+import { SourcePreview } from "@/components/source"
 import { useI18n } from "@/i18n"
 import {
   type InboxDetail,
@@ -116,13 +118,16 @@ function Item({ item, onChange, index }: { item: InboxItem; onChange: () => void
             </span>
           )}
         </div>
-        <Badge variant="secondary" className={cn("shrink-0", STATUS_STYLE[item.status])}>
-          {item.status === "processing" ? (
-            <ShinyText>{t.inbox.status[item.status] ?? item.status}</ShinyText>
-          ) : (
-            (t.inbox.status[item.status] ?? item.status)
-          )}
-        </Badge>
+        <span className="flex shrink-0 flex-col items-end gap-1.5">
+          <Badge variant="secondary" className={cn("shrink-0", STATUS_STYLE[item.status])}>
+            {item.status === "processing" ? (
+              <ShinyText>{t.inbox.status[item.status] ?? item.status}</ShinyText>
+            ) : (
+              (t.inbox.status[item.status] ?? item.status)
+            )}
+          </Badge>
+          {item.phishing && <PhishingBadge risk={item.phishing.risk} dismissed={Boolean(item.phishing.dismissed)} />}
+        </span>
       </div>
       <div className="flex flex-wrap gap-2 pl-12">
         <Button variant="ghost" size="xs" onClick={toggle}>
@@ -142,13 +147,21 @@ function Item({ item, onChange, index }: { item: InboxItem; onChange: () => void
       </div>
       {open && detail && (
         <div className="flex flex-col gap-3 pl-12 duration-200 animate-in fade-in-0 slide-in-from-top-1">
-          <Documents paths={detail.files.map((f) => `inbox/${item.folder}/${f}`)} />
-          {detail.content &&
-            (privacy ? (
-              <p className="text-xs text-muted-foreground">{t.privacy.hidden}</p>
-            ) : (
-              <Markdown text={detail.content.slice(0, 20_000)} className="max-h-96 max-w-none overflow-y-auto text-sm" />
-            ))}
+          {item.phishing && item.ref ? (
+            // A flagged email: why, then the message itself with the suspicious parts marked.
+            <SourcePreview path={item.ref} header={false} />
+          ) : (
+            <>
+              {item.phishing && <PhishingReport analysis={item.phishing} item={item.id} onChange={onChange} />}
+              <Documents paths={detail.files.map((f) => `inbox/${item.folder}/${f}`)} />
+              {detail.content &&
+                (privacy ? (
+                  <p className="text-xs text-muted-foreground">{t.privacy.hidden}</p>
+                ) : (
+                  <Markdown text={detail.content.slice(0, 20_000)} links={!item.phishing} className="max-h-96 max-w-none overflow-y-auto text-sm" />
+                ))}
+            </>
+          )}
         </div>
       )}
     </li>

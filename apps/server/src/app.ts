@@ -520,6 +520,12 @@ export function createApp(s: Services) {
     if (body.data.status === "new") s.jobs?.queueTriage(2_000)
     return c.json({ ok: true })
   })
+  // "Not phishing": the user overrules the agent's flag (or takes that back); the analysis stays.
+  app.post("/api/inbox/:id/phishing", async (c) => {
+    const body = z.object({ dismissed: z.boolean() }).safeParse(await c.req.json().catch(() => null))
+    if (!body.success || !(await inbox.dismissPhishing(c.req.param("id"), body.data.dismissed))) return c.json({ error: "invalid request" }, 400)
+    return c.json({ ok: true })
+  })
 
   // ---------- activity and jobs ----------
 

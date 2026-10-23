@@ -80,6 +80,7 @@ export const ROUTES: Route[] = [
   { method: "get", path: "/api/archive", summary: "Filed emails and documents in archive/, newest first", response: z.array(ArchiveEntry) },
   { method: "get", path: "/api/source", summary: "What a source path is (?path=inbox/… or archive/…): email with Gmail link, inbox item or file, with text and files", response: SourceInfo },
   { method: "post", path: "/api/inbox/{id}/status", summary: "Set an item to new (process again) or ignored", body: z.object({ status: z.enum(["new", "ignored"]) }), response: Ok },
+  { method: "post", path: "/api/inbox/{id}/phishing", summary: "Say a flagged item is not phishing (dismissed: true) or take it back", body: z.object({ dismissed: z.boolean() }), response: Ok },
   { method: "get", path: "/api/activity", summary: "Job runs and changes to the data", response: Activity },
   { method: "get", path: "/api/activity/{hash}", summary: "One change as a patch", response: z.object({ patch: z.string() }) },
   { method: "post", path: "/api/activity/{hash}/revert", summary: "Undo one change", response: z.object({ hash: z.string() }) },

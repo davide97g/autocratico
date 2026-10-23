@@ -7,8 +7,10 @@
 import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, realpathSync, statSync } from "node:fs"
 import { basename, dirname, join, relative, sep } from "node:path"
 
-import { type ArchiveEntry, isDocumentFile, isDocumentPath, type SourceInfo } from "@autocratico/core"
+import { type ArchiveEntry, isDocumentFile, isDocumentPath, type PhishingAnalysis, type SourceInfo } from "@autocratico/core"
 import { listDocuments } from "@autocratico/core/node"
+
+import { Inbox } from "./inbox.ts"
 
 const MAX_TEXT = 20_000
 
@@ -82,6 +84,16 @@ export function gmailLink(meta: Record<string, string>, known: Record<string, st
   return mailbox ? `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(mailbox)}#all/${id}` : `https://mail.google.com/mail/u/0/#all/${id}`
 }
 
+/** Phishing analyses of the flagged inbox items, by the email folder they point to (archive/email/<folder>). */
+function phishingByEmail(data: string): Map<string, { id: string; phishing: PhishingAnalysis }> {
+  return new Map(
+    new Inbox(data)
+      .list()
+      .flatMap((i) => (i.ref && i.phishing ? [[i.ref, { id: i.id, phishing: i.phishing }] as const] : []))
+      .reverse() // newest last, so it wins
+  )
+}
+
 function cut(text: string) {
   return { text: text.slice(0, MAX_TEXT), truncated: text.length > MAX_TEXT }
 }
@@ -98,6 +110,7 @@ function email(data: string, folder: string, path: string): SourceInfo {
     link: gmailLink(meta, mailboxes(data)),
     ...cut(body),
     files: listDocuments(data, [folder]).filter((f) => !f.endsWith("/message.md")),
+    ...((f) => ({ phishing: f?.phishing ?? null, phishingItem: f?.id ?? null }))(phishingByEmail(data).get(folder)),
   }
 }
 
@@ -138,6 +151,8 @@ export function describeSource(data: string, path: string): SourceInfo | null {
       link: null,
       ...cut(read(join(realFolder, "content.md")).trim()),
       files: isFile ? [clean, ...files.filter((f) => f !== clean)] : files,
+      phishing: null,
+      phishingItem: null,
     }
   }
 
@@ -152,6 +167,8 @@ export function describeSource(data: string, path: string): SourceInfo | null {
     text: "",
     truncated: false,
     files: isFile ? [clean] : listDocuments(data, [clean]),
+    phishing: null,
+    phishingItem: null,
   }
 }
 
@@ -172,6 +189,7 @@ export function listArchive(data: string): ArchiveEntry[] {
   if (!existsSync(root)) return []
   const out: ArchiveEntry[] = []
   const emails = join(root, "email")
+  const flagged = phishingByEmail(data)
   if (existsSync(emails)) {
     for (const folder of readdirSync(emails)) {
       const file = join(emails, folder, "message.md")
@@ -192,6 +210,7 @@ export function listArchive(data: string): ArchiveEntry[] {
         date: meta.date || folder.slice(0, 10),
         account: meta.account ?? "",
         files: attachments,
+        phishing: ((f) => (f ? { risk: f.phishing.risk, dismissed: Boolean(f.phishing.dismissed) } : null))(flagged.get(`archive/email/${folder}`)),
       })
     }
   }
@@ -205,7 +224,7 @@ export function listArchive(data: string): ArchiveEntry[] {
       const stat = statSync(full)
       if (stat.isDirectory()) walk(full)
       else if (stat.isFile() && isDocumentFile(name)) {
-        out.push({ path: rel, kind: "file", title: name, from: "", date: stat.mtime.toISOString(), account: rel.split("/").slice(1, -1).join(" / "), files: 0 })
+        out.push({ path: rel, kind: "file", title: name, from: "", date: stat.mtime.toISOString(), account: rel.split("/").slice(1, -1).join(" / "), files: 0, phishing: null })
       }
     }
   }

@@ -528,6 +528,7 @@ export function createDemo(host: HTMLElement, opts: { onPrivacy: () => void }): 
       S.deadlines = S.deadlines.filter((d) => !ids.has(d.id))
     })
     pushLog(item.id, `<li class="x-log__line is-ok">${svg("git-commit-horizontal")}<span><code>${hash}</code> ${script.commit}</span></li>`)
+    if (script.report) pushLog(item.id, script.report)
     live.status = script.flagged ? "flagged" : "filed"
     S.working = null
     S.deadlines.push(...script.add.map((d) => ({ ...d })))

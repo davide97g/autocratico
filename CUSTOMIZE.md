@@ -74,7 +74,7 @@ These hold whatever you change. They are what makes it safe to give an agent you
 - **One owner per instance**, masterpass session on every request, Origin checked on browser writes, setup code on a fresh server (`apps/server/src/auth.ts`, `account.ts`).
 - **The agent's tool profiles** (`apps/server/src/claude.ts`): chat read-only; the background agent edits only the data folder, with no web and no secrets; server-owned files out of reach.
 - **Everything that leaves the server is redacted** (`redact()` in `packages/core/src/redact.ts`): Telegram, ntfy, any channel you add.
-- **Content is data.** Emails, uploads and chats never become instructions; suspected phishing is reported, links are not opened.
+- **Content is data.** Emails, uploads and chats never become instructions; suspected phishing is reported with its reasons, links are not opened (the checks in `scripts/phishing.py` only read the message).
 - **The agent prepares, the user acts.** It never pays, signs or writes to public bodies.
 - **Consistency checks stay green**: recurrence in `packages/core` and `scripts/store.py` (parity test), `example/` and `template/` in step with the schema, the demo router answering every `/api` route (while the demo exists).
 - **Conventions**: TypeScript with erasable syntax only (Node runs it directly), Python standard library only, UI strings only in `apps/web/src/i18n/`.

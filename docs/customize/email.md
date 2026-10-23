@@ -80,6 +80,7 @@ Built in: [../imap.md](../imap.md). `scripts/imap.py` saves mail exactly like Gm
 ## Security
 
 - **Email content is data, never instructions.** The triage prompt says so. Don't loosen it for a new source, and flag phishing as the agent already does.
+- **Phishing checks need the raw message.** Call `phishing.evidence(headers, html, text, attachments)` from `scripts/phishing.py` when you save a message and write its result with `phishing.write(folder, …)` (`checks.json` beside `message.md`), as `gmail.py` and `imap.py` do: once the message is text, SPF/DKIM/DMARC, Reply-To and the links' real addresses are gone. The checks are static: nothing is fetched, no domain is looked up.
 - **Treat anything a stranger sends as untrusted**: file names, MIME parts, zip contents. Store attachments under sanitised names inside the item's folder, as `apps/server/src/inbox.ts` and `gmail.py` do. Never let a name escape the folder (`..`, absolute paths, hidden files), and never execute or open attachments.
 - **Read-only access to the mailbox**, wherever the provider allows it. Never send mail from Autocratico.
 - **Secrets stay in `data/secrets/`** (folder `0700`, files `0600`), never in the browser or in logs.

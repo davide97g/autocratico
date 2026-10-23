@@ -2,6 +2,7 @@ import * as React from "react"
 import { ChevronDownIcon, FileIcon, MailIcon, PaperclipIcon, SearchIcon } from "lucide-react"
 import { cn } from "cn"
 
+import { PhishingBadge } from "@/components/phishing"
 import { Sensitive } from "@/components/privacy"
 import { SourcePreview } from "@/components/source"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -58,6 +59,7 @@ function Entry({ e }: { e: ArchiveEntry }) {
             )}
           </span>
         </span>
+        {e.phishing && <PhishingBadge risk={e.phishing.risk} dismissed={e.phishing.dismissed} className="max-sm:hidden" />}
         <span className="shrink-0 font-mono text-xs text-muted-foreground">{when}</span>
         <ChevronDownIcon className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>

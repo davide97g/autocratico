@@ -63,10 +63,16 @@ const components: Components = {
   td: ({ children }) => <td className="border-t px-4 py-2.5 align-top">{children}</td>,
 }
 
-export function Markdown({ text, className }: { text: string; className?: string }) {
+// Text from a suspected phishing email: its links are shown, never followed.
+const inert: Components = {
+  ...components,
+  a: ({ href, children }) => (href === REDACTED ? <Sensitive>{children}</Sensitive> : <span className="break-words underline decoration-dotted underline-offset-4">{children}</span>),
+}
+
+export function Markdown({ text, className, links = true }: { text: string; className?: string; links?: boolean }) {
   return (
     <div className={cn("max-w-3xl text-sm", className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={links ? components : inert}>
         {prepare(text)}
       </ReactMarkdown>
     </div>

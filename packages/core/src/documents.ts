@@ -28,7 +28,8 @@ export function caseOpen(c: Pick<Case, "done" | "total">): boolean {
 // ---------- Original files: what arrived (inbox/) and what was filed (archive/) ----------
 
 /** Server-owned or derived files that are not documents. */
-const NOT_DOCUMENTS = new Set(["item.json", "content.md"])
+// checks.json: the phishing checks scripts/phishing.py writes beside an email's message.md.
+const NOT_DOCUMENTS = new Set(["item.json", "content.md", "checks.json"])
 
 /** A data-relative path the web app may open: inside inbox/ or archive/, no hidden or parent segments. */
 export function isDocumentPath(path: string): boolean {

@@ -41,6 +41,7 @@ import {
   year,
 } from "./util"
 import { seedCalendar } from "./calendar"
+import { refundPhishing } from "./phishing"
 
 type DeadlineInput = Partial<Deadline> &
   Pick<Deadline, "id" | "title" | "area" | "date">
@@ -107,6 +108,7 @@ function inboxItem(
     | "outcome"
     | "important"
     | "marketing"
+    | "phishing"
   > &
     Partial<DemoInbox>
 ): DemoInbox {
@@ -119,6 +121,7 @@ function inboxItem(
     outcome: "",
     important: false,
     marketing: false,
+    phishing: null,
     ...i,
     id,
     folder:
@@ -888,7 +891,7 @@ export function seed(rawName: string): DemoState {
     from: "Agenzia Entrate Rimborsi <noreply@agenzia-entrate-servizi.info>",
     date: at(-3, 7, 52),
     account: ACCOUNT,
-    text: "Gentile contribuente,\n\nrisulta un rimborso di 284,60 € a suo favore. Per riceverlo confermi i dati della carta entro 48 ore al link seguente.\n\n[link rimosso dalla demo]",
+    text: "Gentile contribuente,\n\nrisulta un rimborso di 284,60 € a suo favore. Per riceverlo confermi i dati della carta entro 48 ore al link seguente:\n\nwww.agenziaentrate.gov.it/rimborsi\n\nTrascorso il termine il rimborso sarà annullato.",
     files: [],
   })
   const promoMail = email({
@@ -994,6 +997,7 @@ export function seed(rawName: string): DemoState {
       outcome:
         "⚠️ Possibile phishing: il dominio non è agenziaentrate.gov.it e chiede i dati della carta. Nessuna modifica.",
       content: phishMail.text,
+      phishing: refundPhishing(at(-3, 7, 58)),
     }),
     ricevutaItem,
     trItem,

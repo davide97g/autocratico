@@ -4,6 +4,7 @@ import { ExternalLinkIcon, FileIcon, FolderIcon, GlobeIcon, InboxIcon, MailIcon,
 import { cn } from "cn"
 
 import { Documents } from "@/components/documents"
+import { Marked, PhishingReport, suspiciousPattern } from "@/components/phishing"
 import { Sensitive, usePrivacy } from "@/components/privacy"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -16,7 +17,8 @@ const KIND_ICON: Record<SourceInfo["kind"], LucideIcon> = { email: MailIcon, inb
  * Where something comes from: the email (text, attachments, a link to it in Gmail), the inbox item,
  * the file, or the web page. `path` is a deadline's `source` or an archive path. `large` shows the
  * whole text at reading size, for a page of its own; `header={false}` only the text and the files,
- * under a card that already says what it is (a Gmail link in the chat).
+ * under a card that already says what it is (a Gmail link in the chat). An email the agent flagged as
+ * phishing shows why first, and its suspicious parts are marked in the text.
  */
 export function SourcePreview({ path, large = false, header = true, className }: { path: string; large?: boolean; header?: boolean; className?: string }) {
   const { t, locale } = useI18n()
@@ -24,6 +26,8 @@ export function SourcePreview({ path, large = false, header = true, className }:
   const web = /^https?:\/\//i.test(path)
   const [info, setInfo] = React.useState<SourceInfo | null>(null)
   const [failed, setFailed] = React.useState(false)
+  const [version, setVersion] = React.useState(0)
+  const pattern = React.useMemo(() => suspiciousPattern(info?.phishing ?? null), [info])
 
   React.useEffect(() => {
     if (web || !isDocumentPath(path.replace(/\/+$/, ""))) return
@@ -35,7 +39,7 @@ export function SourcePreview({ path, large = false, header = true, className }:
     return () => {
       live = false
     }
-  }, [path, web])
+  }, [path, web, version])
 
   if (web) {
     let host = path
@@ -93,6 +97,7 @@ export function SourcePreview({ path, large = false, header = true, className }:
           )}
         </div>
       )}
+      {info.phishing && <PhishingReport analysis={info.phishing} item={info.phishingItem} onChange={() => setVersion((v) => v + 1)} />}
       {info.text &&
         (privacy ? (
           <p className="text-xs text-muted-foreground">{t.sources.textHidden}</p>
@@ -103,7 +108,7 @@ export function SourcePreview({ path, large = false, header = true, className }:
               large ? "p-4 text-sm" : "max-h-72 p-3 text-xs"
             )}
           >
-            {info.text}
+            <Marked text={info.text} pattern={pattern} />
             {info.truncated && `\n\n${t.sources.truncated}`}
           </pre>
         ))}

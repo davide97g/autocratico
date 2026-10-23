@@ -141,6 +141,75 @@ export const INBOX_STATUSES = ["new", "processing", "processed", "ignored", "fai
 export const InboxStatus = z.enum(INBOX_STATUSES)
 export type InboxStatus = z.infer<typeof InboxStatus>
 
+// ---------- Phishing: what scripts/phishing.py found in an email, and what the agent concluded ----------
+
+export const PHISHING_RISKS = ["low", "medium", "high"] as const
+export const PhishingRisk = z.enum(PHISHING_RISKS)
+export type PhishingRisk = z.infer<typeof PhishingRisk>
+
+export const PHISHING_KINDS = ["auth", "sender", "reply_to", "link", "urgency", "payment", "credentials", "attachment", "context", "other"] as const
+export const PhishingKind = z.enum(PHISHING_KINDS)
+export type PhishingKind = z.infer<typeof PhishingKind>
+
+/** One reason an email looks like phishing. */
+export const PhishingSignal = z.object({
+  kind: PhishingKind.catch("other"),
+  /** The check of scripts/phishing.py that found it (`dmarc_fail`, `link_mismatch`…), explained by the web app; "" for the agent's own. */
+  code: z.string().default(""),
+  severity: PhishingRisk.catch("low"),
+  /** The exact part of the message it is about: a header, a link, a sentence. */
+  evidence: z.string().default(""),
+  /** Why it gives the email away, in the user's language (the agent's signals). */
+  why: z.string().default(""),
+  /** `check`: scripts/phishing.py, a fixed rule; `agent`: the background agent's reading. */
+  source: z.enum(["check", "agent"]),
+})
+export type PhishingSignal = z.infer<typeof PhishingSignal>
+
+/** A link of the email: what it shows, where it really goes, and what is odd about it. */
+export const PhishingLink = z.object({
+  text: z.string().default(""),
+  href: z.string(),
+  domain: z.string(),
+  /** mismatch, lookalike, ip, not_official, punycode, shortener, odd_tld. */
+  flags: z.array(z.string()).default([]),
+})
+export type PhishingLink = z.infer<typeof PhishingLink>
+
+/** The technical side of archive/email/<folder>/checks.json (scripts/phishing.py). */
+export const EmailChecks = z.object({
+  /** As the receiving server saw them: pass, fail, softfail, neutral, none, or "" when unknown. */
+  auth: z.object({ spf: z.string().default(""), dkim: z.string().default(""), dmarc: z.string().default("") }),
+  from: z.object({ name: z.string().default(""), address: z.string().default(""), domain: z.string().default("") }),
+  /** Domain of the Reply-To address (the one that differs from the sender's, if any). */
+  reply_to: z.string().default(""),
+  return_path: z.string().default(""),
+  links: z.array(PhishingLink).default([]),
+  /** Saved before the checks existed: no headers, links as written in the text. */
+  partial: z.boolean().default(false),
+})
+export type EmailChecks = z.infer<typeof EmailChecks>
+
+/** Why an email was flagged as possible phishing: written by the server after the agent's triage. */
+export const PhishingAnalysis = z.object({
+  risk: PhishingRisk,
+  /** One or two sentences, in the user's language: what the email pretends to be and what it really is. */
+  verdict: z.string(),
+  /** What to do (and not do). */
+  advice: z.string().default(""),
+  signals: z.array(PhishingSignal).default([]),
+  checks: EmailChecks.nullable().default(null),
+  /** ISO date-time of the analysis. */
+  analyzed: z.string(),
+  /** ISO date-time when the user said it is not phishing; "" while it stands. */
+  dismissed: z.string().default(""),
+})
+export type PhishingAnalysis = z.infer<typeof PhishingAnalysis>
+
+/** What the Archive shows of an analysis. */
+export const PhishingMark = z.object({ risk: PhishingRisk, dismissed: z.boolean() })
+export type PhishingMark = z.infer<typeof PhishingMark>
+
 /** Stored as `inbox/<folder>/item.json`, next to `content.md` and the attachments. */
 export const InboxItem = z.object({
   id: z.string(),
@@ -162,6 +231,8 @@ export const InboxItem = z.object({
   important: z.boolean().default(false),
   /** Email only: newsletters and promotions, archived without going to the agent. */
   marketing: z.boolean().default(false),
+  /** Set when the agent flagged it as possible phishing. */
+  phishing: PhishingAnalysis.nullable().default(null),
 })
 export type InboxItem = z.infer<typeof InboxItem>
 
@@ -188,6 +259,9 @@ export const SourceInfo = z.object({
   truncated: z.boolean(),
   /** Original files (data-relative), openable through /api/file. */
   files: z.array(z.string()),
+  /** For an email the agent flagged: the analysis of its inbox item, and that item's id (to dismiss it). */
+  phishing: PhishingAnalysis.nullable().default(null),
+  phishingItem: z.string().nullable().default(null),
 })
 export type SourceInfo = z.infer<typeof SourceInfo>
 
@@ -201,6 +275,8 @@ export const ArchiveEntry = z.object({
   account: z.string(),
   /** Attachments of an email; 0 for a document. */
   files: z.number().int(),
+  /** An email the agent flagged as possible phishing. */
+  phishing: PhishingMark.nullable().default(null),
 })
 export type ArchiveEntry = z.infer<typeof ArchiveEntry>
 

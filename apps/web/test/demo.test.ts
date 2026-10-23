@@ -67,6 +67,20 @@ beforeEach(() => {
 })
 
 describe("demo server", () => {
+  it("shows why the fake refund is phishing, and lets the visitor say it is not", async () => {
+    const inbox = InboxItem.array().parse(await get("/api/inbox"))
+    const flagged = inbox.find((i) => i.phishing)!
+    expect(flagged.phishing).toMatchObject({ risk: "high", dismissed: "" })
+    const source = SourceInfo.parse(await get(`/api/source?path=${encodeURIComponent(flagged.ref)}`))
+    expect(source.phishingItem).toBe(flagged.id)
+    // The quotes are the email's own words, so the text can mark them.
+    for (const s of source.phishing!.signals.filter((x) => x.source === "agent")) expect(`${source.from}\n${source.text}`).toContain(s.evidence)
+    expect((await call("POST", `/api/inbox/${flagged.id}/phishing`, { dismissed: true })).status).toBe(200)
+    const archive = ArchiveEntry.array().parse(await get("/api/archive"))
+    expect(archive.find((a) => a.path === flagged.ref)?.phishing).toEqual({ risk: "high", dismissed: true })
+    expect((await call("POST", `/api/inbox/${inbox.find((i) => !i.phishing)!.id}/phishing`, { dismissed: true })).status).toBe(400)
+  })
+
   it("answers every view with the real shapes", async () => {
     Session.parse(await get("/api/session"))
     const data = Data.parse(await get("/api/data"))

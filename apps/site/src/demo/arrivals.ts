@@ -1,4 +1,5 @@
 // What can arrive in the demo's inbox, and what the agent does with each (the triage profile, scripted).
+import { svg } from "../icons.ts"
 import { eur, fmtDay, fmtShort, iso } from "../time.ts"
 import { s } from "./core.ts"
 import { D, PERSON, YEAR, type Deadline } from "./data.ts"
@@ -7,7 +8,7 @@ export type DocId = "multa" | "phishing" | "bollo" | "whatsapp"
 
 export const DOCS: { id: DocId; icon: string; source: string; title: string; file: string }[] = [
   { id: "multa", icon: "camera", source: "Foto su Telegram", title: "Verbale multa ZTL", file: "IMG_2041.HEIC" },
-  { id: "phishing", icon: "mail", source: "Email · rimborsi@agenzia-entrate-servizi.info", title: "Rimborso fiscale in attesa: conferma i tuoi dati", file: "2 link, nessun allegato" },
+  { id: "phishing", icon: "mail", source: "Email · rimborsi@agenzia-entrate-servizi.info", title: "Rimborso fiscale in attesa: conferma i tuoi dati", file: "1 link, nessun allegato" },
   { id: "bollo", icon: "mic", source: "Nota vocale su Telegram · 0:07", title: "«Il bollo della Panda scade a fine mese»", file: "voce.ogg" },
   { id: "whatsapp", icon: "message-circle", source: "Export di WhatsApp", title: "Chat «Condominio via Roma»", file: "WhatsApp Chat.zip" },
 ]
@@ -19,10 +20,29 @@ export interface Arrival {
   files: string[]
   add: Deadline[]
   flagged?: boolean
+  /** The phishing analysis shown under the row once flagged (as the app's Inbox does). */
+  report?: string
   telegram: { html: string; warn?: boolean; deadline?: string }
 }
 
 const code = (t: string) => `<code>${t}</code>`
+
+/** Why the fake refund is phishing: each reason with the email's own words, and where its link really goes. */
+function phishingReport(): string {
+  const reason = (icon: string, title: string, why: string, quote: string) =>
+    `<li class="x-phish__why">${svg(icon)}<span><b>${title}</b> ${why}<q>${quote}</q></span></li>`
+  return `<li class="x-phish">
+    <div class="x-phish__head">${svg("shield-alert")}<b>Possibile phishing</b><span class="x-tag is-flagged">Rischio alto</span></div>
+    <p>Finge di essere l'Agenzia delle Entrate per farti inserire i dati della carta su un sito falso.</p>
+    <ul>
+      ${reason("user-round", "Mittente.", "Il nome è dell'Agenzia, l'indirizzo no.", "rimborsi@agenzia-entrate-servizi.info")}
+      ${reason("link-2", "Link.", "Mostra un indirizzo, porta a un altro.", "www.agenziaentrate.gov.it → agenziaentrate-rimborsi.top")}
+      ${reason("lock", "Dati personali.", "Nessun ente chiede la carta per email.", "confermi i dati della carta entro 48 ore")}
+      ${reason("search", "Contesto.", "Nel registro non c'è nessun rimborso atteso.", `rimborso di ${s("284,60 €")}`)}
+    </ul>
+    <div class="x-phish__auth"><span class="is-bad">SPF fallito (debole)</span><span>DKIM assente</span><span class="is-bad">DMARC fallito</span></div>
+  </li>`
+}
 
 export function arrival(id: DocId): Arrival {
   switch (id) {
@@ -46,16 +66,18 @@ export function arrival(id: DocId): Arrival {
     case "phishing":
       return {
         lines: [
-          { icon: "mail", html: `Leggo l'email da ${code("agenzia-entrate-servizi.info")}` },
-          { icon: "triangle-alert", html: `Il dominio non è quello dell'Agenzia delle Entrate (${code("agenziaentrate.gov.it")})`, kind: "warn" },
-          { icon: "triangle-alert", html: `Chiede i dati della carta per «sbloccare il rimborso»`, kind: "warn" },
-          { icon: "lock", html: `Non apro i due link. Nessuna scadenza aggiunta.` },
+          { icon: "mail", html: `Leggo l'email e i suoi controlli automatici (${code("checks.json")})` },
+          { icon: "triangle-alert", html: `Il nome dice Agenzia delle Entrate, il dominio è ${code("agenzia-entrate-servizi.info")}: DMARC fallito`, kind: "warn" },
+          { icon: "triangle-alert", html: `Il link mostra ${code("agenziaentrate.gov.it")} ma porta a ${code("agenziaentrate-rimborsi.top")}`, kind: "warn" },
+          { icon: "triangle-alert", html: `Chiede i dati della carta entro 48 ore`, kind: "warn" },
+          { icon: "search", html: `Nel registro nessun rimborso in attesa. Non apro il link, nessuna scadenza aggiunta.` },
         ],
         commit: "Agente: email segnalata come possibile phishing",
         files: ["inbox/…/item.json"],
         add: [],
         flagged: true,
-        telegram: { html: `<b>Possibile phishing: non aprire link e non pagare.</b> Un falso rimborso dell'Agenzia delle Entrate è nell'inbox.`, warn: true },
+        report: phishingReport(),
+        telegram: { html: `<b>Possibile phishing (rischio alto)</b>: finto rimborso dell'Agenzia delle Entrate. Non aprire il link e non pagare: il perché è nell'inbox.`, warn: true },
       }
     case "bollo":
       return {

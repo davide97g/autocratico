@@ -1,8 +1,9 @@
 // The always-on agent, pretended: Gmail syncs that bring scripted emails, triage runs that file what
 // arrived (deadlines, cases, archive, a commit each), and the other jobs of the real scheduler.
 // One job at a time, like apps/server/src/jobs.ts; /api/jobs/live and the `jobs` event follow them.
-import type { JobRun, LiveJobs } from "@autocratico/core"
+import type { JobRun, LiveJobs, PhishingAnalysis } from "@autocratico/core"
 
+import { parcelPhishing } from "./phishing"
 import { deadline, ACCOUNT } from "./seed"
 import {
   changed,
@@ -167,7 +168,8 @@ type Arrival = {
   ) => {
     outcome: string
     steps: [string | undefined, string][]
-    phishing?: boolean
+    /** Flagged as phishing: the analysis the server keeps in the item. */
+    phishing?: PhishingAnalysis
   }
 }
 
@@ -263,7 +265,7 @@ export const ARRIVALS: Arrival[] = [
       from: "Poste Spedizioni <avvisi@poste-consegne-online.top>",
       date: nowIso(),
       account: ACCOUNT,
-      text: "Il tuo pacco non può essere consegnato. Paga 1,99 € entro 24 ore per riprogrammare la consegna: [link rimosso dalla demo]",
+      text: "Il tuo pacco non può essere consegnato. Paga 1,99 € entro 24 ore per riprogrammare la consegna: Riprogramma la consegna",
       files: [],
     }),
     file: () => ({
@@ -271,12 +273,14 @@ export const ARRIVALS: Arrival[] = [
         "⚠️ Possibile phishing: dominio poste-consegne-online.top, chiede un pagamento con urgenza. Nessuna modifica.",
       steps: [
         ["Read", "message.md"],
+        ["Read", "checks.json"],
+        ["Grep", "deadlines.toml, cases/, archive/email/"],
         [
           undefined,
-          "Il dominio non è di Poste Italiane e il messaggio mette fretta: lo segnalo, non apro link.",
+          "Il dominio non è di Poste Italiane, SPF fallito, e il messaggio mette fretta: lo segnalo, non apro link.",
         ],
       ],
-      phishing: true,
+      phishing: parcelPhishing(nowIso()),
     }),
   },
 ]
@@ -379,6 +383,7 @@ export function arrive(a: Arrival): DemoInbox {
     outcome: "",
     important: a.id !== "pacco",
     marketing: false,
+    phishing: null,
     content: mail.text,
     arrival: a.id,
   }
@@ -469,6 +474,7 @@ async function triage(r: JobRun): Promise<string> {
       await step(r, tool, text, 900)
     item.status = "processed"
     item.outcome = result.outcome
+    if (result.phishing) item.phishing = result.phishing
     processed++
     if (result.phishing) phishing++
     changed("inbox", "data", "archive", "activity")

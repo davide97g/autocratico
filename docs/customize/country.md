@@ -38,7 +38,8 @@ Run the checks after each step.
   - `DOMAINS`: the only sites the chat agent may fetch (Italian public bodies plus `europa.eu`). Replace them with your country's official domains. `*.domain` is allowed automatically.
   - `CHAT_INSTRUCTIONS`: "the user's personal register of Italian bureaucracy".
 - **`apps/server/src/jobs.ts`, `TRIAGE_INSTRUCTIONS`**:
-  - The phishing hint names F24 (the Italian tax payment form), fines and refunds.
+  - The phishing line speaks of public bodies, refunds and payments in general; the context it asks the agent to weigh (deadlines, cases, payments) is the same everywhere.
+- **`scripts/phishing.py`**: `OFFICIAL` lists the Italian public bodies phishing imitates (Agenzia delle Entrate, INPS, Poste, PagoPA…) with their names and domains, and `URGENCY`, `PAYMENT`, `CARD` and `CREDENTIALS` are Italian and English phrases. Replace them with your country's bodies and language; `SUFFIXES` holds two-label public suffixes like `gov.it`.
   - The amounts rule mentions "an F24" and `= euro`.
   - The brokers line names Trade Republic and Degiro, and says "market value in euro".
 - **`apps/server/src/chat-actions.ts`, `ACTION_INSTRUCTIONS`**: the field list says `amount (euro …)` and `amounts … {"YYYY-MM-DD": euro}`.

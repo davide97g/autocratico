@@ -288,6 +288,14 @@ on("POST", "/api/inbox/:id/status", (r, [id]) => {
   if (st === "new") queueTriage()
   return ok()
 })
+on("POST", "/api/inbox/:id/phishing", (r, [id]) => {
+  const dismissed = (r.body as { dismissed?: unknown })?.dismissed
+  const i = state().inbox.find((x) => x.id === id)
+  if (!i?.phishing || typeof dismissed !== "boolean") return fail("invalid request", 400)
+  i.phishing = { ...i.phishing, dismissed: dismissed ? nowIso() : "" }
+  changed("inbox", "archive")
+  return ok()
+})
 
 const MAX_FILE = 8 * 1024 * 1024
 const KEEP_DATA = 600 * 1024
@@ -371,6 +379,7 @@ on("POST", "/api/ingest", async (r) => {
     outcome: "",
     important: false,
     marketing: false,
+    phishing: null,
     content: text,
   }
   s.inbox.unshift(item)
@@ -387,15 +396,19 @@ function archiveDate(s: DemoState, path: string): string {
 
 on("GET", "/api/archive", () => {
   const s = state()
-  const out: ArchiveEntry[] = s.emails.map((e) => ({
-    path: e.path,
-    kind: "email",
-    title: e.title,
-    from: e.from,
-    date: e.date,
-    account: e.account,
-    files: e.files.length,
-  }))
+  const out: ArchiveEntry[] = s.emails.map((e) => {
+    const flagged = s.inbox.find((i) => i.ref === e.path && i.phishing)?.phishing
+    return {
+      path: e.path,
+      kind: "email",
+      title: e.title,
+      from: e.from,
+      date: e.date,
+      account: e.account,
+      files: e.files.length,
+      phishing: flagged ? { risk: flagged.risk, dismissed: Boolean(flagged.dismissed) } : null,
+    }
+  })
   for (const path of Object.keys(s.docs)) {
     if (!path.startsWith("archive/") || path.startsWith("archive/email/"))
       continue
@@ -407,6 +420,7 @@ on("GET", "/api/archive", () => {
       date: archiveDate(s, path),
       account: path.split("/").slice(1, -1).join(" / "),
       files: 0,
+      phishing: null,
     })
   }
   return json(out.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")))
@@ -424,6 +438,7 @@ function describe(s: DemoState, raw: string): SourceInfo | null {
   )
   if (mail) {
     const isFile = path !== mail.path && !path.endsWith("/message.md")
+    const flagged = s.inbox.find((i) => i.ref === mail.path && i.phishing)
     return {
       path,
       kind: "email",
@@ -437,6 +452,8 @@ function describe(s: DemoState, raw: string): SourceInfo | null {
       files: isFile
         ? [path, ...mail.files.filter((f) => f !== path)]
         : mail.files,
+      phishing: flagged?.phishing ?? null,
+      phishingItem: flagged?.id ?? null,
     }
   }
   const item = s.inbox.find(
@@ -459,6 +476,8 @@ function describe(s: DemoState, raw: string): SourceInfo | null {
       files: isFile
         ? [path, ...item.files.filter((f) => f !== path)]
         : item.files,
+      phishing: null,
+      phishingItem: null,
     }
   }
   if (s.docs[path])
@@ -473,6 +492,8 @@ function describe(s: DemoState, raw: string): SourceInfo | null {
       text: "",
       truncated: false,
       files: [path],
+      phishing: null,
+      phishingItem: null,
     }
   const inside = documents(s, [path])
   if (inside.length)
@@ -487,6 +508,8 @@ function describe(s: DemoState, raw: string): SourceInfo | null {
       text: "",
       truncated: false,
       files: inside,
+      phishing: null,
+      phishingItem: null,
     }
   return null
 }

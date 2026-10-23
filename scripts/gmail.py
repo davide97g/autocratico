@@ -58,6 +58,7 @@ from email.utils import parsedate_to_datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
+import phishing
 from scans import ScanError, to_pdf
 from store import DATA_DIR
 
@@ -354,7 +355,7 @@ def _slug(s: str) -> str:
 def _file_name(name: str, taken: list[str]) -> str:
     """Safe, unique file name for an attachment (the name comes from the sender)."""
     name = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", name).strip().lstrip(".")[:150] or "attachment"
-    if name == "message.md" or name in taken:
+    if name in ("message.md", "checks.json") or name in taken:
         stem, dot, ext = name.rpartition(".")
         stem, ext = (stem, f".{ext}") if dot else (name, "")
         n = 2
@@ -503,8 +504,8 @@ def _sent(m: dict, h: dict) -> str:
         return _date(m).isoformat()
 
 
-def body_text(payload: dict) -> str:
-    """The text of a message (format full): its first text/plain part, else its HTML as text."""
+def _bodies(payload: dict) -> tuple[str | None, str | None]:
+    """The first text/plain part and the first text/html part of a message (format full)."""
     text, html_text = None, None
     for p in _parts(payload):
         body = p.get("body", {})
@@ -514,6 +515,12 @@ def body_text(payload: dict) -> str:
             text = _b64(body["data"]).decode("utf-8", errors="replace")
         elif p.get("mimeType") == "text/html" and body.get("data") and html_text is None:
             html_text = _b64(body["data"]).decode("utf-8", errors="replace")
+    return text, html_text
+
+
+def body_text(payload: dict) -> str:
+    """The text of a message (format full): its first text/plain part, else its HTML as text."""
+    text, html_text = _bodies(payload)
     if text is None:
         text = _from_html(html_text) if html_text else ""
     return text
@@ -538,7 +545,10 @@ def _save(m: dict, account: str, mailbox: str) -> tuple[Path, list[str]]:
             name = _file_name(p["filename"], attachments)
             (folder / name).write_bytes(_b64(data))
             attachments += _readable(folder, name, attachments)
-    text = body_text(m["payload"])
+    plain, html_text = _bodies(m["payload"])
+    text = plain if plain is not None else _from_html(html_text) if html_text else ""
+    # The headers and the links' real addresses, before the message becomes text (scripts/phishing.py).
+    phishing.write(folder, phishing.evidence([(x["name"], x["value"]) for x in m["payload"].get("headers", [])], html_text, text, attachments))
 
     lines = [
         "---",

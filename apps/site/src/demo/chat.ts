@@ -329,8 +329,11 @@ export function createChat(ctx: Ctx): ChatApi {
   function phish(): Answer {
     if (S.arrived.has("phishing"))
       return {
-        steps: [["Read", "inbox/…-rimborso/content.md"]],
-        html: `<p>No. L'ho segnalata come possibile phishing: il dominio è <code>agenzia-entrate-servizi.info</code>, non <code>agenziaentrate.gov.it</code>, e chiede i dati della carta.</p><p>Non aprire i link: i rimborsi veri si controllano nell'area riservata del sito dell'Agenzia.</p>`,
+        steps: [
+          ["Read", "inbox/…-rimborso/item.json"],
+          ["Read", "archive/email/…-rimborso/checks.json"],
+        ],
+        html: `<p>No. L'ho segnalata come possibile phishing, rischio alto:</p><ul><li><b>Mittente</b>: <code>agenzia-entrate-servizi.info</code>, non <code>agenziaentrate.gov.it</code>, e DMARC fallito.</li><li><b>Link</b>: mostra <code>agenziaentrate.gov.it</code> ma porta a <code>agenziaentrate-rimborsi.top</code>.</li><li><b>Richiesta</b>: «confermi i dati della carta entro 48 ore».</li></ul><p>Non aprire il link: i rimborsi veri si controllano nell'area riservata del sito dell'Agenzia.</p>`,
       }
     return {
       steps: [["Glob", "inbox/*/item.json"]],
