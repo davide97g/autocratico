@@ -4,6 +4,7 @@ import type { TimelineEntry } from './engine/engine';
 import type { SceneClass } from './engine/scene';
 import type { Lyrics } from './engine/lyrics';
 import type { AudioData } from './engine/audio';
+import { FILM } from './engine/film';
 
 // Scene modules are discovered lazily so a missing/broken scene never breaks the build.
 const modules = import.meta.glob<{ default: SceneClass }>('./scenes/*.ts');
@@ -13,6 +14,10 @@ const scene = (name: string) => () => {
 };
 
 export function makeTimeline(ly: Lyrics, au: AudioData): TimelineEntry[] {
+  // The Board promo: one scene for the whole 30 s (its shots share planes and transitions).
+  if (FILM === 'board') return [{ id: 'board', load: scene('board'), start: 0, end: au.duration }];
+  // The Agenda promo: one scene too (docs/AGENDA.md).
+  if (FILM === 'agenda') return [{ id: 'agenda', load: scene('agenda'), start: 0, end: au.duration }];
   /**
    * Cut on the last beat at/before the first word of the matching line (never after the word) — unless
    * the previous word is still being sung on that beat (a fast verse runs into the next section): then

@@ -1,0 +1,207 @@
+{
+  "type": [
+    "type-00.jpg",
+    "type-01.jpg",
+    "type-02.jpg",
+    "type-03.jpg",
+    "type-04.jpg",
+    "type-05.jpg",
+    "type-06.jpg",
+    "type-07.jpg",
+    "type-08.jpg",
+    "type-09.jpg",
+    "type-10.jpg",
+    "type-11.jpg",
+    "type-12.jpg",
+    "type-13.jpg",
+    "type-14.jpg",
+    "type-15.jpg",
+    "type-16.jpg",
+    "type-17.jpg",
+    "type-18.jpg",
+    "type-19.jpg",
+    "type-20.jpg"
+  ],
+  "think": [
+    {
+      "file": "think-00.jpg",
+      "t": 0.08
+    },
+    {
+      "file": "think-01.jpg",
+      "t": 0.17
+    },
+    {
+      "file": "think-02.jpg",
+      "t": 0.262
+    },
+    {
+      "file": "think-03.jpg",
+      "t": 0.355
+    },
+    {
+      "file": "think-04.jpg",
+      "t": 0.421
+    },
+    {
+      "file": "think-05.jpg",
+      "t": 0.487
+    },
+    {
+      "file": "think-06.jpg",
+      "t": 0.57
+    },
+    {
+      "file": "think-07.jpg",
+      "t": 0.655
+    },
+    {
+      "file": "think-08.jpg",
+      "t": 0.742
+    },
+    {
+      "file": "think-09.jpg",
+      "t": 0.822
+    },
+    {
+      "file": "think-10.jpg",
+      "t": 0.903
+    },
+    {
+      "file": "think-11.jpg",
+      "t": 1.006
+    },
+    {
+      "file": "think-12.jpg",
+      "t": 1.105
+    },
+    {
+      "file": "think-13.jpg",
+      "t": 1.173
+    },
+    {
+      "file": "think-14.jpg",
+      "t": 1.256
+    },
+    {
+      "file": "think-15.jpg",
+      "t": 1.337
+    },
+    {
+      "file": "think-16.jpg",
+      "t": 1.424
+    },
+    {
+      "file": "think-17.jpg",
+      "t": 1.505
+    },
+    {
+      "file": "think-18.jpg",
+      "t": 1.617
+    },
+    {
+      "file": "think-19.jpg",
+      "t": 1.691
+    },
+    {
+      "file": "think-20.jpg",
+      "t": 1.771
+    },
+    {
+      "file": "think-21.jpg",
+      "t": 1.855
+    },
+    {
+      "file": "think-22.jpg",
+      "t": 1.952
+    },
+    {
+      "file": "think-23.jpg",
+      "t": 2.022
+    },
+    {
+      "file": "think-24.jpg",
+      "t": 2.103
+    },
+    {
+      "file": "think-25.jpg",
+      "t": 2.188
+    },
+    {
+      "file": "think-26.jpg",
+      "t": 2.27
+    },
+    {
+      "file": "think-27.jpg",
+      "t": 2.357
+    },
+    {
+      "file": "think-28.jpg",
+      "t": 2.445
+    },
+    {
+      "file": "think-29.jpg",
+      "t": 2.522
+    },
+    {
+      "file": "think-30.jpg",
+      "t": 2.615
+    },
+    {
+      "file": "think-31.jpg",
+      "t": 2.704
+    },
+    {
+      "file": "think-32.jpg",
+      "t": 2.787
+    },
+    {
+      "file": "think-33.jpg",
+      "t": 2.853
+    },
+    {
+      "file": "think-34.jpg",
+      "t": 2.935
+    },
+    {
+      "file": "think-35.jpg",
+      "t": 3.033
+    },
+    {
+      "file": "think-36.jpg",
+      "t": 3.122
+    },
+    {
+      "file": "think-37.jpg",
+      "t": 3.188
+    },
+    {
+      "file": "think-38.jpg",
+      "t": 3.272
+    },
+    {
+      "file": "think-39.jpg",
+      "t": 3.357
+    },
+    {
+      "file": "think-40.jpg",
+      "t": 3.477
+    },
+    {
+      "file": "think-41.jpg",
+      "t": 3.555
+    },
+    {
+      "file": "think-42.jpg",
+      "t": 3.62
+    },
+    {
+      "file": "think-43.jpg",
+      "t": 3.696
+    },
+    {
+      "file": "think-44.jpg",
+      "t": 3.771
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 import { Engine, type AdaptiveSampling } from './engine/engine';
 import { W, H, PW, PH, SCALE, VERTICAL } from './engine/gl';
 import { makeTimeline } from './timeline';
+import { SONG } from './engine/film';
 
 const params = new URLSearchParams(location.search);
 const EXPORT = params.has('export');
@@ -100,7 +101,7 @@ function setupExport() {
 
 // ------------------------------------------------------------------ preview player
 function setupPlayer() {
-  const audio = new Audio('song/autocratico.mp3');
+  const audio = new Audio(SONG);
   audio.preload = 'auto';
   const ui = document.getElementById('ui')!;
   const scrub = document.getElementById('scrub') as HTMLInputElement;

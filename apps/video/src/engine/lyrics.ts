@@ -1,4 +1,5 @@
 // Word-timed lyrics (data/lyrics.json) with queries for karaoke rendering.
+import { DATA_DIR } from './film';
 import { smart } from './type';
 
 export interface Word {
@@ -37,7 +38,7 @@ export class Lyrics {
   }
 
   static async load(): Promise<Lyrics> {
-    for (const url of ['data/lyrics.json', 'data/lyrics.approx.json']) {
+    for (const url of [`${DATA_DIR}/lyrics.json`, `${DATA_DIR}/lyrics.approx.json`]) {
       const r = await fetch(url);
       if (r.ok && (r.headers.get('content-type') ?? '').includes('json')) return new Lyrics(await r.json());
     }

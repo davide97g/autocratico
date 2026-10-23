@@ -5,3 +5,9 @@ analysis/.venv/
 public/ref/*
 !public/ref/CREDITS.md
 !public/ref/manifest.json
+# The Board promo's track (Pixabay licence: not redistributed on its own); analysis/board.py rebuilds it.
+song/board.mp3
+song/board-source.mp3
+# The Agenda promo's track (Pixabay licence, as above); analysis/agenda.py rebuilds it.
+song/agenda.mp3
+song/agenda-source.mp3

@@ -63,7 +63,7 @@ async function openPage(url: string) {
   page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
   const only = opt('only');
   // --query k=v&...: extra URL parameters for a scene (e.g. midnight's still-only camera, see midnight.ts)
-  const query = opt('query');
+  const query = [opt('query'), opt('film') && `film=${opt('film')}`].filter(Boolean).join('&');
   await page.goto(`${url}/?export=1${only ? `&only=${only}` : ''}${SCALE !== 1 ? `&scale=${SCALE}` : ''}${VERTICAL ? '&aspect=9x16' : ''}${query ? `&${query}` : ''}`);
   await page.waitForFunction(() => (window as any).__video?.ready || (window as any).__video?.error, null, { timeout: 120000 });
   const err = await page.evaluate(() => (window as any).__video.error);
@@ -115,7 +115,9 @@ async function sheet(page: Page, times: number[], cols: number, out: string) {
 async function video(page: Page, from: number, to: number, fps: number, out: string) {
   mkdirSync(path.dirname(out), { recursive: true });
   const crf = opt('crf', '16')!;
-  const audio = path.join(APP, 'song/autocratico.mp3');
+  // --film board (or film=board in --query): another cut with its own track (src/engine/film.ts)
+  const film = opt('film') ?? /(?:^|&)film=([\w-]+)/.exec(opt('query') ?? '')?.[1];
+  const audio = path.join(APP, film && film !== 'trailer' ? `song/${film}.mp3` : 'song/autocratico.mp3');
   const args = ['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${OW}x${OH}`, '-r', String(fps), '-i', 'pipe:0'];
   if (!flag('noaudio')) args.push('-ss', String(from), '-t', String(to - from), '-i', audio);
   // Frames are sRGB (toSRGB in the final pass): convert with the BT.709 matrix and tag the stream,

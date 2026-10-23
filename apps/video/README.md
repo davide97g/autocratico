@@ -110,6 +110,16 @@ python3 tools/italian_demo.py ../../var/video/appdata
 bun tools/capture.ts --url http://127.0.0.1:8799
 ```
 
+## The Board promo
+
+A second film in the same engine: `?film=board` (preview) or `--film board` (render.ts), 30 s on its own
+track, analysis and edit. See [docs/BOARD.md](docs/BOARD.md).
+
+## The Agenda promo
+
+A third film: `?film=agenda` / `--film agenda`, 30 s on an upbeat pop track, Google Calendar managed by the
+agent. See [docs/AGENDA.md](docs/AGENDA.md).
+
 ## The cut with Bollo
 
 Bollo, the mascot, is a Roman black street cat drawn as a die-cut sticker. He raps the song over
