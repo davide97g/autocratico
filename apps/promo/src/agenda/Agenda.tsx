@@ -105,10 +105,10 @@ const CUES: Cue[] = (() => {
 
 const Sound: React.FC = () => (
   <>
-    <Audio src={staticFile("music/agenda.mp3")} volume={0.85} />
+    <Audio src={staticFile("music/agenda.mp3")} volume={0.55} />
     {CUES.map((c, i) => (
       <Sequence key={i} from={frameOf(c.at)} durationInFrames={frameOf(2)} layout="none">
-        <Audio src={staticFile(`sfx/${c.sfx}.wav`)} volume={c.vol} />
+        <Audio src={staticFile(`sfx/${c.sfx}.wav`)} volume={c.vol * 0.7} />
       </Sequence>
     ))}
   </>
@@ -189,6 +189,7 @@ function weekPose(t: number): Pose {
   const aside: Pose = { x: -360, y: 10, z: -600, rx: 10, ry: 24, s: 0.74, blur: 9, o: 0.85 };
   const front: Pose = { x: 30, y: 30, rx: 9, ry: -6, s: 0.9 };
   const close: Pose = { ...on(thu.x + thu.w / 2, thu.y + thu.h / 2, 1170, 470, 1.9), rx: 4, ry: 9 };
+  const closeLate: Pose = { ...on(thu.x + thu.w / 2, thu.y + thu.h / 2, 1150, 480, 2.1), rx: 2, ry: 15, rz: -1.5 };
   const pair: Pose = { ...on((thu.x + fri.x + fri.w) / 2, (thu.y + fri.y + fri.h) / 2, 1200, 560, 1.16), rx: 6, ry: -5 };
   const pairLate: Pose = { ...pair, ...on((thu.x + fri.x + fri.w) / 2, (thu.y + fri.y + fri.h) / 2, 1210, 565, 1.24), ry: -1 };
   const away: Pose = { x: -1700, y: -800, z: -900, rx: 30, ry: 45, rz: -18, s: 1, o: 0 };
@@ -197,6 +198,7 @@ function weekPose(t: number): Pose {
   p = mix(p, aside, prog(t, S.chat - 0.05, S.chat + 0.5, ease.inOutCubic));
   p = mix(p, front, prog(t, S.land - 0.05, S.land + 0.5, ease.inOutCubic));
   p = mix(p, close, prog(t, LAND + 0.2, LAND + 1.0, ease.inOutQuint));
+  p = mix(p, closeLate, prog(t, LAND + 1.0, S.move - 0.15, ease.inOutCubic));
   p = mix(p, pair, prog(t, S.move - 0.15, S.move + 0.45, ease.inOutCubic));
   p = mix(p, pairLate, prog(t, S.move + 0.45, S.phone - 0.1, ease.inOutCubic));
   p = mix(p, away, prog(t, S.phone - 0.12, S.phone + 0.3, ease.inCubic));
