@@ -18,6 +18,7 @@ import type {
   Widget,
 } from "@autocratico/core"
 
+import type { DemoCalendar } from "./calendar"
 import { emit, type Topic } from "./bus"
 import { profileToml, unifiedDiff, deadlineToml } from "./toml"
 import { nowIso, shortHash } from "./util"
@@ -94,6 +95,8 @@ export type DemoState = {
   arrived: string[]
   /** The Board (board.json); missing in demos started before it existed. */
   board?: Widget[]
+  /** Google Calendar's copy (calendar.ts); missing in demos started before it existed. */
+  calendar?: DemoCalendar
 }
 
 const KEY = "autocratico.demo"

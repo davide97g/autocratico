@@ -5,6 +5,8 @@ import {
   answerWidgets,
   ArchiveEntry,
   Board,
+  CalendarAgenda,
+  CalendarSetup,
   ChatEvent,
   Data,
   Device,
@@ -84,6 +86,10 @@ describe("demo server", () => {
     Usage.parse(await get("/api/usage"))
     expect(Board.parse(await get("/api/board")).widgets.length).toBeGreaterThan(0)
     GmailSetup.parse(await get("/api/gmail"))
+    expect(CalendarSetup.parse(await get("/api/calendar/setup")).accounts[0].state).toBe("connected")
+    const agenda = CalendarAgenda.parse(await get("/api/calendar"))
+    expect(agenda.events.length).toBeGreaterThan(5)
+    expect(agenda.proposals.length).toBe(1)
     ImapSetup.parse(await get("/api/imap"))
     FinanceSetup.parse(await get("/api/finance"))
     const finance = FinanceData.parse(await get("/api/finance/data"))
@@ -130,6 +136,30 @@ describe("demo server", () => {
     expect(((await get(`/api/activity/${commits[0].hash}`)) as { patch: string }).patch).toContain(`+    "${key}"`)
     await call("POST", `/api/activity/${commits[0].hash}/revert`)
     expect(state().done[key]).toBeUndefined()
+  })
+
+  it("adds, moves and deletes Google Calendar events from the chat, and adds a proposed appointment", async () => {
+    const said = (events: ChatEvent[]) => events.flatMap((e) => (e.type === "text" ? [e.text] : [])).join("")
+    const before = state().calendar!.events.length
+    const added = said(await ask("Metti in calendario la visita dal dentista giovedì alle 15", null))
+    expect(added).toMatch(/📅 Aggiunto a Google Calendar: Visita dal dentista — .+, 15:00–16:00/)
+    const event = state().calendar!.events.find((e) => e.title === "Visita dal dentista")!
+    expect(event).toMatchObject({ important: true, ours: true, reminders: [{ method: "popup", minutes: 1440 }, { method: "popup", minutes: 60 }] })
+    expect(state().calendar!.events.length).toBe(before + 1)
+
+    const first = await ask("Sposta la visita dal dentista a venerdì alle 17", null)
+    const chat = (first[0] as { id: string }).id
+    expect(said(first)).toContain("```confirm")
+    expect(said(await ask("Sì", chat))).toMatch(/📅 Evento aggiornato: Visita dal dentista — .+, 17:00–18:00/)
+
+    const del = await ask("Cancella la visita dal dentista", null)
+    expect(said(await ask("Sì", (del[0] as { id: string }).id))).toMatch(/📅 Evento eliminato: Visita dal dentista/)
+    expect(state().calendar!.events.some((e) => e.title === "Visita dal dentista")).toBe(false)
+
+    const [p] = CalendarAgenda.parse(await get("/api/calendar")).proposals
+    expect((await call("POST", `/api/calendar/proposals/${p.id}`, { answer: "add" })).status).toBe(200)
+    expect(CalendarAgenda.parse(await get("/api/calendar")).proposals).toEqual([])
+    expect(state().calendar!.events.some((e) => e.title === p.title && e.deadline === "passaporto")).toBe(true)
   })
 
   it("files the TARI notice from a Gmail link, with a reminder", async () => {

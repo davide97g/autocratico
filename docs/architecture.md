@@ -48,6 +48,7 @@ The chat agent (web and Telegram) stays read-only. When the user asks for a remi
 | iOS/macOS share sheet | Shortcut → `POST /api/ingest` | ingest-only bearer token (+ Access service token behind Cloudflare Access) |
 | Telegram | bot in a private chat: text, voice (transcribed locally), files | paired chat ids |
 | Gmail (several accounts) | `gmail.py sync --all` every 10 min | OAuth per account, read-only |
+| Google Calendar (several accounts) | `calendar` job every 15 min, and after each change | OAuth per account, events only; the chat agent writes through ```calendar blocks |
 | IMAP mailboxes (Yahoo, PEC, …) | `imap.py sync --all` every 10 min ([imap.md](imap.md)) | app password per mailbox in `secrets/imap/`, read-only |
 | Email from anywhere | forward to a synced mailbox, or post it to `/api/ingest` ([customize/email.md](customize/email.md)) | — |
 | WhatsApp | Export chat → share to the Shortcut or upload the .zip | as above |

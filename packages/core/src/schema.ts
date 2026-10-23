@@ -387,6 +387,8 @@ export const Status = z.object({
   /** Push notifications through ntfy: the server's host only, the topic stays on the server. */
   ntfy: z.object({ enabled: z.boolean(), host: z.string().nullable() }),
   gmail: z.array(z.object({ name: z.string(), connected: z.boolean() })),
+  /** Google Calendar accounts (calendar.toml). */
+  calendar: z.array(z.object({ name: z.string(), connected: z.boolean() })),
   finance: z.object({ connected: z.boolean(), live: z.boolean(), synced_at: z.string().nullable() }),
   inbox: z.object({ new: z.number().int(), failed: z.number().int() }),
   jobs: z.array(z.object({ job: z.string(), last: JobRun.nullable(), next: z.string().nullable() })),

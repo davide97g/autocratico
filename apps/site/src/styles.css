@@ -2942,7 +2942,7 @@ input[type="range"]::-moz-range-thumb {
 @media (min-width: 760px) {
   .bento {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas: "fin fin" "live git" "tg phone" "usage usage";
+    grid-template-areas: "fin fin" "cal cal" "live git" "tg phone" "usage usage";
   }
   .cell--fin {
     grid-area: fin;
@@ -2962,11 +2962,14 @@ input[type="range"]::-moz-range-thumb {
   .cell--usage {
     grid-area: usage;
   }
+  .cell--cal {
+    grid-area: cal;
+  }
 }
 @media (min-width: 1100px) {
   .bento {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-areas: "fin fin phone" "live git phone" "tg usage usage";
+    grid-template-areas: "fin fin phone" "live git phone" "cal cal tg" "usage usage usage";
   }
 }
 .cell {
@@ -3063,6 +3066,65 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 50%;
   background: var(--done);
   animation: live 2s ease-out infinite;
+}
+.cal-demo {
+  display: grid;
+  gap: 10px;
+  font-size: 0.86rem;
+}
+.cal-demo__q {
+  justify-self: end;
+  max-width: 90%;
+  padding: 9px 12px;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--primary);
+  color: var(--primary-fg);
+}
+.cal-demo__ok {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 12px;
+  border-radius: var(--r-row);
+  background: var(--sheet-2);
+}
+.cal-demo__ok svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.cal-demo__ok span {
+  display: grid;
+}
+.cal-demo__ok small,
+.cal-demo__day time {
+  color: var(--muted);
+}
+.cal-demo__day {
+  display: grid;
+  gap: 6px;
+}
+.cal-demo__day li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+.cal-demo__day b {
+  flex: 1;
+  font-weight: 500;
+}
+.is-play .cal-demo__day li:first-child {
+  animation: fresh 3.2s ease-out infinite;
+}
+@media (min-width: 1100px) {
+  .cell--cal {
+    grid-template-columns: 1fr 1.1fr;
+    align-items: center;
+    gap: 28px;
+  }
 }
 .live-rows {
   display: grid;

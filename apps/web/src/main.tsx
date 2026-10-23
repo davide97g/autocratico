@@ -7,6 +7,7 @@ import { PrivacyProvider } from "@/components/privacy"
 import { ThemeProvider } from "@/components/theme-provider.tsx"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { I18nProvider } from "@/i18n"
+import { captureCalendarReturn } from "@/lib/calendar"
 import { captureGmailReturn } from "@/lib/gmail"
 import { PrefsProvider } from "@/lib/prefs"
 import { registerUpdates } from "@/lib/update"
@@ -32,6 +33,7 @@ if (__DEMO__) {
   void import("./demo/boot").then(({ demoApp }) => render(demoApp()))
 } else {
   captureGmailReturn()
+  captureCalendarReturn()
   registerUpdates()
   render(<App />)
 }

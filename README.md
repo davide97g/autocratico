@@ -141,7 +141,7 @@ Found a security issue? See [SECURITY.md](SECURITY.md).
 
 ## Docs
 
-[Self-hosting](docs/self-hosting.md) · [Configuration](docs/configuration.md) · [Architecture](docs/architecture.md) · [Gmail](docs/gmail.md) · [Telegram](docs/telegram.md) · [ntfy](docs/ntfy.md) · [iOS shortcut](docs/ios-shortcut.md) · [Finance](docs/finance.md) · [Customize](CUSTOMIZE.md) · [Contributing](CONTRIBUTING.md)
+[Self-hosting](docs/self-hosting.md) · [Configuration](docs/configuration.md) · [Architecture](docs/architecture.md) · [Gmail](docs/gmail.md) · [Google Calendar](docs/calendar.md) · [Telegram](docs/telegram.md) · [ntfy](docs/ntfy.md) · [iOS shortcut](docs/ios-shortcut.md) · [Finance](docs/finance.md) · [Customize](CUSTOMIZE.md) · [Contributing](CONTRIBUTING.md)
 
 Catalog rules and example dates are indicative: always check official sources.
 

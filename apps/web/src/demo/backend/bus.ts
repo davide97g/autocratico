@@ -10,6 +10,7 @@ export type Topic =
   | "reminders"
   | "finance"
   | "usage"
+  | "calendar"
 
 type Listener = (topic: Topic) => void
 

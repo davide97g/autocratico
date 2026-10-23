@@ -1,10 +1,12 @@
 // "Ask Claude" in the demo: no model, a set of scripted answers that read the visitor's register and
 // write the same things the real agent writes. Tool steps, a streamed answer, action blocks
-// (```change, ```reminder, ```inbox) that the pretend server then carries out as apps/server does
+// (```change, ```reminder, ```inbox, ```calendar) that the pretend server then carries out as apps/server does
 // (chat-actions.ts), and yes/no when a change needs the visitor's word.
 import {
+  type CalendarEvent,
   type Chat,
   type ChatEvent,
+  overlapping,
   extractActions,
   gmailLinks,
   type Occurrence,
@@ -17,6 +19,7 @@ import {
 } from "@autocratico/core"
 
 import { track } from "../analytics"
+import { applyCalendarBlocks, calendar, eventTime } from "./calendar"
 import { ARRIVALS, queueTriage, saveEmail } from "./jobs"
 import { applyChange, ChangeError, data, type Lang } from "./register"
 import { ACCOUNT, PERSON } from "./seed"
@@ -1072,6 +1075,8 @@ export function route(
     )
   )
     return ["nopay", noPay(lang)]
+  const cal = calendarIntent(text, lang, about)
+  if (cal) return cal
   if (/ricord|promemoria|avvisami|remind/.test(t))
     return ["remind", remind(text, lang, about)]
   if (/sposta|rinvia|cambia (la )?data|move|reschedule|postpone/.test(t)) {
@@ -1100,6 +1105,182 @@ export function route(
     return ["week", week(lang)]
   if (about) return ["about", aboutOne(about, lang)]
   return ["other", fallback(lang)]
+}
+
+// ---------- Google Calendar ----------
+
+const IMPORTANT = /visita|medic|dentist|esame|analisi|udienza|notaio|questura|comune|caf|volo|aereo|revisione|colloquio|exam|doctor|hearing|notary|flight|interview/
+
+function hourIn(t: string): { hh: number; mm: number } | null {
+  const m = /\b(?:alle|at|ore)\s+(\d{1,2})(?:[:.](\d{2}))?/.exec(t)
+  return m ? { hh: Number(m[1]), mm: m[2] ? Number(m[2]) : 0 } : null
+}
+const hhmm = (h: { hh: number; mm: number }) => `${String(h.hh).padStart(2, "0")}:${String(h.mm).padStart(2, "0")}`
+
+/** How many words of a title a message has. */
+function matches(text: string, title: string): number {
+  const asked = new Set(words(text))
+  return words(title).filter((w) => asked.has(w) || [...asked].some((a) => a.startsWith(w.slice(0, 5)) && w.length > 4)).length
+}
+
+/** The event a message names, by the words of its title (upcoming ones first). */
+function findEvent(text: string): CalendarEvent | null {
+  let best: CalendarEvent | null = null
+  let score = 0
+  for (const e of calendar().events.filter((x) => x.end >= today())) {
+    const n = matches(text, e.title)
+    if (n > score) {
+      best = e
+      score = n
+    }
+  }
+  return best
+}
+
+/** An event that the message names at least as well as any deadline. */
+function eventOverDeadline(text: string, named: boolean): CalendarEvent | null {
+  const e = findEvent(text)
+  if (!e || named) return e
+  const o = findDeadline(text, data().agenda.filter(open))
+  return !o || matches(text, e.title) > matches(text, o.title) ? e : null
+}
+
+function eventLine(e: CalendarEvent, lang: Lang): string {
+  const time = e.all_day ? L(lang, "tutto il giorno", "all day") : `${e.start.slice(11)}–${e.end.slice(11)}`
+  return `- ${time} **${e.title}**${e.location ? ` · ${e.location}` : ""}${e.important ? L(lang, " · ❗ importante", " · ❗ important") : ""}`
+}
+
+/** "Cosa ho domani?": the copy of the calendar and the deadlines, by day. */
+function agendaOf(text: string, lang: Lang): Answer {
+  const t = text.toLowerCase()
+  const one = dayIn(t) ?? (/oggi|today/.test(t) ? today() : null)
+  const days = one ? [one] : Array.from({ length: 7 }, (_, i) => addDays(today(), i))
+  const d = data()
+  const parts: string[] = []
+  for (const iso of days) {
+    const evs = calendar().events.filter((e) => e.start.slice(0, 10) <= iso && e.end.slice(0, 10) >= iso)
+    const due = d.agenda.filter((o) => open(o) && o.date === iso)
+    if (!evs.length && !due.length) continue
+    parts.push(`**${day(iso, lang)}**`, ...due.map((o) => `- ${L(lang, "scade", "due")} **${o.title}**`), ...evs.map((e) => eventLine(e, lang)), "")
+  }
+  const clash = calendar().events.find((e) => days.includes(e.start.slice(0, 10)) && overlapping(calendar().events, e.start, e.end, e.id).length)
+  return {
+    tools: [
+      ["Read", "calendar/agenda.md"],
+      ["Read", "deadlines.toml"],
+    ],
+    text: parts.length
+      ? [
+          one ? L(lang, `Ecco ${day(one, lang)}:`, `Here's ${day(one, lang)}:`) : L(lang, "Ecco i prossimi sette giorni, eventi e scadenze:", "Here are the next seven days, events and deadlines:"),
+          "",
+          ...parts,
+          clash ? L(lang, `Attenzione: **${clash.title}** si sovrappone a un altro impegno.`, `Heads up: **${clash.title}** overlaps another event.`) : L(lang, "Nessuna sovrapposizione.", "Nothing overlaps."),
+        ].join("\n")
+      : L(lang, `Niente in calendario e nessuna scadenza${one ? ` ${day(one, lang)}` : " questa settimana"}.`, `Nothing in the calendar and no deadlines${one ? ` on ${day(one, lang)}` : " this week"}.`),
+  }
+}
+
+/** "Metti in calendario la visita dal dentista giovedì alle 15": a ```calendar create block. */
+function addEvent(text: string, lang: Lang, about: Occurrence | null): Answer {
+  const t = text.toLowerCase()
+  const deadline = about ?? (/scadenz|deadline/.test(t) ? findDeadline(text, data().agenda.filter(open)) : null)
+  if (deadline) {
+    const block = { op: "create", title: deadline.title, start: deadline.date, reminders: [4320, 1440], important: deadline.severity === "high", deadline: deadline.id }
+    return {
+      tools: [
+        ["Read", "deadlines.toml"],
+        ["Read", "calendar/agenda.md"],
+      ],
+      text: `${L(lang, `Metto **${deadline.title}** in Google Calendar ${day(deadline.date, lang)}, tutto il giorno, con promemoria 3 giorni e 1 giorno prima.`, `I'll put **${deadline.title}** in Google Calendar on ${day(deadline.date, lang)}, all day, with reminders 3 days and 1 day before.`)}\n\n\`\`\`calendar\n${JSON.stringify(block)}\n\`\`\``,
+    }
+  }
+  const on = dayIn(t) ?? addDays(today(), 1)
+  const hour = hourIn(t) ?? { hh: 10, mm: 0 }
+  const start = `${on}T${hhmm(hour)}`
+  const title =
+    text
+      .replace(/^.*?(metti|aggiungi|segna|fissa|crea|inserisci|add|put|schedule)\s+(in calendario\s+|in agenda\s+|nel calendario\s+|to the calendar\s+|in the calendar\s+)?/i, "")
+      .replace(/(?<![\p{L}\d])(in calendario|in agenda|nel calendario|to (my|the) calendar|in the calendar|un appuntamento|an appointment|un evento|an event|dopodomani|domani|tomorrow|(il |on )?(luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|alle \d+([:.]\d+)?|ore \d+([:.]\d+)?|at \d+([:.]\d+)?|\d{1,2}[/.-]\d{1,2})(?![\p{L}\d])/giu, "")
+      .replace(/\s+/g, " ")
+      .replace(/^[\s,:-]+|[\s,.:-]+$/g, "")
+      .replace(/^(la|il|lo|l'|the|a|an)\s+/i, "") || L(lang, "Appuntamento", "Appointment")
+  const important = IMPORTANT.test(t)
+  const clash = overlapping(calendar().events, start, undefined)
+  const block = {
+    op: "create",
+    title: title.charAt(0).toUpperCase() + title.slice(1),
+    start,
+    duration: 60,
+    ...(important ? { important: true, description: L(lang, "Portare documento d'identità e tessera sanitaria.", "Bring an ID and the health card.") } : {}),
+  }
+  return {
+    tools: [
+      ["Read", "calendar/agenda.md"],
+      ["Bash", `python3 scripts/when.py "${on} ${hhmm(hour)}"`],
+    ],
+    text: `${L(
+      lang,
+      `Aggiungo **${block.title}** ${day(on, lang)} alle ${hhmm(hour)}, per un'ora${important ? ": è un appuntamento importante, quindi rosso in calendario, promemoria il giorno prima e un'ora prima, e un avviso su Telegram" : ""}.${clash.length ? ` Nota: a quell'ora c'è già **${clash[0].title}**.` : ""}`,
+      `I'll add **${block.title}** on ${day(on, lang)} at ${hhmm(hour)}, for an hour${important ? ": it's an important appointment, so red in the calendar, reminders the day before and an hour before, and a Telegram alert" : ""}.${clash.length ? ` Note: **${clash[0].title}** is already at that time.` : ""}`
+    )}\n\n\`\`\`calendar\n${JSON.stringify(block)}\n\`\`\``,
+  }
+}
+
+/** "Sposta la riunione a venerdì alle 18": described, confirmed, then a ```calendar update block. */
+function moveEvent(text: string, e: CalendarEvent, lang: Lang): Answer {
+  const t = text.toLowerCase()
+  const on = dayIn(t) ?? e.start.slice(0, 10)
+  const hour = hourIn(t)
+  const start = e.all_day ? on : `${on}T${hour ? hhmm(hour) : e.start.slice(11)}`
+  const block = { op: "update", id: e.id, set: { start } }
+  const target = { start, end: start, all_day: e.all_day }
+  return {
+    tools: [["Read", "calendar/agenda.md"]],
+    text: L(
+      lang,
+      `Sposto **${e.title}** da ${eventTime(e, lang)} a **${eventTime(target, lang).replace(/–.*$/, "")}**, stessa durata. Confermi?\n\n\`\`\`confirm\n\`\`\``,
+      `I'll move **${e.title}** from ${eventTime(e, lang)} to **${eventTime(target, lang).replace(/–.*$/, "")}**, same length. Confirm?\n\n\`\`\`confirm\n\`\`\``
+    ),
+    confirm: {
+      yes: () => ({ tools: [], text: `${L(lang, "Fatto, l'ho spostato.", "Done, moved.")}\n\n\`\`\`calendar\n${JSON.stringify(block)}\n\`\`\`` }),
+    },
+  }
+}
+
+/** "Cancella la palestra di stasera": confirmed first, then a ```calendar delete block. */
+function deleteEvent(text: string, e: CalendarEvent, lang: Lang): Answer {
+  const series = Boolean(e.recurring) && /tutte|sempre|serie|every|all of|series/.test(text.toLowerCase())
+  const block = { op: "delete", id: e.id, ...(series ? { series: true } : {}) }
+  return {
+    tools: [["Read", "calendar/agenda.md"]],
+    text: L(
+      lang,
+      `Elimino **${e.title}** (${eventTime(e, lang)})${series ? " e tutta la serie" : e.recurring ? ", solo questa volta (le altre restano)" : ""}. Confermi?\n\n\`\`\`confirm\n\`\`\``,
+      `I'll delete **${e.title}** (${eventTime(e, lang)})${series ? " and the whole series" : e.recurring ? ", this time only (the others stay)" : ""}. Confirm?\n\n\`\`\`confirm\n\`\`\``
+    ),
+    confirm: {
+      yes: () => ({ tools: [], text: `${L(lang, "Eliminato.", "Deleted.")}\n\n\`\`\`calendar\n${JSON.stringify(block)}\n\`\`\`` }),
+    },
+  }
+}
+
+/** A calendar request, or null when the message is about something else. */
+function calendarIntent(text: string, lang: Lang, about: Occurrence | null): [string, Answer] | null {
+  const t = text.toLowerCase()
+  const named = /calendari|agenda|appuntament|evento|eventi|impegn|calendar|appointment|event/.test(t)
+  // Paying, marking done and the deadlines themselves stay with the register's answers.
+  if (/pagat|\bfatt[ao]\b|\bpaid\b|\bdone\b/.test(t) || (/scadenz|deadline/.test(t) && !named)) return null
+  if (/cancella|elimina|togli|annulla l|delete|remove|cancel the/.test(t)) {
+    const e = eventOverDeadline(text, named)
+    if (e) return ["cal-delete", deleteEvent(text, e, lang)]
+  }
+  if (/sposta|rinvia|anticipa|posticipa|move|reschedule/.test(t)) {
+    const e = eventOverDeadline(text, named)
+    if (e) return ["cal-move", moveEvent(text, e, lang)]
+  }
+  if (/(metti|aggiungi|segna|fissa|crea|inserisci|add|put|schedule)\b/.test(t) && (named || IMPORTANT.test(t))) return ["cal-add", addEvent(text, lang, about)]
+  if (named || /cosa ho|che impegni|what do i have|am i free|sono libero|sono libera/.test(t)) return ["cal-agenda", agendaOf(text, lang)]
+  return null
 }
 
 // ---------- the conversation, as POST /api/chat streams it ----------
@@ -1195,6 +1376,7 @@ function finish(raw: string, lang: Lang): { text: string; lines: string[] } {
       lines.push(t.notChanged(e instanceof ChangeError ? e.message : String(e)))
     }
   }
+  lines.push(...applyCalendarBlocks(actions.calendar, lang))
   // Widget proposals stay in the answer for the chat's preview, as the server keeps them.
   const kept = widgetBlocks(raw).flatMap((v) => {
     const r = parseWidget(v)

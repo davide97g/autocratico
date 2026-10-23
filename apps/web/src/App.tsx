@@ -4,7 +4,7 @@ import { cn } from "cn"
 
 import { toast } from "sonner"
 
-import { Chat, chatAbout, chatAsk, chatNew } from "@/components/chat"
+import { Chat, chatAbout, chatAsk, chatDraft, chatNew } from "@/components/chat"
 import { type CommandActions, CommandPalette, GO_KEYS, ShortcutsDialog } from "@/components/command"
 import { DropToInbox } from "@/components/drop-to-inbox"
 import { type ExpenseAsk, ExpenseDialog } from "@/components/finance"
@@ -38,6 +38,7 @@ import { otherTheme, switchPalette, switchTheme } from "@/lib/theme-switch"
 import { unlessChanged } from "@/lib/utils"
 import { level } from "@/lib/status"
 import { Activity } from "@/views/activity"
+import { Agenda } from "@/views/agenda"
 import { Archive } from "@/views/archive"
 import { Cases } from "@/views/cases"
 import { Catalog } from "@/views/catalog"
@@ -377,6 +378,13 @@ function Main({
     },
     [setChatOpen]
   )
+  const draft = React.useCallback(
+    (text: string) => {
+      chatDraft(text)
+      setChatOpen(true)
+    },
+    [setChatOpen]
+  )
   const askAbout = React.useCallback(
     (o: Occurrence) => {
       chatAbout({ key: o.key, title: o.title })
@@ -622,6 +630,7 @@ function Main({
               onAsk={askAbout}
             />
           )}
+          {data && view === "agenda" && <Agenda data={data} onOpenDeadline={openDeadline} onAsk={ask} onDraft={draft} onOpenSettings={() => go("settings")} />}
           {data && view === "cases" && <Cases cases={data.cases} open={openCase} />}
           {data && view === "profile" && <Profile profile={data.profile} />}
           {data && view === "catalog" && <Catalog entries={data.catalog} />}

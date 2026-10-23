@@ -16,7 +16,13 @@ export type Prefs = {
   palette: Palette
   /** How the Overview calendar lays out deadlines (views/calendar.tsx). */
   calendar: CalendarLayout
+  /** How the Agenda shows the days: a week of hours, a month, or a list (views/agenda.tsx). */
+  agenda: AgendaLayout
 }
+
+export const AGENDA_LAYOUTS = ["week", "month", "list"] as const
+export type AgendaLayout = (typeof AGENDA_LAYOUTS)[number]
+const isAgendaLayout = (v: unknown): v is AgendaLayout => AGENDA_LAYOUTS.includes(v as AgendaLayout)
 
 export const CALENDAR_LAYOUTS = ["months", "horizons", "axis", "grid", "areas"] as const
 export type CalendarLayout = (typeof CALENDAR_LAYOUTS)[number]
@@ -29,6 +35,7 @@ const DEFAULTS: Prefs = {
   compact: false,
   palette: DEFAULT_PALETTE,
   calendar: "months",
+  agenda: "week",
 }
 const STORAGE_KEY = "autocratico.prefs"
 // Before the preferences had their own key the sidebar remembered itself here.
@@ -43,6 +50,7 @@ function read(): Prefs {
         ...saved,
         palette: isPalette(saved.palette) ? saved.palette : DEFAULT_PALETTE,
         calendar: isCalendarLayout(saved.calendar) ? saved.calendar : DEFAULTS.calendar,
+        agenda: isAgendaLayout(saved.agenda) ? saved.agenda : DEFAULTS.agenda,
       }
     return { ...DEFAULTS, compact: localStorage.getItem(LEGACY_COMPACT) === "1" }
   } catch {

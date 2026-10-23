@@ -5,6 +5,11 @@ import type {
   Board,
   Widget,
   WidgetInput,
+  CalendarAccountInput,
+  CalendarAgenda,
+  CalendarEvent,
+  CalendarProposal,
+  CalendarSetup,
   Chat,
   ChatSummary,
   Data,
@@ -33,6 +38,12 @@ import type {
 
 export type {
   AccountSession,
+  CalendarAccount,
+  CalendarAgenda,
+  CalendarEvent,
+  CalendarInfo,
+  CalendarProposal,
+  CalendarSetup,
   FinanceCategory,
   FinanceData,
   FinanceSetup,
@@ -206,6 +217,18 @@ export const authorizeGmail = (name: string) =>
   post<{ url: string; type: "web" | "installed" }>(`/api/gmail/accounts/${encodeURIComponent(name)}/authorize`)
 /** Finish the sign-in with the address Google sent the browser back to. */
 export const completeGmail = (url: string) => post<{ name: string; address: string }>("/api/gmail/complete", { url })
+
+export const calendarAgenda = (range?: { from: string; to: string }) =>
+  request<CalendarAgenda>(`/api/calendar${range ? `?from=${range.from}&to=${range.to}` : ""}`)
+export const calendarSetup = () => request<CalendarSetup>("/api/calendar/setup")
+export const saveCalendarAccount = (a: CalendarAccountInput) => post<Ok>("/api/calendar/accounts", a)
+export const removeCalendarAccount = (name: string) => post<Ok>(`/api/calendar/accounts/${encodeURIComponent(name)}`, undefined, "DELETE")
+export const authorizeCalendar = (name: string) =>
+  post<{ url: string; type: "web" | "installed" }>(`/api/calendar/accounts/${encodeURIComponent(name)}/authorize`)
+export const completeCalendar = (url: string) => post<{ name: string; address: string }>("/api/calendar/complete", { url })
+export const syncCalendar = () => post<{ accounts: number; events: number; errors: string[] }>("/api/calendar/sync")
+export const answerProposal = (id: string, answer: "add" | "dismiss") =>
+  post<{ proposal: CalendarProposal; event: CalendarEvent | null }>(`/api/calendar/proposals/${id}`, { answer })
 
 export const imapSetup = () => request<ImapSetup>("/api/imap")
 /** Checks the sign-in before saving; the answer lists the mailbox's folders. */

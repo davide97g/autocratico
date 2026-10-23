@@ -1,6 +1,7 @@
 import * as React from "react"
 import {
   BanknoteIcon,
+  CalendarDaysIcon,
   ChartLineIcon,
   BellRingIcon,
   BotIcon,
@@ -40,6 +41,7 @@ const AREA_ICONS: Record<string, LucideIcon> = {
 
 const JOB_ICONS: Record<string, LucideIcon> = {
   gmail: MailIcon,
+  calendar: CalendarDaysIcon,
   finance: ChartLineIcon,
   triage: BotIcon,
   reminders: BellRingIcon,

@@ -16,9 +16,9 @@ import { stringify } from "smol-toml"
 
 import { locks, readJson, writeAtomic, writeJson, writeSecret } from "./files.ts"
 
-const AUTH_URI = "https://accounts.google.com/o/oauth2/auth"
-const TOKEN_URI = "https://oauth2.googleapis.com/token"
-const REVOKE_URI = "https://oauth2.googleapis.com/revoke"
+export const AUTH_URI = "https://accounts.google.com/o/oauth2/auth"
+export const TOKEN_URI = "https://oauth2.googleapis.com/token"
+export const REVOKE_URI = "https://oauth2.googleapis.com/revoke"
 const PROFILE_URI = "https://gmail.googleapis.com/gmail/v1/users/me/profile"
 export const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 const SIGN_IN_TTL = 15 * 60_000
@@ -27,7 +27,7 @@ const HEADER = `# Gmail accounts synced by scripts/gmail.py (read-only). Managed
 # query uses Gmail search syntax; tokens are in secrets/gmail/<name>.json.
 `
 
-type Client = { type: "web" | "installed"; client_id: string; client_secret: string; project_id?: string; redirect_uris?: string[] }
+export type Client = { type: "web" | "installed"; client_id: string; client_secret: string; project_id?: string; redirect_uris?: string[] }
 type Token = { access_token: string; refresh_token?: string; scope?: string; expires_in?: number; client_id?: string }
 type SignIn = { name: string; verifier: string; redirect: string; clientId: string; expires: number }
 type Fetch = typeof fetch
@@ -41,12 +41,23 @@ export class GmailError extends Error {
   }
 }
 
+/** The OAuth client uploaded from Settings (secrets/credentials.json), shared by Gmail and Google Calendar. */
+export function oauthClient(data: string): Client | null {
+  try {
+    const file = JSON.parse(readFileSync(join(data, "secrets", "credentials.json"), "utf8")) as Record<string, Client | undefined>
+    const type = file.web ? "web" : file.installed ? "installed" : null
+    return type && { ...file[type]!, type }
+  } catch {
+    return null
+  }
+}
+
 /** Comment lines at the top of the file, else the default header. */
-function header(text: string): string {
+export function header(text: string, fallback = HEADER): string {
   const lines = text.split("\n")
   const end = lines.findIndex((l) => l.trim() !== "" && !l.trimStart().startsWith("#"))
   const head = lines.slice(0, end < 0 ? lines.length : end).join("\n").trimEnd()
-  return head ? `${head}\n` : HEADER
+  return head ? `${head}\n` : fallback
 }
 
 export class Gmail {
@@ -82,13 +93,7 @@ export class Gmail {
   // ---------- reading ----------
 
   #client(): Client | null {
-    try {
-      const file = JSON.parse(readFileSync(this.#credentials, "utf8")) as Record<string, Client | undefined>
-      const type = file.web ? "web" : file.installed ? "installed" : null
-      return type && { ...file[type]!, type }
-    } catch {
-      return null
-    }
+    return oauthClient(this.#data)
   }
 
   /** Account name -> query, as scripts/gmail.py reads them (a top-level query is "default"). */

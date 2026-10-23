@@ -40,6 +40,7 @@ import {
   today,
   year,
 } from "./util"
+import { seedCalendar } from "./calendar"
 
 type DeadlineInput = Partial<Deadline> &
   Pick<Deadline, "id" | "title" | "area" | "date">
@@ -1099,6 +1100,7 @@ export function seed(rawName: string): DemoState {
     ],
     arrived: [],
     board: board(),
+    calendar: seedCalendar(),
   }
   const caseList = cases(name, Y, T, { foto, cieFront, verbale, ricevuta730 })
   const caseBy = (prefix: string) =>

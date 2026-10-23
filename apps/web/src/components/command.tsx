@@ -39,6 +39,7 @@ import { level } from "@/lib/status"
 export const GO_KEYS: Record<View, string> = {
   overview: "o",
   deadlines: "d",
+  agenda: "e",
   cases: "c",
   inbox: "i",
   finance: "f",

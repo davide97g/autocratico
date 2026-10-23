@@ -12,6 +12,8 @@ import { addDays, catalogVerified, type ChatEvent, type InboxItem, type JobRun, 
 import { loadDeadlines, loadState } from "@autocratico/core/node"
 import { Cron } from "croner"
 
+import type { Calendar } from "./calendar.ts"
+import { eventTime } from "./chat-actions.ts"
 import type { Claude } from "./claude.ts"
 import type { Config } from "./config.ts"
 import { locks } from "./files.ts"
@@ -31,12 +33,13 @@ export type Notifier = {
   notify(text: string, buttons?: Button[][]): Promise<void>
 }
 
-export const JOB_NAMES = ["gmail", "imap", "finance", "triage", "reminders", "digest", "backup", "taxreturn", "rules", "energy"] as const
+export const JOB_NAMES = ["gmail", "imap", "calendar", "finance", "triage", "reminders", "digest", "backup", "taxreturn", "rules", "energy"] as const
 export type JobName = (typeof JOB_NAMES)[number]
 
 const SCHEDULES: Record<JobName, string | null> = {
   gmail: "*/10 * * * *",
   imap: "5-59/10 * * * *", // between the Gmail runs
+  calendar: "2-59/15 * * * *", // the copy of Google Calendar; the agent's own writes update it at once
   finance: "0 * * * *", // full re-read; the change feed brings edits within seconds
   triage: null, // runs when new items arrive
   reminders: "30 8 * * *",
@@ -72,6 +75,8 @@ type Context = {
   repo: DataRepo
   reminders: Reminders
   finance: Finance
+  /** Google Calendar: the copy, alerts of important events, appointments found in documents. */
+  calendar?: Calendar
   /** Payments seen in the finance source, proposed for open occurrences. */
   matches?: PaymentMatches
   notifier: () => Notifier | null
@@ -116,6 +121,12 @@ const TEXT = {
     markedDone: "Segnate come fatte",
     snooze: "+1 h",
     tomorrow: "Domani 9:00",
+    calendarFailed: "Sincronizzazione di Google Calendar non riuscita",
+    agendaToday: "Oggi in calendario",
+    alert: (title: string, when: string, minutes: number) => `📅 ${minutes ? `Tra ${span("it", minutes)}` : "Domani"}: ${title}\n${when}`,
+    proposal: (title: string, when: string) => `📅 Appuntamento trovato in un documento: ${title}\n${when}\nLo aggiungo a Google Calendar?`,
+    add: "Aggiungi",
+    no: "No",
   },
   en: {
     reminders: "Reminders",
@@ -144,8 +155,28 @@ const TEXT = {
     markedDone: "Marked as done",
     snooze: "+1 h",
     tomorrow: "Tomorrow 9:00",
+    calendarFailed: "Google Calendar sync failed",
+    agendaToday: "Today in the calendar",
+    alert: (title: string, when: string, minutes: number) => `📅 ${minutes ? `In ${span("en", minutes)}` : "Tomorrow"}: ${title}\n${when}`,
+    proposal: (title: string, when: string) => `📅 Appointment found in a document: ${title}\n${when}\nAdd it to Google Calendar?`,
+    add: "Add",
+    no: "No",
   },
 }
+
+/** "1 h", "2 giorni", "30 min". */
+function span(locale: "it" | "en", minutes: number): string {
+  const it = locale === "it"
+  if (minutes >= 1440 && minutes % 1440 === 0) {
+    const d = minutes / 1440
+    return it ? `${d} ${d === 1 ? "giorno" : "giorni"}` : `${d} ${d === 1 ? "day" : "days"}`
+  }
+  if (minutes >= 60 && minutes % 60 === 0) return `${minutes / 60} h`
+  return `${minutes} min`
+}
+
+/** For the triage prompt when Google Calendar is connected: appointments go to the user as proposals. */
+const TRIAGE_CALENDAR = `- Appointments with a day (and usually a time) that the user must attend — a medical visit or exam, a hearing, a summons, a meeting at an office, a notary, an inspection, a delivery to be at home for — go in "calendar" of the result block: the server asks the user whether to add them to Google Calendar. Not deadlines to pay or file (those are deadlines.toml), nothing already past, nothing the user only might do. Look in calendar/agenda.md first: what is already there is not proposed again. Each one: {"title": "<short, in the user's language>", "start": "YYYY-MM-DDTHH:MM" (local) or "YYYY-MM-DD" when no time is given, "end": "<optional>", "location": "<address or office>", "description": "<what it is, what to bring, the booking code, the inbox path>", "important": true, "deadline": "<id in deadlines.toml, if related>"}.`
 
 const TRIAGE_INSTRUCTIONS = `You are the background agent of autocratico, running without a human watching. You process new items from the inbox.
 - Follow the "When a document arrives" rule in AGENTS.md: extract deadlines and amounts, update deadlines.toml, open or update the case in cases/, add a Timeline line, update notes/SITUATION.md when facts change.
@@ -189,7 +220,7 @@ function urgent(i: InboxItem): boolean {
   return i.source !== "email" || i.important
 }
 
-function triagePrompt(items: InboxItem[], locale: string) {
+function triagePrompt(items: InboxItem[], locale: string, calendar = false) {
   const list = items
     .map((i) => {
       const files = i.files.length ? `, files: ${i.files.join(", ")}` : ""
@@ -207,7 +238,8 @@ End your answer with exactly one fenced json block, nothing after it:
 {"items": [{"id": "<id>", "status": "processed" | "ignored", "outcome": "<one line in ${language}: what you changed, or why nothing>"}],
  "summary": "<2-5 short lines in ${language} for a phone notification; personal data in ||...||>",
  "phishing": ["<id of suspicious items>"],
- "done": ["<deadline-id>@<YYYY-MM-DD> of occurrences now paid or completed"]}
+ "done": ["<deadline-id>@<YYYY-MM-DD> of occurrences now paid or completed"]${calendar ? `,
+ "calendar": [<appointments to propose, see the instructions; usually none>]` : ""}}
 \`\`\``
 }
 
@@ -230,6 +262,8 @@ type TriageResult = {
   summary: string
   phishing: string[]
   done: string[]
+  /** Appointments to propose (checked by calendar.ts). */
+  calendar: unknown[]
 }
 
 /** The last fenced json block of an agent's answer, parsed; null when missing or malformed. */
@@ -255,6 +289,7 @@ export function parseTriage(text: string): TriageResult | null {
       summary: typeof r.summary === "string" ? r.summary : "",
       phishing: Array.isArray(r.phishing) ? r.phishing.filter((x) => typeof x === "string") : [],
       done: Array.isArray(r.done) ? r.done.filter((x) => typeof x === "string" && /^[\w-]+@\d{4}-\d{2}-\d{2}$/.test(x)) : [],
+      calendar: Array.isArray(r.calendar) ? r.calendar.filter((x) => x && typeof x === "object") : [],
     }
   } catch {
     return null
@@ -295,7 +330,7 @@ export class Jobs {
   #waiting: JobName[] = []
   #tick: NodeJS.Timeout | null = null
   #offFinance: (() => void) | null = null
-  #failing = { gmail: false, imap: false }
+  #failing = { gmail: false, imap: false, calendar: false }
   #financeFailing = false
   #pacedAt = 0
 
@@ -325,7 +360,10 @@ export class Jobs {
     // Items that arrived while the server was down.
     if (this.#c.inbox.list().some((i) => i.status === "new")) this.queueTriage(5_000)
     // Reminders set from the chat: checked every 30 seconds, sent late rather than lost after a restart.
-    this.#tick = setInterval(() => void this.sendDueReminders(), 30_000)
+    this.#tick = setInterval(() => {
+      void this.sendDueReminders()
+      void this.sendEventAlerts()
+    }, 30_000)
     // New transactions in the finance source: any of them the payment of an open occurrence?
     this.#offFinance = this.#c.finance.onChange(() => void this.#scanMatches())
   }
@@ -351,6 +389,26 @@ export class Jobs {
           { text: this.#t.tomorrow, data: `snooze:${r.id}:tomorrow` },
         ],
       ])
+    }
+    return due.length
+  }
+
+  /** Important events of Google Calendar, on Telegram/ntfy when their reminders are due. */
+  async sendEventAlerts(now = new Date()): Promise<number> {
+    const { calendar } = this.#c
+    const notifier = this.#c.notifier()
+    if (!calendar || !notifier) return 0
+    let due
+    try {
+      due = await calendar.dueAlerts(now)
+    } catch (e) {
+      console.error(`calendar alerts: ${(e as Error).message}`)
+      return 0
+    }
+    const locale = this.#c.config.locale
+    for (const { event, minutes } of due.slice(0, 10)) {
+      const where = event.location ? ` · ${event.location}` : ""
+      await notifier.notify(this.#t.alert(event.title, `${eventTime(event, locale)}${where}`, minutes))
     }
     return due.length
   }
@@ -434,6 +492,8 @@ export class Jobs {
         return this.#mail("gmail")
       case "imap":
         return this.#mail("imap")
+      case "calendar":
+        return this.#calendar()
       case "finance":
         return this.#finance()
       case "triage":
@@ -458,6 +518,7 @@ export class Jobs {
     const { config, finance } = this.#c
     if (name === "gmail" && !existsSync(join(config.data, "secrets", "credentials.json"))) return "Gmail not configured"
     if (name === "imap" && !imapConnected(config.data)) return "no IMAP mailbox connected"
+    if (name === "calendar" && !this.#c.calendar?.configured()) return "no Google Calendar connected"
     if (name === "finance" && !finance.configured()) return "no finance source connected"
     if (name === "energy" && !existsSync(join(config.data, "energy.toml"))) return "no energy.toml"
     return null
@@ -479,6 +540,19 @@ export class Jobs {
       this.#financeFailing = true
       throw e
     }
+  }
+
+  async #calendar(): Promise<string> {
+    const missing = this.#unconfigured("calendar")
+    if (missing) return `skipped: ${missing}`
+    const r = await this.#c.calendar!.sync()
+    if (r.errors.length) {
+      // One alert per failure streak, not one every 15 minutes.
+      if (!this.#failing.calendar) await this.#c.notifier()?.notify(`${this.#t.calendarFailed}: ${r.errors.join("; ")}`)
+      this.#failing.calendar = true
+      if (r.errors.length === r.accounts) throw new Error(r.errors.join("; "))
+    } else this.#failing.calendar = false
+    return `${r.events} events in ${r.accounts} account(s)${r.errors.length ? ` (errors: ${r.errors.join("; ")})` : ""}`
   }
 
   /** scripts/gmail.py or scripts/imap.py `sync --all`, then triage for what arrived. */
@@ -531,11 +605,12 @@ export class Jobs {
     const ids = items.map((i) => i.id)
     run.items = items.map((i) => ({ id: i.id, title: i.title }))
     await inbox.setStatus(ids, "processing")
+    const calendar = this.#c.calendar?.configured() === true
     const { text, error } = await claude.complete(
       {
-        prompt: triagePrompt(items, config.locale),
+        prompt: triagePrompt(items, config.locale, calendar),
         profile: "triage",
-        instructions: TRIAGE_INSTRUCTIONS,
+        instructions: calendar ? `${TRIAGE_INSTRUCTIONS}\n${TRIAGE_CALENDAR}` : TRIAGE_INSTRUCTIONS,
         locale: config.locale,
         signal: AbortSignal.timeout(AGENT_TIMEOUT_MS),
       },
@@ -568,9 +643,19 @@ export class Jobs {
       const link = config.publicOrigin ? `\n${config.publicOrigin}/#activity` : ""
       await this.#c.notifier()?.notify(`${this.#t.triage}\n\n${lines.filter(Boolean).join("\n")}${link}`)
     }
+    // Appointments in the documents: proposed, added only on the user's yes (Telegram, or the Agenda view).
+    const proposed = calendar && result.calendar.length ? await this.#c.calendar!.propose(result.calendar, items.length === 1 ? items[0].id : null).catch(() => []) : []
+    for (const p of proposed) {
+      await this.#c.notifier()?.notify(this.#t.proposal(p.title, `${eventTime(p, config.locale)}${p.location ? ` · ${p.location}` : ""}`), [
+        [
+          { text: `📅 ${this.#t.add}`, data: `cal:add:${p.id}` },
+          { text: this.#t.no, data: `cal:no:${p.id}` },
+        ],
+      ])
+    }
     // More waiting: go on with the next batch.
     if (inbox.list().some((i) => i.status === "new")) this.queueTriage(5_000)
-    return `${items.length} items, ${processed} processed${marked.length ? `, ${marked.length} marked done` : ""}${hash ? `, commit ${hash}` : ""}`
+    return `${items.length} items, ${processed} processed${marked.length ? `, ${marked.length} marked done` : ""}${proposed.length ? `, ${proposed.length} appointment(s) proposed` : ""}${hash ? `, commit ${hash}` : ""}`
   }
 
   async #reminders(): Promise<string> {
@@ -580,8 +665,16 @@ export class Jobs {
     const found = this.#c.finance.configured() ? await this.#scanMatches() : 0
     const matched = found ? `; ${found} payment(s) found in the finance source` : ""
     const { due, overdue } = reminders(loadDeadlines(store.dir), loadState(store.dir), today)
-    if (!due.length && !overdue.length) return `nothing due${matched}`
     const t = this.#t
+    // Today's events of Google Calendar, in the same morning message.
+    const events = this.#c.calendar?.configured() ? this.#c.calendar.on(today) : []
+    const agenda = events.length
+      ? ["", `📅 ${t.agendaToday}`, ...events.slice(0, 12).map((e) => `• ${e.all_day ? "" : `${e.start.slice(11)} `}${e.title}${e.important ? " ❗" : ""}${e.location ? ` · ${e.location}` : ""}`)]
+      : []
+    if (!due.length && !overdue.length) {
+      if (agenda.length) await this.#c.notifier()?.notify(agenda.slice(1).join("\n"))
+      return `nothing due${agenda.length ? `, ${events.length} event(s) today` : ""}${matched}`
+    }
     const lines = [`🔔 ${t.reminders}`]
     for (const o of due) {
       const amount = o.amount != null ? ` ${o.amount_basis === "estimate" ? "~" : ""}||${o.amount}||` : ""
@@ -591,6 +684,7 @@ export class Jobs {
       lines.push("", t.overdue)
       for (const o of overdue) lines.push(`• ${o.title} — ${t.ago(-o.days)}`)
     }
+    lines.push(...agenda)
     const buttons = [...due, ...overdue].slice(0, 8).map((o) => [{ text: `✓ ${t.done}: ${o.title.slice(0, 40)}`, data: `done:${o.key}` }])
     await this.#c.notifier()?.notify(lines.join("\n"), buttons)
     return `${due.length} due, ${overdue.length} overdue${matched}`

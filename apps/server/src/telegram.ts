@@ -19,6 +19,7 @@ import type { Inbox, Upload } from "./inbox.ts"
 import type { PaymentMatches } from "./matches.ts"
 import { type Button, JOB_NAMES, type Jobs, type Notifier } from "./jobs.ts"
 import type { Changes } from "./changes.ts"
+import type { Calendar } from "./calendar.ts"
 import { finishAnswer } from "./chat-actions.ts"
 import type { Reminders } from "./reminders.ts"
 import type { Store } from "./store.ts"
@@ -61,6 +62,9 @@ const TEXT = {
     matchPaid: (t: string) => `✓ Pagata: ${t}`,
     matchDismissed: "Ok, non lo propongo più.",
     matchGone: "Proposta non più aperta.",
+    calAdded: (t: string) => `📅 Aggiunto: ${t}`,
+    calDismissed: "Ok, non lo aggiungo.",
+    calFailed: (why: string) => `⚠️ Non aggiunto: ${why}`,
     newChat: "Nuova conversazione.",
     thinking: "…",
     yes: "✅ Sì",
@@ -113,6 +117,9 @@ const TEXT = {
     matchPaid: (t: string) => `✓ Paid: ${t}`,
     matchDismissed: "Ok, I won't propose it again.",
     matchGone: "This proposal is no longer open.",
+    calAdded: (t: string) => `📅 Added: ${t}`,
+    calDismissed: "Ok, not adding it.",
+    calFailed: (why: string) => `⚠️ Not added: ${why}`,
     newChat: "New conversation.",
     thinking: "…",
     yes: "✅ Yes",
@@ -177,6 +184,8 @@ type Deps = {
   gmailLinks: GmailLinks
   /** Payments found in the finance source: the buttons under their notification answer here. */
   matches?: PaymentMatches
+  /** Google Calendar: the agent's calendar blocks, and appointments proposed by the background agent. */
+  calendar?: Calendar
   jobs: () => Jobs | null
 }
 
@@ -377,6 +386,19 @@ export class Telegram implements Notifier {
       return ctx.answerCallbackQuery({ text: ok ? t().matchDismissed : t().matchGone })
     })
 
+    // An appointment the background agent found in a document: add it to Google Calendar, or not.
+    bot.callbackQuery(/^cal:(add|no):([0-9a-f]{8})$/, async (ctx) => {
+      const [, answer, id] = ctx.match
+      try {
+        const r = await this.#d.calendar?.answer(id, answer === "add" ? "add" : "dismiss")
+        if (!r) return ctx.answerCallbackQuery({ text: t().matchGone })
+        await ctx.editMessageReplyMarkup().catch(() => undefined)
+        return ctx.answerCallbackQuery({ text: (answer === "add" ? t().calAdded(redact(r.proposal.title)) : t().calDismissed).slice(0, 190) })
+      } catch (e) {
+        return ctx.answerCallbackQuery({ text: t().calFailed(redact((e as Error).message)).slice(0, 190) })
+      }
+    })
+
     // Yes/no under an answer that asks to confirm a change: the choice goes to the agent as a message.
     bot.callbackQuery(/^confirm:(yes|no)$/, async (ctx) => {
       const text = ctx.match[1] === "yes" ? t().confirmYes : t().confirmNo
@@ -525,6 +547,7 @@ export class Telegram implements Notifier {
         notify: true,
         locale: this.#d.config.locale,
         changes: this.#d.changes,
+        calendar: this.#d.calendar ?? null,
       })
       const parts = outgoing(stripActions(answer))
       const confirm = asksToConfirm(answer)

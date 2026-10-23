@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs"
 import { basename, extname, join, resolve, sep } from "node:path"
 
-import { type ChatEvent, FinanceConnectInput, parseWidget, SANDBOX_CSP, WidgetId, FinanceExpenseInput, GmailAccountInput, ImapAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
+import { CalendarAccountInput, type ChatEvent, FinanceConnectInput, parseWidget, SANDBOX_CSP, WidgetId, FinanceExpenseInput, GmailAccountInput, ImapAccountInput, JobRun, ProfileInput, type Session, type Status, stripActions } from "@autocratico/core"
 import { type Context, Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
 import { secureHeaders } from "hono/secure-headers"
@@ -12,6 +12,7 @@ import { z } from "zod"
 import { type Account, AccountError, MAX_PASSWORD } from "./account.ts"
 import { authMiddleware, type Caller, type Devices } from "./auth.ts"
 import { type Board, BoardError } from "./board.ts"
+import { type Calendar, CalendarError } from "./calendar.ts"
 import type { Changes } from "./changes.ts"
 import { type Claude, friendlyError } from "./claude.ts"
 import type { Config } from "./config.ts"
@@ -60,6 +61,8 @@ export type Services = {
   reminders: Reminders
   /** The finance source's mirror (tests pass one with a fake finance server). */
   finance: Finance
+  /** Google Calendar: accounts, the copy, the agent's events (tests pass one with a fake Google). */
+  calendar: Calendar
   /** Payments seen in the finance source, proposed for open occurrences. */
   matches: PaymentMatches
   /** What changed, for the open web apps (`/api/events`). */
@@ -152,6 +155,7 @@ export function createApp(s: Services) {
   })
   app.onError((e, c) => {
     if (e instanceof GmailError) return c.json({ error: e.message }, e.status)
+    if (e instanceof CalendarError) return c.json({ error: e.message }, e.status)
     if (e instanceof ImapError) return c.json({ error: e.message }, e.status)
     if (e instanceof GmailLinkError) return c.json({ error: e.message, code: e.code }, e.status)
     if (e instanceof FinanceError) return c.json({ error: e.message }, e.status)
@@ -383,6 +387,7 @@ export function createApp(s: Services) {
               locale: lang,
               changes: s.changes,
               data: config.data,
+              calendar: s.calendar,
             })
             const extra = answer.text.slice(stripLength(raw))
             if (extra.trim() && !out.aborted) await send({ type: "text", text: extra })
@@ -548,6 +553,7 @@ export function createApp(s: Services) {
       telegram: { enabled: s.telegram !== null, chats: s.telegram?.chats().length ?? 0 },
       ntfy: { enabled: s.ntfy !== null, host: s.ntfy?.host ?? null },
       gmail: gmail.setup().accounts.map((a) => ({ name: a.name, connected: a.state === "connected" })),
+      calendar: s.calendar.setup().accounts.map((a) => ({ name: a.name, connected: a.state === "connected" })),
       finance: { connected: s.finance.configured(), live: s.finance.live, synced_at: s.finance.setup().synced_at },
       inbox: { new: items.filter((i) => i.status === "new").length, failed: items.filter((i) => i.status === "failed").length },
       jobs: JOB_NAMES.map((job) => ({ job, last: s.jobs?.last(job) ?? null, next: s.jobs?.next(job) ?? null })),
@@ -590,6 +596,55 @@ export function createApp(s: Services) {
     const body = z.object({ url: z.string().min(1).max(4000) }).safeParse(await c.req.json().catch(() => null))
     if (!body.success) return c.json({ error: "invalid request" }, 400)
     return c.json(await gmail.complete(body.data.url))
+  })
+
+  // ---------- Google Calendar (accounts, sign-in, the copy; tokens stay on the server) ----------
+
+  // ?from=&to= (YYYY-MM-DD, at most about 14 months): the days the Agenda shows.
+  app.get("/api/calendar", (c) => {
+    const day = /^\d{4}-\d{2}-\d{2}$/
+    const from = c.req.query("from"), to = c.req.query("to")
+    if ((from && !day.test(from)) || (to && !day.test(to)) || (from && to && (to < from || Date.parse(to) - Date.parse(from) > 430 * 86_400_000))) {
+      return c.json({ error: "invalid range" }, 400)
+    }
+    return c.json(s.calendar.agenda({ from, to }))
+  })
+  app.get("/api/calendar/setup", (c) => c.json(s.calendar.setup()))
+  app.post("/api/calendar/accounts", async (c) => {
+    userOf(c)
+    const body = CalendarAccountInput.safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    await s.calendar.saveAccount(body.data)
+    commit(`Calendar: account ${body.data.name}`)
+    return c.json({ ok: true })
+  })
+  app.delete("/api/calendar/accounts/:name", async (c) => {
+    userOf(c)
+    const removed = await s.calendar.removeAccount(c.req.param("name"))
+    if (removed) commit(`Calendar: account ${c.req.param("name")} removed`)
+    return removed ? c.json({ ok: true }) : c.json({ error: "not found" }, 404)
+  })
+  app.post("/api/calendar/accounts/:name/authorize", (c) => {
+    userOf(c)
+    const origin = config.publicOrigin ?? c.req.header("origin")
+    if (!origin) return c.json({ error: "missing Origin" }, 400)
+    return c.json(s.calendar.authorize(c.req.param("name"), origin))
+  })
+  app.post("/api/calendar/complete", async (c) => {
+    userOf(c)
+    const body = z.object({ url: z.string().min(1).max(4000) }).safeParse(await c.req.json().catch(() => null))
+    if (!body.success) return c.json({ error: "invalid request" }, 400)
+    return c.json(await s.calendar.complete(body.data.url))
+  })
+  app.post("/api/calendar/sync", async (c) => c.json(await s.calendar.sync()))
+  // An appointment the background agent found: added to the calendar on the user's yes.
+  app.post("/api/calendar/proposals/:id", async (c) => {
+    userOf(c)
+    const body = z.object({ answer: z.enum(["add", "dismiss"]) }).safeParse(await c.req.json().catch(() => null))
+    const id = c.req.param("id")
+    if (!body.success || !/^[0-9a-f]{8}$/.test(id)) return c.json({ error: "invalid request" }, 400)
+    const r = await s.calendar.answer(id, body.data.answer)
+    return r ? c.json({ proposal: r.proposal, event: r.result?.event ?? null }) : c.json({ error: "this proposal is no longer open" }, 409)
   })
 
   // ---------- IMAP mailboxes (app passwords stay on the server) ----------

@@ -64,7 +64,7 @@ Parts that only serve the maintainer, or that you may not need. Delete them in t
 - **Marketing** (maintainer-only): `apps/site`, `apps/waitlist`, `apps/video`, `deploy/compose.site.yml`, `deploy/site.*`, `deploy/waitlist.Dockerfile`, `docs/maintainer/site-and-demo.md`. Nothing else imports them; remove their lines from AGENTS.md (Layout).
 - **The maintainer's deployment**: `deploy/compose.homelab.yml`, `docs/maintainer/homelab.md`.
 - **Public demo**: `apps/web/src/demo/`, `apps/web/src/i18n/demo.ts`, `apps/web/test/demo.test.ts`, the `build:demo`/`dev:demo` scripts, the `demoPage()` plugin and `__DEMO_*` defines in `apps/web/vite.config.ts`, the demo import in `apps/web/src/main.tsx`, `deploy/compose.demo.yml`, `deploy/demo.*`, the demo step in `.github/workflows/ci.yml`. Keeping it costs one thing: every new `/api` route needs a pretend answer in `apps/web/src/demo/backend/router.ts`.
-- **Finance, Gmail, IMAP, Telegram, ntfy, speech to text**: inert until configured. Leaving them unconfigured is simpler than deleting them; if you do delete one, follow its guide backwards (routes in `app.ts`, the job in `jobs.ts`, the Settings card, `Status`, the demo router, its tests).
+- **Finance, Gmail, Google Calendar, IMAP, Telegram, ntfy, speech to text**: inert until configured. Leaving them unconfigured is simpler than deleting them; if you do delete one, follow its guide backwards (routes in `app.ts`, the job in `jobs.ts`, the Settings card, `Status`, the demo router, its tests).
 
 ## Never break
 

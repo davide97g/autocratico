@@ -48,6 +48,10 @@ const it = {
       done: "Bot associato, 2 promemoria attivi",
     },
     {
+      doing: "Copio Google Calendar…",
+      done: "Calendario collegato: 45 eventi, 1 appuntamento da confermare",
+    },
+    {
       doing: "Controllo le regole nel catalogo…",
       done: "IMU, TARI e carta d'identità verificate",
     },
@@ -135,6 +139,10 @@ const en: DemoMessages = {
     {
       doing: "Connecting Telegram and reminders…",
       done: "Bot paired, 2 reminders set",
+    },
+    {
+      doing: "Copying Google Calendar…",
+      done: "Calendar connected: 45 events, 1 appointment to confirm",
     },
     {
       doing: "Checking the rules in the catalog…",

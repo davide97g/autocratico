@@ -22,6 +22,7 @@ const IGNORE = `# Managed by autocratico: only the register is versioned.
 !/state.json
 !/gmail.toml
 !/imap.toml
+!/calendar.toml
 !/finance.toml
 !/investments.toml
 !/energy.toml

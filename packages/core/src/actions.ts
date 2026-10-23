@@ -11,7 +11,11 @@
  * ```change
  * {"summary": "IMU: one-off fine, no more yearly payments", "ops": [{"op": "close", "id": "imu", "until": "2026-06-16"}]}
  * ```
- * A change block is validated and applied by the server (apps/server/src/changes.ts) as one commit.
+ * ```calendar
+ * {"op": "create", "title": "Visita medica", "start": "2026-10-30T10:00", "reminders": [1440, 60]}
+ * ```
+ * A change block is validated and applied by the server (apps/server/src/changes.ts) as one commit;
+ * a calendar block is checked by core/calendar.ts and carried out at Google by apps/server/src/calendar.ts.
  * An empty ```confirm``` block marks an answer that asks to confirm a change: the clients show yes/no buttons.
  * A ```widget``` block proposes a widget for the Board (core/widgets.ts): it stays in the saved answer for the
  * web chat to preview, and is hidden from the text like the others.
@@ -22,14 +26,16 @@ export type ReminderAction = { at: string; text: string }
 export type InboxAction = { title: string; text: string; files: string[] }
 /** Operations are checked by the server: here they are only carried as objects. */
 export type ChangeAction = { summary: string; ops: Record<string, unknown>[] }
-export type Actions = { reminders: ReminderAction[]; inbox: InboxAction[]; changes: ChangeAction[] }
+/** Google Calendar operations, checked by the server with `parseCalendarOp` (core/calendar.ts). */
+export type CalendarAction = Record<string, unknown>
+export type Actions = { reminders: ReminderAction[]; inbox: InboxAction[]; changes: ChangeAction[]; calendar: CalendarAction[] }
 
-const BLOCK = /```(reminder|inbox|change)[ \t]*\n([\s\S]*?)```/g
+const BLOCK = /```(reminder|inbox|change|calendar)[ \t]*\n([\s\S]*?)```/g
 const CONFIRM = /```confirm[^\n`]*\n?[^`]*```/g
 const CONFIRM_BLOCK = "```confirm\n```"
 const WIDGET = /```widget[ \t]*\n[\s\S]*?```/g
 // While streaming: a block that has started but not ended yet.
-const OPEN = /```(reminder|inbox|change|confirm|widget)[\s\S]*$/
+const OPEN = /```(reminder|inbox|change|calendar|confirm|widget)[\s\S]*$/
 // A fence still being typed ("```conf"): could be one of the blocks. A closing fence (no name) stays.
 const FENCE_START = /```[a-z]+$/
 
@@ -38,7 +44,7 @@ function str(v: unknown, max: number): string {
 }
 
 export function extractActions(answer: string): { text: string; actions: Actions } {
-  const actions: Actions = { reminders: [], inbox: [], changes: [] }
+  const actions: Actions = { reminders: [], inbox: [], changes: [], calendar: [] }
   const text = answer.replace(BLOCK, (_, kind: string, body: string) => {
     let values: unknown[] = []
     try {
@@ -50,7 +56,9 @@ export function extractActions(answer: string): { text: string; actions: Actions
     for (const v of values) {
       if (!v || typeof v !== "object") continue
       const o = v as Record<string, unknown>
-      if (kind === "change") {
+      if (kind === "calendar") {
+        actions.calendar.push(o)
+      } else if (kind === "change") {
         const ops = Array.isArray(o.ops) ? o.ops.filter((x): x is Record<string, unknown> => Boolean(x) && typeof x === "object") : []
         if (ops.length) actions.changes.push({ summary: str(o.summary, 200), ops })
       } else if (kind === "reminder") {
@@ -81,10 +89,10 @@ export function asksToConfirm(answer: string): boolean {
 }
 
 /** What the server did after an answer: one line each, appended by `finishAnswer` (apps/server/src/chat-actions.ts). */
-export type Confirmation = { kind: "change" | "reminder" | "inbox" | "widget" | "warning"; text: string; hash: string | null }
+export type Confirmation = { kind: "change" | "reminder" | "inbox" | "widget" | "calendar" | "warning"; text: string; hash: string | null }
 
-const CONFIRMATION = /^(✏️|⏰|📥|🧩|⚠️) (.+)$/u
-const KINDS: Record<string, Confirmation["kind"]> = { "✏️": "change", "⏰": "reminder", "📥": "inbox", "🧩": "widget", "⚠️": "warning" }
+const CONFIRMATION = /^(✏️|⏰|📥|🧩|📅|⚠️) (.+)$/u
+const KINDS: Record<string, Confirmation["kind"]> = { "✏️": "change", "⏰": "reminder", "📥": "inbox", "🧩": "widget", "📅": "calendar", "⚠️": "warning" }
 // "(change 55cb507, undo it from Activity)", "(modifica 55cb507, annullabile da Attività)"
 const CHANGE_REF = /\s*\((?:change|modifica) ([0-9a-f]{7,40})\b[^)]*\)$/
 

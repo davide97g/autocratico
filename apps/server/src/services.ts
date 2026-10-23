@@ -3,6 +3,7 @@ import { Account } from "./account.ts"
 import { createApp, type Services } from "./app.ts"
 import { Devices } from "./auth.ts"
 import { Board } from "./board.ts"
+import { Calendar } from "./calendar.ts"
 import { Changes } from "./changes.ts"
 import { Claude } from "./claude.ts"
 import type { Config } from "./config.ts"
@@ -28,6 +29,7 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
   const repo = new DataRepo(config.data)
   const reminders = new Reminders(config.data, config.timeZone)
   const finance = overrides.finance ?? new Finance(config.data, { timeZone: config.timeZone })
+  const calendar = overrides.calendar ?? new Calendar(config.data, config.timeZone)
   const pulse = new Pulse()
   // Every channel the user paired; read when a notification goes out, after `s` exists.
   const notifier = () => fanOut([s.telegram, s.ntfy])
@@ -48,6 +50,7 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     transcriber: new Transcriber(config),
     reminders,
     finance,
+    calendar,
     matches,
     pulse,
     usage,
@@ -55,10 +58,10 @@ export function services(config: Config, overrides: Partial<Services> = {}): Ser
     ...overrides,
   }
   if (config.telegramToken && overrides.telegram === undefined) {
-    s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, reminders, transcriber: s.transcriber, changes: s.changes, gmailLinks: s.gmailLinks, matches: s.matches, jobs: () => s.jobs })
+    s.telegram = new Telegram(config.telegramToken, { config, store, inbox, claude, reminders, transcriber: s.transcriber, changes: s.changes, gmailLinks: s.gmailLinks, matches: s.matches, calendar: s.calendar, jobs: () => s.jobs })
   }
   if (overrides.jobs === undefined) {
-    s.jobs = new Jobs({ config, store, inbox, claude, repo, reminders, finance: s.finance, matches: s.matches, pulse: s.pulse, notifier })
+    s.jobs = new Jobs({ config, store, inbox, claude, repo, reminders, finance: s.finance, calendar: s.calendar, matches: s.matches, pulse: s.pulse, notifier })
   }
   return s
 }

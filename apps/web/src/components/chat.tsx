@@ -4,6 +4,7 @@ import {
   BellIcon,
   CheckIcon,
   CalendarClockIcon,
+  CalendarDaysIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   FilePenIcon,
@@ -65,6 +66,9 @@ const STORAGE_KEY = "autocratico.chat"
 const TOPIC_EVENT = "autocratico:chat-about"
 const ASK_EVENT = "autocratico:chat-ask"
 const NEW_EVENT = "autocratico:chat-new"
+const DRAFT_EVENT = "autocratico:chat-draft"
+/** Text put in the chat's field from outside (the Agenda's empty slots), for the user to finish and send. */
+let pendingDraft: string | null = null
 /** A question asked from outside the chat (the palette, the sidebar), sent as soon as a chat is on screen. */
 let pendingQuestion: string | null = null
 const EMPTY: Conversation = { chat: null, messages: [] }
@@ -82,6 +86,12 @@ export function chatAbout(topic: Topic) {
 export function chatAsk(question: string) {
   pendingQuestion = question
   window.dispatchEvent(new Event(ASK_EVENT))
+}
+
+/** Puts `text` in the chat's field without sending it: the one on screen, or the one about to open. */
+export function chatDraft(text: string) {
+  pendingDraft = text
+  window.dispatchEvent(new Event(DRAFT_EVENT))
 }
 
 /** Starts an empty conversation. */
@@ -191,6 +201,7 @@ const CONFIRMATION_ICONS: Record<Confirmation["kind"], LucideIcon> = {
   reminder: BellIcon,
   inbox: InboxIcon,
   widget: LayoutGridIcon,
+  calendar: CalendarDaysIcon,
   warning: TriangleAlertIcon,
 }
 
@@ -200,6 +211,7 @@ function confirmationLink(c: Confirmation): string | null {
   if (c.kind === "inbox") return "#inbox"
   if (c.kind === "reminder") return "#settings"
   if (c.kind === "widget") return "#board"
+  if (c.kind === "calendar") return "#agenda"
   return null
 }
 
@@ -510,14 +522,31 @@ export const Chat = React.memo(function Chat({
       setHistory(false)
       input.current?.focus()
     }
+    const onDraft = () => {
+      const d = pendingDraft
+      if (d === null) return
+      pendingDraft = null
+      setDraft(d)
+      window.setTimeout(() => {
+        const el = input.current
+        if (!el) return
+        el.focus()
+        el.setSelectionRange?.(d.length, d.length)
+      })
+    }
     // After this render's effects, when send() is wired up.
-    const first = window.setTimeout(onAsk)
+    const first = window.setTimeout(() => {
+      onAsk()
+      onDraft()
+    })
     window.addEventListener(ASK_EVENT, onAsk)
     window.addEventListener(NEW_EVENT, onNew)
+    window.addEventListener(DRAFT_EVENT, onDraft)
     return () => {
       window.clearTimeout(first)
       window.removeEventListener(ASK_EVENT, onAsk)
       window.removeEventListener(NEW_EVENT, onNew)
+      window.removeEventListener(DRAFT_EVENT, onDraft)
     }
   }, [])
 

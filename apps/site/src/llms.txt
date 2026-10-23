@@ -13,6 +13,7 @@ Source code: %REPO_URL%
 - The agent files each item within about a minute: it extracts dates and amounts, updates deadlines.toml, opens or updates a case, and records a git commit that can be undone.
 - Flags possible phishing that impersonates public bodies (Agenzia delle Entrate, INPS, municipalities) and never opens links.
 - Chat with Claude in the web app, from the ⌘K palette or on Telegram (voice notes too): it answers from the register's files and shows which ones it read. Gmail links pasted in the chat open as previews and are read before the answer.
+- Google Calendar, one or more Google accounts: a copy of the calendars refreshed every 15 minutes; the agent creates, moves and deletes events from the chat and Telegram (moves and deletions only after a yes), important ones turn red with reminders and a Telegram alert, and appointments found in documents are proposed for the calendar. Access is limited to events and the calendar list.
 - Corrections asked in the chat are applied only after the user says yes; each one is a git commit that can be undone from Activity. Reminders can be asked in plain words.
 - Live updates: open web apps refresh as soon as the agent or a job changes the register.
 - Totals still to pay over the next 3, 6 or 12 months, with estimated amounts marked; expenses, earnings and investments from a finance server or bank CSV exports, and from broker screenshots.

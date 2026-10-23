@@ -61,6 +61,8 @@
               "Link di Gmail incollati nella chat: anteprima dell'email e lettura prima della risposta",
               "Correzioni al registro proposte in chat e applicate solo dopo una conferma, ognuna annullabile",
               "Promemoria chiesti a parole, recapitati su Telegram",
+              "Google Calendar sincronizzato: l'agente crea, sposta ed elimina eventi in chat e su Telegram, con promemoria e avvisi per quelli importanti",
+              "Appuntamenti trovati nei documenti (visite, convocazioni, udienze) proposti per il calendario con un tocco",
               "Inbox per email Gmail, PEC inoltrate, foto, PDF, note vocali Telegram ed export WhatsApp",
               "Agente sempre attivo che archivia ogni documento e apre le pratiche",
               "Segnalazione di possibili email di phishing che imitano enti pubblici",
@@ -100,7 +102,15 @@
                 "name": "Cosa sa fare la chat con Claude?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Risponde leggendo i file del registro: scadenze, pratiche, profilo e norme salvate, e ti mostra quali ha letto. Apre i link di Gmail che incolli, imposta promemoria su Telegram e propone correzioni al registro, che applica solo dopo il tuo sì. Ogni correzione è un commit che puoi annullare."
+                  "text": "Risponde leggendo i file del registro: scadenze, pratiche, profilo e norme salvate, e ti mostra quali ha letto. Apre i link di Gmail che incolli, imposta promemoria su Telegram, gestisce i tuoi eventi di Google Calendar e propone correzioni al registro, che applica solo dopo il tuo sì. Ogni correzione è un commit che puoi annullare."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Funziona con Google Calendar?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sì. Colleghi uno o più account Google dalle Impostazioni: Autocratico tiene una copia dei calendari, aggiornata ogni 15 minuti, e l'agente in chat o su Telegram crea, sposta ed elimina eventi per te, con i promemoria. Gli appuntamenti importanti diventano rossi e ti avvisano anche su Telegram; quelli trovati nelle lettere (visite, convocazioni, udienze) te li propone, e li aggiunge solo dopo il tuo sì. Prima di spostare o cancellare un evento chiede conferma. L'accesso è limitato agli eventi: niente condivisioni, niente calendari eliminati."
                 }
               },
               {
@@ -207,9 +217,9 @@
       <!-- Hero: the hook, and the app itself right under it -->
       <section class="hero" id="top" aria-labelledby="hero-title">
         <div class="wrap hero__copy">
-          <a class="news" href="#claude" data-track="news">
+          <a class="news" href="#novita" data-track="news">
             <span class="news__tag">Novità</span>
-            <span class="news__text">Chiedi a Claude, link di Gmail in chat, ⌘K, aggiornamenti in diretta</span>
+            <span class="news__text">Google Calendar gestito dall'agente, in chat e su Telegram</span>
             <i data-lucide="arrow-right"></i>
           </a>
           <h1 id="hero-title" class="display">
@@ -650,6 +660,25 @@
               </div>
             </article>
 
+            <article class="cell cell--cal spot rv">
+              <div class="cell__text">
+                <h3><i data-lucide="calendar-days"></i>Google Calendar, a parole</h3>
+                <p>
+                  «Sposta il dentista a venerdì alle 17»: l'agente lo fa nel tuo Google Calendar, dalla chat o da Telegram. Gli appuntamenti importanti
+                  diventano rossi, con promemoria e un avviso su Telegram; quelli scritti nelle lettere te li propone lui.
+                </p>
+              </div>
+              <div class="cal-demo" aria-hidden="true">
+                <p class="cal-demo__q">Metti in calendario la visita cardiologica domani alle 9</p>
+                <p class="cal-demo__ok"><i data-lucide="calendar-days"></i><span><small>Aggiunto a Google Calendar</small>Visita cardiologica — ven, 09:00–09:30</span></p>
+                <ul class="cal-demo__day">
+                  <li><time class="mono">09:00</time><b>Visita cardiologica</b><span class="x-st is-overdue">importante</span></li>
+                  <li><time class="mono">14:00</time><b>Call progetto</b></li>
+                  <li><time class="mono">—</time><b>Bollo auto</b><span class="x-st is-urgent">scade</span></li>
+                </ul>
+              </div>
+            </article>
+
             <article class="cell cell--live spot rv">
               <div class="cell__text">
                 <h3><span class="live-dot"></span>In diretta</h3>
@@ -800,8 +829,18 @@
               <summary>Cosa sa fare la chat con Claude?</summary>
               <p>
                 Risponde leggendo i file del registro: scadenze, pratiche, profilo e norme salvate, e ti mostra quali ha letto. Apre i link di
-                Gmail che incolli, imposta promemoria su Telegram e propone correzioni al registro, che applica solo dopo il tuo sì. Ogni
+                Gmail che incolli, imposta promemoria su Telegram, gestisce i tuoi eventi di Google Calendar e propone correzioni al registro, che applica solo dopo il tuo sì. Ogni
                 correzione è un commit che puoi annullare.
+              </p>
+            </details>
+            <details class="rv">
+              <summary>Funziona con Google Calendar?</summary>
+              <p>
+                Sì. Colleghi uno o più account Google dalle Impostazioni: Autocratico tiene una copia dei calendari, aggiornata ogni 15 minuti,
+                e l'agente in chat o su Telegram crea, sposta ed elimina eventi per te, con i promemoria. Gli appuntamenti importanti diventano
+                rossi e ti avvisano anche su Telegram; quelli trovati nelle lettere (visite, convocazioni, udienze) te li propone, e li aggiunge
+                solo dopo il tuo sì. Prima di spostare o cancellare un evento chiede conferma. L'accesso è limitato agli eventi: niente
+                condivisioni, niente calendari eliminati.
               </p>
             </details>
             <details class="rv">

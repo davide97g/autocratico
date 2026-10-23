@@ -16,6 +16,7 @@ import {
 
 import { track } from "../analytics"
 import { answer, type ChatRequest, preview } from "./brain"
+import { answerProposal, calendar, calendarAgenda, calendarSetup, CALENDAR_ACCOUNT } from "./calendar"
 import { remember } from "./files"
 import { JOBS, live, queueTriage, trigger } from "./jobs"
 import { data, documents, lang, setDone } from "./register"
@@ -561,6 +562,7 @@ on("GET", "/api/status", () => {
       name: a.name,
       connected: a.state === "connected",
     })),
+    calendar: calendarSetup().accounts.map((a) => ({ name: a.name, connected: a.state === "connected" })),
     finance: {
       connected: s.financeConnected,
       live: s.financeConnected,
@@ -659,6 +661,45 @@ on("DELETE", "/api/gmail/accounts/:name", (_, [name]) => {
 })
 on("POST", "/api/gmail/accounts/:name/authorize", () => demoOnly())
 on("POST", "/api/gmail/complete", () => demoOnly())
+
+// ---------- Google Calendar (a made-up account; signing another one in needs a real server) ----------
+
+on("GET", "/api/calendar", (r) => json(calendarAgenda({ from: r.url.searchParams.get("from") ?? undefined, to: r.url.searchParams.get("to") ?? undefined })))
+on("GET", "/api/calendar/setup", () => json(calendarSetup()))
+on("POST", "/api/calendar/accounts", (r) => {
+  const b = r.body as { name?: string; calendars?: string[]; default?: string }
+  if (!b?.name || !/^[a-z0-9][a-z0-9_-]{0,31}$/.test(b.name)) return fail("invalid name", 400)
+  const c = calendar()
+  if (b.name === CALENDAR_ACCOUNT) {
+    // Which calendars are copied and where new events go: as calendar.toml would say.
+    const ids = b.calendars?.length ? b.calendars : c.calendars.filter((x) => x.primary).map((x) => x.id)
+    const def = b.default ?? c.calendars.find((x) => x.default)?.id
+    c.calendars = c.calendars.map((x) => ({ ...x, synced: ids.includes(x.id), default: x.id === def }))
+  } else if (!c.others.includes(b.name)) c.others.push(b.name)
+  changed("calendar")
+  return ok()
+})
+on("DELETE", "/api/calendar/accounts/:name", (_, [name]) => {
+  const c = calendar()
+  if (name === CALENDAR_ACCOUNT) return demoOnly()
+  c.others = c.others.filter((n) => n !== name)
+  changed("calendar")
+  return ok()
+})
+on("POST", "/api/calendar/accounts/:name/authorize", () => demoOnly())
+on("POST", "/api/calendar/complete", () => demoOnly())
+on("POST", "/api/calendar/sync", () => {
+  const c = calendar()
+  c.synced_at = nowIso()
+  changed("calendar")
+  return json({ accounts: 1, events: c.events.length, errors: [] })
+})
+on("POST", "/api/calendar/proposals/:id", (r, [id]) => {
+  const answer = (r.body as { answer?: string })?.answer
+  if (answer !== "add" && answer !== "dismiss") return fail("invalid request", 400)
+  const done = answerProposal(id, answer)
+  return done ? json(done) : fail("this proposal is no longer open", 409)
+})
 
 // ---------- IMAP (no mailbox in the demo: adding one needs a real server) ----------
 
