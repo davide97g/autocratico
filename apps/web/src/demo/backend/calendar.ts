@@ -57,6 +57,27 @@ function event(over: Partial<CalendarEvent> & Pick<CalendarEvent, "title" | "sta
   }
 }
 
+/** Days from today, from, to, title, calendar, important: what fills the weeks around today. */
+const DENSE: [number, string, string, string, "work" | "personal", boolean?][] = [
+  [-3, "11:00", "12:30", "Call fornitore", "work"], [-3, "16:00", "17:00", "Pediatra", "personal", true],
+  [-2, "10:15", "11:45", "Sprint planning", "work"], [-2, "17:30", "18:30", "Inglese", "personal"],
+  [-1, "12:30", "13:30", "Pranzo team", "work"], [-1, "20:00", "21:00", "Calcetto", "personal"],
+  [0, "14:00", "15:30", "Demo cliente", "work"], [0, "19:00", "20:30", "Aperitivo", "personal"],
+  [1, "11:00", "12:30", "Mercato", "personal"], [2, "08:15", "09:00", "Scuola: entrata", "personal"],
+  [2, "12:30", "13:30", "Budget Q4", "work"], [3, "11:00", "11:45", "1:1 con Laura", "work"],
+  [3, "17:30", "18:30", "Inglese", "personal"], [4, "13:00", "14:00", "Pranzo con Giulia", "personal"],
+  [4, "15:30", "16:30", "Design review", "work"], [5, "11:00", "12:00", "Commercialista", "personal"],
+  [5, "16:00", "17:00", "Colloquio maestre", "personal"], [6, "09:00", "10:30", "Treno per Torino", "personal", true],
+  [6, "13:00", "14:30", "Pranzo da Zia", "personal"], [7, "17:00", "18:30", "Rientro", "personal"],
+  [8, "11:00", "12:30", "Call fornitore", "work"], [8, "16:00", "17:00", "Pediatra", "personal", true],
+  [9, "10:15", "11:45", "Sprint review", "work"], [9, "20:00", "21:00", "Calcetto", "personal"],
+  [10, "12:30", "13:30", "Pranzo team", "work"], [10, "17:30", "18:30", "Inglese", "personal"],
+  [11, "14:00", "15:30", "Demo cliente", "work"], [12, "19:00", "20:30", "Aperitivo", "personal"],
+  [13, "10:00", "12:00", "Gita al lago", "personal"], [15, "11:00", "12:00", "Commercialista", "personal"],
+  [16, "15:00", "16:00", "Visita oculista", "personal", true], [17, "12:30", "13:30", "Budget", "work"],
+  [18, "17:30", "18:30", "Inglese", "personal"], [19, "20:00", "22:00", "Cena aziendale", "work"],
+]
+
 /** The visitor's calendar: a week that looks lived in, dates relative to today. */
 export function seedCalendar(): DemoCalendar {
   const d = (n: number, time?: string) => (time ? `${addDays(today(), n)}T${time}` : addDays(today(), n))
@@ -87,6 +108,10 @@ export function seedCalendar(): DemoCalendar {
     event({ title: "Ritiro raccomandata", start: d(0, "16:30"), end: d(0, "17:00"), location: "Ufficio postale, via Manzoni", important: true, reminders: [{ method: "popup", minutes: 60 }], ours: true }),
     event({ title: "Colloquio con le maestre", start: d(2, "17:00"), end: d(2, "18:00"), location: "Scuola primaria Rodari" }),
     event({ title: "Cena da mamma", start: d(5, "20:00"), end: d(5, "22:30") }),
+    // a busy fortnight: work, family, sport
+    ...DENSE.flatMap(([n, from, to, title, cal, important]) =>
+      n < -14 || n > 21 ? [] : [event({ title, start: d(n, from), end: d(n, to), calendar: cal === "work" ? WORK : PRIMARY, important: important === true })]
+    ),
     event({ title: "Riunione di condominio", start: d(2, "21:00"), end: d(2, "22:30"), location: "Via Roma 12, sala comune" }),
     event({ title: "Compleanno di Luca", start: d(3), busy: false }),
     event({ title: "Sprint review", start: d(4, "10:00"), end: d(4, "11:00"), calendar: WORK }),

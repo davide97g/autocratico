@@ -16,7 +16,7 @@ import type { CalendarEvent, Occurrence } from "@/lib/api"
 import { capitalize, parseDate } from "@/lib/format"
 import { level, STYLE } from "@/lib/status"
 
-const HOUR = 44
+const HOUR = 52
 const DAY_MIN = 1440
 
 export const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
@@ -221,18 +221,19 @@ export function WeekGrid({ start, events, deadlines, today, onOpen, onOpenDeadli
                       type="button"
                       onClick={() => onOpen(s)}
                       className={cn(
-                        "absolute overflow-hidden rounded-md border py-1 pr-1 pl-2.5 text-left text-xs shadow-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                        "absolute overflow-hidden rounded-md border pr-1 pl-2.5 text-left text-xs shadow-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                        h < 26 ? "flex items-center py-0 text-[0.65rem]" : "py-1",
                         s.e.important ? "border-status-overdue/30 bg-status-overdue/10 text-status-overdue hover:bg-status-overdue/15" : "bg-card hover:bg-muted",
                         !s.e.busy && "border-dashed bg-card/70"
                       )}
                       style={{ top: top(from) + 1, height: h - 2, left: `calc(${(lane / of) * 100}% + 2px)`, width: `calc(${100 / of}% - 4px)` }}
                     >
                       <Bar color={s.color} important={s.e.important} />
-                      <span className="block truncate leading-tight font-medium">
+                      <span className="block truncate text-[0.8rem] leading-tight font-medium">
                         <Sensitive>{s.e.title}</Sensitive>
                       </span>
                       {h > 30 && (
-                        <span className={cn("block truncate font-mono text-[0.6rem] leading-tight", s.e.important ? "text-status-overdue/80" : "text-muted-foreground")}>
+                        <span className={cn("block truncate font-mono text-[0.65rem] leading-tight", s.e.important ? "text-status-overdue/80" : "text-muted-foreground")}>
                           {s.e.start.slice(11)}–{s.e.end.slice(11)}
                         </span>
                       )}

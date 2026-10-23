@@ -49,7 +49,7 @@ const it = {
     },
     {
       doing: "Copio Google Calendar…",
-      done: "Calendario collegato: 45 eventi, 1 appuntamento da confermare",
+      done: "Calendario collegato: 80 eventi, 1 appuntamento da confermare",
     },
     {
       doing: "Controllo le regole nel catalogo…",
@@ -142,7 +142,7 @@ const en: DemoMessages = {
     },
     {
       doing: "Copying Google Calendar…",
-      done: "Calendar connected: 45 events, 1 appointment to confirm",
+      done: "Calendar connected: 80 events, 1 appointment to confirm",
     },
     {
       doing: "Checking the rules in the catalog…",

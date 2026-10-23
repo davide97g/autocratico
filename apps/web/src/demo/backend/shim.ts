@@ -15,6 +15,7 @@ const TOPICS = [
   "reminders",
   "finance",
   "usage",
+  "calendar",
 ] as const
 
 async function body(

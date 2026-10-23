@@ -3,6 +3,8 @@ packages:
   - packages/*
   # the trailer is a bun project of its own (apps/video/README.md)
   - '!apps/video'
+  # the promo spots too: a Remotion project of its own (apps/promo/README.md)
+  - '!apps/promo'
 
 allowBuilds:
   core-js: false
