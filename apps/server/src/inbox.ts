@@ -171,7 +171,8 @@ export class Inbox {
     for (const item of this.list()) await this.convertFiles(item)
     const emails = join(this.dir, "..", "archive", "email")
     if (!existsSync(emails)) return
-    for (const f of readdirSync(emails)) if (!f.startsWith(".")) await this.#convertEmail(join(emails, f))
+    // Each saved email is a folder; files beside them (the sync's index.json) are not.
+    for (const f of readdirSync(emails, { withFileTypes: true })) if (f.isDirectory() && !f.name.startsWith(".")) await this.#convertEmail(join(emails, f.name))
   }
 
   /** Items left halfway by a restart go back to `new`. */
