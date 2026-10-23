@@ -334,13 +334,25 @@ export function localDateTime(iso: string, timeZone: string): string {
   return new Date(t + offsetMs(timeZone, new Date(t))).toISOString().slice(0, 16)
 }
 
+/** Google's dateTime in `timeZone`: with an offset it is an instant; without one, a wall time in `zone` (its own timeZone). */
+function googleLocal(dateTime: string, zone: string | undefined, timeZone: string): string {
+  if (/(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(dateTime)) return localDateTime(dateTime, timeZone)
+  const wall = Date.parse(`${dateTime.slice(0, 19)}Z`)
+  if (Number.isNaN(wall)) return dateTime.slice(0, 16)
+  const from = zone ?? timeZone
+  // the instant: the wall time minus the zone's offset at that moment (twice, to settle across DST)
+  let t = wall - offsetMs(from, new Date(wall))
+  t = wall - offsetMs(from, new Date(t))
+  return localDateTime(new Date(t).toISOString(), timeZone)
+}
+
 /** Google's event as it is kept in the copy; null for cancelled events and working-location entries. */
 export function fromGoogle(g: GoogleEvent, account: string, calendar: string, timeZone: string): CalendarEvent | null {
   if (!g?.id || g.status === "cancelled" || g.eventType === "workingLocation" || !g.start) return null
   const allDay = Boolean(g.start.date)
-  const start = allDay ? g.start.date! : g.start.dateTime ? localDateTime(g.start.dateTime, timeZone) : null
+  const start = allDay ? g.start.date! : g.start.dateTime ? googleLocal(g.start.dateTime, g.start.timeZone, timeZone) : null
   if (!start) return null
-  let end = allDay ? (g.end?.date ? addDays(g.end.date, -1) : start) : g.end?.dateTime ? localDateTime(g.end.dateTime, timeZone) : start
+  let end = allDay ? (g.end?.date ? addDays(g.end.date, -1) : start) : g.end?.dateTime ? googleLocal(g.end.dateTime, g.end.timeZone, timeZone) : start
   if (end < start) end = start
   const own = g.extendedProperties?.private ?? {}
   const overrides = g.reminders?.overrides ?? []
