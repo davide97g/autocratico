@@ -11,3 +11,6 @@ song/board-source.mp3
 # The Agenda promo's track (Pixabay licence, as above); analysis/agenda.py rebuilds it.
 song/agenda.mp3
 song/agenda-source.mp3
+# The phishing promo's track (Pixabay licence, as above); analysis/phishing.py rebuilds it.
+song/phishing.mp3
+song/phishing-source.mp3

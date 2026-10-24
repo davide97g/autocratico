@@ -18,6 +18,8 @@ export function makeTimeline(ly: Lyrics, au: AudioData): TimelineEntry[] {
   if (FILM === 'board') return [{ id: 'board', load: scene('board'), start: 0, end: au.duration }];
   // The Agenda promo: one scene too (docs/AGENDA.md).
   if (FILM === 'agenda') return [{ id: 'agenda', load: scene('agenda'), start: 0, end: au.duration }];
+  // The phishing promo: one scene too (docs/PHISHING.md).
+  if (FILM === 'phishing') return [{ id: 'phishing', load: scene('phishing'), start: 0, end: au.duration }];
   /**
    * Cut on the last beat at/before the first word of the matching line (never after the word) — unless
    * the previous word is still being sung on that beat (a fast verse runs into the next section): then
