@@ -255,6 +255,13 @@ export const it: Messages = {
     aboutWidgetTitle: "Modifica questo widget",
     aboutWidgetBody: "Claude legge il widget e ne propone una nuova versione: la vedi qui prima che sostituisca quella in Bacheca.",
     aboutWidgetSuggestions: ["Rendilo più compatto", "Aggiungi un grafico dei prossimi 12 mesi", "Mostra solo quello che resta da pagare"],
+    form: {
+      download: "Scarica",
+      summary: (pages: number, filled: number) => `${pages} ${pages === 1 ? "pagina" : "pagine"} · ${filled} ${filled === 1 ? "voce compilata" : "voci compilate"}`,
+      page: (n: number) => `Pagina ${n}`,
+      check: "Controlla ogni valore, poi firmalo e invialo tu. Per correggere qualcosa, scrivilo in chat.",
+      filling: "Compilo il modulo…",
+    },
     widget: {
       designing: "Disegno il widget…",
       add: "Aggiungi alla Bacheca",

@@ -83,6 +83,7 @@ const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
   ".json": "application/json",
   ".webmanifest": "application/manifest+json",
   ".svg": "image/svg+xml",
@@ -388,6 +389,7 @@ export function createApp(s: Services) {
               changes: s.changes,
               data: config.data,
               calendar: s.calendar,
+              timeZone: config.timeZone,
             })
             const extra = answer.text.slice(stripLength(raw))
             if (extra.trim() && !out.aborted) await send({ type: "text", text: extra })

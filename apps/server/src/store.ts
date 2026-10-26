@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto"
 import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 
-import { type Chat, type ChatSummary, type Data, today } from "@autocratico/core"
+import { answerForms, type Chat, type ChatSummary, type Data, today } from "@autocratico/core"
 import { dataPaths, loadData, loadState } from "@autocratico/core/node"
 
 import { locks, writeJson } from "./files.ts"
@@ -93,9 +93,11 @@ export class Store {
     if (!/^[\w-]{1,64}$/.test(id)) return false
     const file = join(this.paths.chats, `${id}.json`)
     if (!existsSync(file)) return false
-    // Its attachments go with it (chats/files/<folder>/, one folder per message).
+    // Its attachments go with it (chats/files/<folder>/, one folder per message), and the forms filled in for it.
     const folders = new Set(
-      (this.chat(id)?.messages ?? []).flatMap((m) => m.files ?? []).flatMap((f) => (/^chats\/files\/[\w-]+\//.test(f) ? [f.split("/").slice(0, 3).join("/")] : []))
+      (this.chat(id)?.messages ?? [])
+        .flatMap((m) => [...(m.files ?? []), ...(m.role === "assistant" ? answerForms(m.text).map((f) => f.path) : [])])
+        .flatMap((f) => (/^chats\/files\/[\w-]+\//.test(f) ? [f.split("/").slice(0, 3).join("/")] : []))
     )
     for (const folder of folders) rmSync(join(this.dir, folder), { recursive: true, force: true })
     rmSync(file)

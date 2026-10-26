@@ -7,6 +7,7 @@ import {
   CalendarDaysIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  FileCheck2Icon,
   FilePenIcon,
   FilePlusIcon,
   FileTextIcon,
@@ -28,6 +29,7 @@ import {
 import { cn } from "cn"
 
 import { AttachButton, AttachmentStrip, MAX_ATTACHMENTS, MessageFiles, useAttachments } from "@/components/chat-attachments"
+import { FilledFormCard } from "@/components/filled-form"
 import { GmailLinkCard, refreshGmailPreviews } from "@/components/gmail-link"
 import { Markdown } from "@/components/markdown"
 import { ShinyText, stagger } from "@/components/motion"
@@ -36,7 +38,7 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { WidgetProposal } from "@/components/widget-proposal"
 import { useI18n } from "@/i18n"
-import { answerWidgets, asksToConfirm, type Confirmation, gmailLinks, splitConfirmations, stripActions, withoutGmailLinks } from "@autocratico/core"
+import { answerForms, answerWidgets, asksToConfirm, type Confirmation, gmailLinks, splitConfirmations, stripActions, withoutGmailLinks } from "@autocratico/core"
 
 import { chat as loadChat, chats, deleteChat, type ChatSummary, type Chat as SavedChat } from "@/lib/api"
 import { ask, type ChatEvent } from "@/lib/chat"
@@ -271,6 +273,10 @@ function Answer({ m }: { m: ClaudeMessage }) {
   // A widget block the agent is still writing.
   const open = m.text.lastIndexOf("```widget")
   const designing = running && open >= 0 && !m.text.slice(open + 9).includes("```")
+  const forms = React.useMemo(() => answerForms(m.text), [m.text])
+  // A form block being written, or being filled in by the server.
+  const formAt = m.text.lastIndexOf("```form")
+  const filling = running && formAt >= 0 && !forms.length
   return (
     <div className="flex flex-col gap-3">
       <Steps steps={m.steps} running={running} />
@@ -287,6 +293,17 @@ function Answer({ m }: { m: ClaudeMessage }) {
               <WidgetProposal widget={w} />
             </div>
           ))}
+          {forms.map((f) => (
+            <div key={f.path} className="rise-in">
+              <FilledFormCard form={f} />
+            </div>
+          ))}
+          {filling && (
+            <span className="flex items-center gap-2.5 text-sm text-muted-foreground">
+              <FileCheck2Icon className="size-4" />
+              <ShinyText>{t.chat.form.filling}</ShinyText>
+            </span>
+          )}
           {designing && (
             <span className="flex items-center gap-2.5 text-sm text-muted-foreground">
               <LayoutGridIcon className="size-4" />

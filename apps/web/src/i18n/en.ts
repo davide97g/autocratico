@@ -253,6 +253,13 @@ export const en = {
     aboutWidgetTitle: "Change this widget",
     aboutWidgetBody: "Claude reads the widget and proposes a new version: you see it here before it replaces the one on the Board.",
     aboutWidgetSuggestions: ["Make it more compact", "Add a chart of the next 12 months", "Show only what is still to pay"],
+    form: {
+      download: "Download",
+      summary: (pages: number, filled: number) => `${pages} ${pages === 1 ? "page" : "pages"} · ${filled} ${filled === 1 ? "entry" : "entries"} filled in`,
+      page: (n: number) => `Page ${n}`,
+      check: "Check every value, then sign and send it yourself. To fix something, say what in the chat.",
+      filling: "Filling in the form…",
+    },
     widget: {
       designing: "Designing the widget…",
       add: "Add to the Board",

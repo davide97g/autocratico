@@ -19,6 +19,8 @@
  * An empty ```confirm``` block marks an answer that asks to confirm a change: the clients show yes/no buttons.
  * A ```widget``` block proposes a widget for the Board (core/widgets.ts): it stays in the saved answer for the
  * web chat to preview, and is hidden from the text like the others.
+ * A ```form``` block asks the server to fill a PDF form (core/forms.ts); the ```filled``` block it leaves is shown
+ * by the web chat as the new PDF.
  */
 
 export type ReminderAction = { at: string; text: string }
@@ -34,8 +36,10 @@ const BLOCK = /```(reminder|inbox|change|calendar)[ \t]*\n([\s\S]*?)```/g
 const CONFIRM = /```confirm[^\n`]*\n?[^`]*```/g
 const CONFIRM_BLOCK = "```confirm\n```"
 const WIDGET = /```widget[ \t]*\n[\s\S]*?```/g
+// Forms the agent fills (```form) and the PDFs the server made of them (```filled): core/forms.ts.
+const FORM = /```(form|filled)[ \t]*\n[\s\S]*?```/g
 // While streaming: a block that has started but not ended yet.
-const OPEN = /```(reminder|inbox|change|calendar|confirm|widget)[\s\S]*$/
+const OPEN = /```(reminder|inbox|change|calendar|confirm|widget|form|filled)(?![\w-])[\s\S]*$/
 // A fence still being typed ("```conf"): could be one of the blocks. A closing fence (no name) stays.
 const FENCE_START = /```[a-z]+$/
 
@@ -80,7 +84,7 @@ export function extractActions(answer: string): { text: string; actions: Actions
 
 /** The answer without action blocks, also mid-stream (an unfinished block is hidden too). */
 export function stripActions(answer: string): string {
-  return answer.replace(BLOCK, "").replace(CONFIRM, "").replace(WIDGET, "").replace(OPEN, "").replace(FENCE_START, "").trimEnd()
+  return answer.replace(BLOCK, "").replace(CONFIRM, "").replace(WIDGET, "").replace(FORM, "").replace(OPEN, "").replace(FENCE_START, "").trimEnd()
 }
 
 /** True when the answer asks the user to confirm a change (it ends with a confirm block). */
